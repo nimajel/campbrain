@@ -8,3 +8,5 @@ build/
 *.log
 .campbrain/debug/
 .campbrain/logs/
+web/.next/
+web/node_modules/
