@@ -228,4 +228,22 @@ The first useful version only needs:
 - Angel Island availability scanning
 - basic console alerts
 - calendar reminders later
+
+## Generalization Rule
+
+Angel Island Ridge is the first seed target, not a hardcoded product assumption.
+
+Provider adapters should use the target configuration:
+- provider
+- parkPageId
+- campgroundName
+- acceptableSites
+- dateMode
+- minNights
+- maxNights
+- people
+- campingType
+
+Do not hardcode Angel Island, Ridge, page_id 468, or sites #4-#6 outside seed data and tests.
+
 EOF

@@ -4,14 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx src/cli/index.ts",
+    "cli": "tsx src/cli/index.ts",
+    "dev": "npm --prefix web run dev",
     "scan": "tsx src/cli/index.ts scan",
     "upcoming": "tsx src/cli/index.ts upcoming",
     "sync-calendar": "tsx src/cli/index.ts sync-calendar",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "verify": "npm run typecheck && npm test && npm run upcoming && npm run scan"
-    },
+    "verify": "npm run typecheck && npm test && npm run upcoming && npm run scan && npm --prefix web run build"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
