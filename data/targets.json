@@ -1,0 +1,36 @@
+{
+  "targets": [
+    {
+      "id": "angel-island-ridge-weekends",
+      "name": "Angel Island Ridge weekends",
+      "provider": "california-parks",
+      "parkName": "Angel Island SP",
+      "parkPageId": "468",
+      "campgroundName": "Ridge (sites 4-6)",
+      "acceptableSites": [
+        "Hike in Campsite #4",
+        "Hike in Campsite #5",
+        "Hike in Campsite #6"
+      ],
+      "preferredSites": [
+        "Hike in Campsite #5",
+        "Hike in Campsite #4",
+        "Hike in Campsite #6"
+      ],
+      "campingType": "hike-in",
+      "people": 2,
+      "dateMode": "weekend_range",
+      "rangeStart": "2026-06-01",
+      "rangeEnd": "2026-10-31",
+      "minNights": 1,
+      "maxNights": 2,
+      "weekendsOnly": true,
+      "bookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles"
+      }
+    }
+  ]
+}
