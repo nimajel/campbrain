@@ -105,13 +105,17 @@ export class CaliforniaParksProvider implements AvailabilityProvider {
   }
 
   private buildUrl(pageId: string, candidate: ScanCandidate): string {
-    const params = new URLSearchParams({
-      arrival_date: candidate.arrivalDate,
-      length: candidate.nights.toString(),
-      page_id: pageId,
-    });
-    return `https://www.parks.ca.gov/AvailabilityInfo?${params}`;
+    return buildAvailabilityUrl(pageId, candidate);
   }
+}
+
+export function buildAvailabilityUrl(pageId: string, candidate: ScanCandidate): string {
+  const params = new URLSearchParams({
+    arrival_date: candidate.arrivalDate,
+    length: candidate.nights.toString(),
+    page_id: pageId,
+  });
+  return `https://www.parks.ca.gov/AvailabilityInfo?${params}`;
 }
 
 function buildNoMatchNote(parsed: ParsedCampground, nights: number): string {

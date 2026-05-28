@@ -109,3 +109,22 @@ tr:last-child td { border-bottom: none; }
 
 .scan-status { padding: 12px 0; color: var(--muted); font-size: 13px; }
 .scan-error  { color: var(--red); }
+
+/* Form elements */
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+input[type="text"], input[type="number"], input[type="date"], input:not([type]), select, textarea {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); padding: 8px 10px; font-size: 13px; font-family: var(--font);
+  width: 100%;
+}
+input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus,
+input:not([type]):focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent);
+}
+input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+textarea { resize: vertical; }
+select option { background: var(--surface); }
+fieldset { border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; }
+legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn { background: var(--border); color: var(--text); }

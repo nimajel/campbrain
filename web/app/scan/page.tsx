@@ -1,37 +1,40 @@
 import { loadTargets } from '../../lib/targets';
 import ScanClient from './ScanClient';
+import type { Target } from '../../../src/config/schemas';
 
 export const dynamic = 'force-dynamic';
 
-export default function ScanPage() {
+export default async function ScanPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
   const targets = loadTargets();
-  const firstTarget = targets[0];
+  const { target: targetParam } = await searchParams;
+
+  const selectedTarget: Target | undefined =
+    targetParam
+      ? targets.find((t) => t.id === targetParam)
+      : targets[0];
 
   return (
     <>
       <div className="page-header">
         <h1>Availability Scan</h1>
         <p className="page-subtitle">
-          Checks the next 3 weekends against ReserveCalifornia — no automatic polling
+          Check upcoming availability against ReserveCalifornia — no automatic polling
         </p>
       </div>
 
       {targets.length === 0 && (
-        <div className="empty">No targets configured in data/targets.json.</div>
+        <div className="empty">
+          No targets configured.{' '}
+          <a href="/targets">Add a target</a> first.
+        </div>
       )}
 
-      {firstTarget && (
-        <>
-          <div className="card" style={{ marginBottom: 24 }}>
-            <h3>{firstTarget.name}</h3>
-            <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-              {firstTarget.parkName} · {firstTarget.campgroundName}
-              {' · '}sites: {firstTarget.acceptableSites.join(', ')}
-            </div>
-          </div>
-
-          <ScanClient targetId={firstTarget.id} />
-        </>
+      {targets.length > 0 && (
+        <ScanClient targets={targets} selectedTargetId={selectedTarget?.id} />
       )}
     </>
   );

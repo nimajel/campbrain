@@ -9,6 +9,8 @@ export const BookingRuleSchema = z.object({
 
 export type BookingRule = z.infer<typeof BookingRuleSchema>;
 
+const datePattern = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
 export const TargetSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -20,9 +22,15 @@ export const TargetSchema = z.object({
   preferredSites: z.array(z.string()),
   campingType: z.enum(['hike-in', 'drive-to', 'walk-in']),
   people: z.number().int().positive(),
-  dateMode: z.enum(['weekend_range', 'specific_dates', 'any_weekend']),
-  rangeStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
-  rangeEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dateMode: z.enum(['exact_dates', 'date_range', 'weekend_range', 'next_available_weekend']),
+  // exact_dates mode
+  exactStartDate: datePattern.optional(),
+  exactEndDate: datePattern.optional(),
+  // date_range / weekend_range modes
+  rangeStart: datePattern.optional(),
+  rangeEnd: datePattern.optional(),
+  // next_available_weekend mode
+  nextWeeksCount: z.number().int().positive().optional(),
   minNights: z.number().int().positive(),
   maxNights: z.number().int().positive(),
   weekendsOnly: z.boolean(),

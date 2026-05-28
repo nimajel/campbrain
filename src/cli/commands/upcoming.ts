@@ -1,5 +1,20 @@
 import { loadTargets } from '../../config/targets.js';
 import { calculateBookingWindows } from '../../rules/booking-window.js';
+import type { Target } from '../../config/schemas.js';
+
+function formatDateRange(target: Target): string {
+  switch (target.dateMode) {
+    case 'exact_dates':
+      return `${target.exactStartDate ?? '?'} to ${target.exactEndDate ?? target.exactStartDate ?? '?'}`;
+    case 'date_range':
+    case 'weekend_range':
+      return `${target.rangeStart ?? '?'} to ${target.rangeEnd ?? '?'}`;
+    case 'next_available_weekend': {
+      const count = target.nextWeeksCount ?? 12;
+      return `next ${count} weekends`;
+    }
+  }
+}
 
 export function upcomingCommand(): void {
   const targets = loadTargets();
@@ -12,7 +27,7 @@ export function upcomingCommand(): void {
     console.log(`   Provider: ${target.provider}`);
     console.log(`   Park: ${target.parkName} - ${target.campgroundName}`);
     console.log(`   Sites: ${target.preferredSites.join(', ')}`);
-    console.log(`   Dates: ${target.rangeStart} to ${target.rangeEnd}`);
+    console.log(`   Dates: ${formatDateRange(target)}`);
     console.log(`   ${target.weekendsOnly ? 'Weekends only' : 'Any day'}`);
     console.log('');
 
@@ -28,7 +43,7 @@ export function upcomingCommand(): void {
     for (const window of windows) {
       const month = window.arrivalDate.slice(0, 7); // YYYY-MM
       if (!byMonth[month]) byMonth[month] = [];
-      byMonth[month].push(window);
+      byMonth[month]!.push(window);
     }
 
     for (const [month, monthWindows] of Object.entries(byMonth)) {

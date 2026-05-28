@@ -12,6 +12,18 @@ function nextWindows(target: Target, limit: number): BookingWindowInfo[] {
     .slice(0, limit);
 }
 
+function dateRangeLabel(target: Target): string {
+  switch (target.dateMode) {
+    case 'exact_dates':
+      return `${target.exactStartDate ?? '?'} → ${target.exactEndDate ?? '?'}`;
+    case 'date_range':
+    case 'weekend_range':
+      return `${target.rangeStart ?? '?'} – ${target.rangeEnd ?? '?'}${target.weekendsOnly ? ' (weekends)' : ''}`;
+    case 'next_available_weekend':
+      return `next ${target.nextWeeksCount ?? 12} weekends`;
+  }
+}
+
 function TargetCard({ target }: { target: Target }) {
   const windows = nextWindows(target, 3);
   return (
@@ -30,14 +42,15 @@ function TargetCard({ target }: { target: Target }) {
       </div>
       <div className="kv-row">
         <span className="kv-key">Sites</span>
-        <span className="kv-val">{target.preferredSites.join(', ')}</span>
+        <span className="kv-val">{target.acceptableSites.join(', ')}</span>
       </div>
       <div className="kv-row">
-        <span className="kv-key">Date range</span>
-        <span className="kv-val">
-          {target.rangeStart} – {target.rangeEnd}
-          {target.weekendsOnly ? ' (weekends)' : ''}
-        </span>
+        <span className="kv-key">Dates</span>
+        <span className="kv-val">{dateRangeLabel(target)}</span>
+      </div>
+      <div className="kv-row">
+        <span className="kv-key">Nights</span>
+        <span className="kv-val">{target.minNights}–{target.maxNights}</span>
       </div>
       {windows.length > 0 && (
         <div style={{ marginTop: 16 }}>
@@ -54,6 +67,10 @@ function TargetCard({ target }: { target: Target }) {
           ))}
         </div>
       )}
+      <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+        <a href={`/scan?target=${target.id}`} className="btn" style={{ fontSize: 12 }}>🔍 Scan</a>
+        <a href="/targets" className="btn" style={{ fontSize: 12 }}>Edit</a>
+      </div>
     </div>
   );
 }
@@ -100,6 +117,11 @@ export default function DashboardPage() {
       </div>
 
       <h2>Targets</h2>
+      {targets.length === 0 && (
+        <div className="empty">
+          No targets configured. <a href="/targets">Add a target</a>.
+        </div>
+      )}
       {targets.map((t) => (
         <TargetCard key={t.id} target={t} />
       ))}

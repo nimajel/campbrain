@@ -21,6 +21,7 @@ export default function RootLayout({
             </div>
             <nav>
               <a href="/">Dashboard</a>
+              <a href="/targets">Targets</a>
               <a href="/windows">Booking Windows</a>
               <a href="/scan">Scan</a>
             </nav>

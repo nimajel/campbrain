@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { ScanResultJSON } from '../../lib/scanner';
 import type { DailySiteStatus } from '../../../src/types/scanner';
+import type { Target } from '../../../src/config/schemas';
 
 type ScanApiResponse = {
   targetId: string;
@@ -87,12 +88,22 @@ function ResultRow({ result }: { result: ScanResultJSON }) {
   );
 }
 
-export default function ScanClient({ targetId }: { targetId?: string }) {
+export default function ScanClient({
+  targets,
+  selectedTargetId,
+}: {
+  targets: Target[];
+  selectedTargetId?: string;
+}) {
+  const [targetId, setTargetId] = useState(selectedTargetId ?? targets[0]?.id ?? '');
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [data, setData] = useState<ScanApiResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const selectedTarget = targets.find((t) => t.id === targetId);
+
   async function handleRunScan() {
+    if (!targetId) return;
     setState('loading');
     setData(null);
     setErrorMsg('');
@@ -119,17 +130,49 @@ export default function ScanClient({ targetId }: { targetId?: string }) {
 
   return (
     <div>
+      {/* Target selector */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {targets.length > 1 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, color: 'var(--muted)' }}>Target:</span>
+              <select
+                value={targetId}
+                onChange={(e) => {
+                  setTargetId(e.target.value);
+                  setState('idle');
+                  setData(null);
+                }}
+                style={{ fontSize: 13 }}
+              >
+                {targets.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {selectedTarget && (
+            <div style={{ fontSize: 13, color: 'var(--muted)', flex: 1 }}>
+              {selectedTarget.parkName} · {selectedTarget.campgroundName}
+              {' · '}{selectedTarget.acceptableSites.join(', ')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Scan controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <button
           className="btn btn-primary"
-          onClick={handleRunScan}
-          disabled={state === 'loading'}
+          onClick={() => { void handleRunScan(); }}
+          disabled={state === 'loading' || !targetId}
         >
           {state === 'loading' ? '⏳ Scanning…' : '🔍 Run Scan'}
         </button>
         {state === 'loading' && (
           <span className="scan-status">
-            Checking the next 3 weekends against ReserveCalifornia…
+            Checking upcoming weekends against ReserveCalifornia…
           </span>
         )}
         {state === 'error' && (
@@ -139,7 +182,7 @@ export default function ScanClient({ targetId }: { targetId?: string }) {
 
       {state === 'idle' && (
         <div className="empty">
-          Click "Run Scan" to check the next 3 weekends of Angel Island Ridge availability.
+          Click "Run Scan" to check upcoming availability.
         </div>
       )}
 

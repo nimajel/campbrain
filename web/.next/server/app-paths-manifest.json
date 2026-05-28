@@ -1,6 +1,0 @@
-{
-  "/api/scan/route": "app/api/scan/route.js",
-  "/page": "app/page.js",
-  "/scan/page": "app/scan/page.js",
-  "/windows/page": "app/windows/page.js"
-}
