@@ -19,4 +19,12 @@ export interface ScanResult {
   hits: AvailabilityHit[];
   parsingNotes: string;
   scannedAt: string; // ISO 8601 timestamp
+  bookingUrl?: string;
+  siteStatuses?: SiteAvailability[];
+}
+
+export interface SiteAvailability {
+  siteName: string;
+  status: 'available' | 'unavailable' | 'unknown';
+  confidence: 'high' | 'medium' | 'low';
 }

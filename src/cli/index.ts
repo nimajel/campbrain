@@ -23,9 +23,10 @@ program
   .command('scan')
   .description('Check availability for configured targets')
   .option('--target <id>', 'Scan specific target by ID')
-  .action(async () => {
+  .option('--debug', 'Save debug HTML for all scans')
+  .action(async (options) => {
     try {
-      await scanCommand();
+      await scanCommand({ debug: options.debug });
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : error);
       process.exit(1);

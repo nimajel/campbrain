@@ -8,8 +8,10 @@
     "scan": "tsx src/cli/index.ts scan",
     "upcoming": "tsx src/cli/index.ts upcoming",
     "sync-calendar": "tsx src/cli/index.ts sync-calendar",
-    "typecheck": "tsc --noEmit"
-  },
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "verify": "npm run typecheck && npm test && npm run upcoming && npm run scan"
+    },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -25,6 +27,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1"
+    "@types/node": "^25.9.1",
+    "vitest": "^4.1.7"
   }
 }
