@@ -1,7 +1,7 @@
 import { loadTargets } from '../../config/targets.js';
 import { generateScanCandidates } from '../../rules/scan-candidates.js';
 import { CaliforniaParksProvider } from '../../providers/california-parks-provider.js';
-import type { ScanResult } from '../../types/scanner.js';
+import type { ScanResult, DailySiteStatus } from '../../types/scanner.js';
 
 export async function scanCommand(options?: { debug?: boolean }): Promise<void> {
   console.log('\n🔍 Availability Scanner\n');
@@ -13,77 +13,70 @@ export async function scanCommand(options?: { debug?: boolean }): Promise<void> 
   const allResults: ScanResult[] = [];
 
   for (const target of targets) {
-    console.log(`\nScanning: ${target.name}`);
+    console.log(`Scanning: ${target.name}`);
     const candidates = generateScanCandidates(target);
-    console.log(`  Generated ${candidates.length} scan candidates`);
+    console.log(`  ${candidates.length} candidates`);
 
     const results = await provider.scan(target, candidates, debugMode);
     allResults.push(...results);
   }
 
-  console.log('\n' + '═'.repeat(80));
-  console.log('Scan Results\n');
+  const matches = allResults.filter((r) => r.hits.length > 0);
+  const nonMatches = allResults.filter((r) => r.hits.length === 0);
 
-  const matches = allResults.filter((r) => r.parsingNotes.includes('🎯 MATCH'));
+  console.log('\n' + '═'.repeat(72));
+
   if (matches.length > 0) {
-    console.log(`🎯 ${matches.length} MATCH(ES) FOUND!\n`);
-    for (const result of matches) {
-      printResult(result);
+    console.log(`\n🎯 ${matches.length} MATCH(ES) FOUND\n`);
+    for (const r of matches) {
+      printMatch(r);
     }
-    console.log('');
+  } else {
+    console.log('\nNo matches found.\n');
   }
 
-  const noMatches = allResults.filter((r) => !r.parsingNotes.includes('🎯 MATCH'));
-  if (noMatches.length > 0) {
-    console.log(`📋 ${noMatches.length} scans with no matches\n`);
-    // Only show a summary for non-matches to avoid clutter
-    for (const result of noMatches.slice(0, 5)) {
-      console.log(
-        `  ${result.candidate.arrivalDate} (${result.candidate.nights}N): ${result.parsingNotes}`
-      );
+  // Summary of non-matches (compact)
+  if (nonMatches.length > 0) {
+    console.log(`📋 ${nonMatches.length} scans with no matches`);
+    const limitedSample = nonMatches.slice(0, 3);
+    for (const r of limitedSample) {
+      const range = `${r.candidate.arrivalDate} (${r.candidate.nights}N)`;
+      console.log(`  ${range}: ${r.parsingNotes}`);
     }
-    if (noMatches.length > 5) {
-      console.log(`  ... and ${noMatches.length - 5} more`);
+    if (nonMatches.length > 3) {
+      console.log(`  … and ${nonMatches.length - 3} more`);
     }
-    console.log('');
   }
 
-  console.log('═'.repeat(80) + '\n');
+  console.log('\n' + '═'.repeat(72) + '\n');
 }
 
-function printResult(result: ScanResult): void {
-  console.log(`  ${result.candidate.arrivalDate} → ${result.candidate.endDate}`);
-  console.log(`  ${result.targetName}`);
-  console.log(`  ${result.parsingNotes}`);
+function printMatch(result: ScanResult): void {
+  const { candidate, targetName, sourceUrl, bookingUrl, statusBySite, debugHtmlPath } =
+    result;
 
-  if (result.bookingUrl) {
-    console.log(`  📅 Book: ${result.bookingUrl}`);
-  }
+  console.log(`  Target:  ${targetName}`);
+  console.log(`  Dates:   ${candidate.arrivalDate} → ${candidate.endDate} (${candidate.nights}N)`);
+  console.log(`  URL:     ${sourceUrl}`);
+  if (bookingUrl) console.log(`  Book:    ${bookingUrl}`);
 
-  if (result.siteStatuses && result.siteStatuses.length > 0) {
-    console.log('  Sites by date:');
-    const byDate = new Map<string, typeof result.siteStatuses>();
-    for (const status of result.siteStatuses) {
-      const dateStatuses = byDate.get(status.siteName) || [];
-      dateStatuses.push(status);
-      byDate.set(status.siteName, dateStatuses);
-    }
-
-    for (const [siteName, statuses] of byDate) {
-      const statusStr = statuses
-        .map((s) => {
-          if (s.status === 'available') return '✓';
-          if (s.status === 'unavailable') return '✗';
-          return '?';
-        })
-        .join('');
-      console.log(`    ${siteName}: ${statusStr}`);
+  if (statusBySite && statusBySite.size > 0) {
+    console.log('  Sites:');
+    for (const [siteName, statuses] of statusBySite) {
+      const row = statuses.map(statusIcon).join(' ');
+      const dates = statuses.map((s) => s.date.slice(5)).join(' '); // MM-DD
+      console.log(`    ${siteName}`);
+      console.log(`      dates:  ${dates}`);
+      console.log(`      status: ${row}`);
     }
   }
 
-  if (result.debugHtmlPath) {
-    console.log(`  📄 Debug: ${result.debugHtmlPath}`);
-  }
-
+  if (debugHtmlPath) console.log(`  Debug:   ${debugHtmlPath}`);
   console.log('');
+}
+
+function statusIcon(ds: DailySiteStatus): string {
+  if (ds.status === 'available') return '✓';
+  if (ds.status === 'unavailable') return '✗';
+  return '?';
 }
