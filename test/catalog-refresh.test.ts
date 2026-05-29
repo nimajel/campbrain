@@ -268,7 +268,7 @@ describe('refreshCatalog', () => {
     expect(p.lastUpdatedAt).toBeUndefined();
   });
 
-  it('default refresh skips unverified parks (no fabricated page IDs hit)', async () => {
+  it('default refresh attempts all stale parks regardless of pageIdVerified', async () => {
     seed([
       park({ parkName: 'Unverified', parkPageId: '21', campgrounds: [] }),
       park({ parkName: 'Verified', parkPageId: '22', campgrounds: [], pageIdVerified: true }),
@@ -276,10 +276,9 @@ describe('refreshCatalog', () => {
 
     const summary = await refreshCatalog({ dataDir: tmpDir, discover: successDiscover, delayMs: 0, nowMs: NOW });
 
-    // Only the verified park is attempted on a default (untargeted) refresh.
-    expect(summary.attempted).toBe(1);
-    expect(summary.results[0]?.parkName).toBe('Verified');
-    expect(getCatalogPark('21', tmpDir)?.discoveryStatus).toBeUndefined();
+    // Both parks are attempted — verified flag does not gate the default run.
+    expect(summary.attempted).toBe(2);
+    expect(summary.succeeded).toBe(2);
   });
 
   it('targeting an unverified park by name still attempts it', async () => {
@@ -316,11 +315,13 @@ describe('seed catalog freshness', () => {
     expect((angel?.campgrounds.length ?? 0)).toBeGreaterThan(0);
   });
 
-  it('seeded-but-undiscovered parks are marked not_started with no campgrounds', () => {
+  it('seeded-but-undiscovered parks have no campgrounds and a terminal or initial status', () => {
     const undiscovered = listCatalogParks().filter((p) => p.campgrounds.length === 0);
     expect(undiscovered.length).toBeGreaterThan(0);
     for (const p of undiscovered) {
-      expect(p.discoveryStatus).toBe('not_started');
+      // A park with no campgrounds is either freshly seeded (not_started) or
+      // was attempted but discovery failed (failed). Both are valid states.
+      expect(['not_started', 'failed']).toContain(p.discoveryStatus);
     }
   });
 });

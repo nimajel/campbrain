@@ -70,11 +70,13 @@ export function selectParksToRefresh(
 }
 
 // ---------------------------------------------------------------------------
-// Sample date — a near-future, bookable date used to load the availability
-// page (which lists campgrounds regardless of vacancy).
+// Sample date — used to load the availability page. We aim for ~175 days out
+// (just inside the 6-month booking window) because that's when reservations
+// have just opened and most sites are still available. A 30-day summer date
+// risks every park being fully booked, which produces 0 campground cards.
 // ---------------------------------------------------------------------------
 
-export function defaultSampleDate(nowMs: number, daysAhead = 30): string {
+export function defaultSampleDate(nowMs: number, daysAhead = 175): string {
   const d = new Date(nowMs + daysAhead * MS_PER_DAY);
   return d.toISOString().slice(0, 10);
 }
@@ -123,14 +125,9 @@ export async function refreshCatalog(opts: RefreshOptions = {}): Promise<Refresh
   const delayMs = opts.delayMs ?? DEFAULT_DELAY_MS;
   const sampleDate = opts.sampleDate ?? defaultSampleDate(nowMs);
 
-  // Default (untargeted) refresh only attempts verified page IDs. Explicit
-  // --park or --force is an intentional opt-in to attempt unverified parks.
-  const requireVerified = !opts.force && opts.parkName === undefined;
-
   const allParks = listCatalogParks(opts.dataDir);
   const selected = selectParksToRefresh(allParks, {
     nowMs,
-    requireVerified,
     ...(opts.parkName !== undefined ? { parkName: opts.parkName } : {}),
     ...(opts.provider !== undefined ? { provider: opts.provider } : {}),
     ...(opts.force !== undefined ? { force: opts.force } : {}),
