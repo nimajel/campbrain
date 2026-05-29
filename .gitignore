@@ -8,5 +8,7 @@ build/
 *.log
 .campbrain/debug/
 .campbrain/logs/
+.campbrain/state/
 web/.next/
 web/node_modules/
+web/*.tsbuildinfo

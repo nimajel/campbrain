@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { ScanResultJSON } from '../../lib/scanner';
 import type { DailySiteStatus } from '../../../src/types/scanner';
 import type { Target } from '../../../src/config/schemas';
+import type { LatestScanSummary, AvailabilityHitRecord } from '../../lib/state';
 
 type ScanApiResponse = {
   targetId: string;
@@ -15,6 +16,16 @@ function statusCell(s: string) {
   if (s === 'available')   return <span className="avail-available">✓</span>;
   if (s === 'unavailable') return <span className="avail-unavailable">✗</span>;
   return <span className="avail-unknown">?</span>;
+}
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 function ResultRow({ result }: { result: ScanResultJSON }) {
@@ -88,12 +99,110 @@ function ResultRow({ result }: { result: ScanResultJSON }) {
   );
 }
 
+function HitHistoryPanel({ hits }: { hits: AvailabilityHitRecord[] }) {
+  if (hits.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <h2 style={{ color: 'var(--yellow)', marginBottom: 12 }}>📋 Hit History ({hits.length})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Arrival</th>
+            <th>Departure</th>
+            <th>N</th>
+            <th>Site</th>
+            <th>First seen</th>
+            <th>Last seen</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {hits.map((h) => (
+            <tr key={`${h.targetId}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`}>
+              <td>{h.arrivalDate}</td>
+              <td>{h.departureDate}</td>
+              <td>{h.nights}</td>
+              <td style={{ fontSize: 12 }}>{h.siteName}</td>
+              <td style={{ fontSize: 12, color: 'var(--muted)' }}>{relativeTime(h.firstSeenAt)}</td>
+              <td style={{ fontSize: 12, color: 'var(--muted)' }}>{relativeTime(h.lastSeenAt)}</td>
+              <td>
+                {h.bookingUrl && (
+                  <a href={h.bookingUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
+                    Book →
+                  </a>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SavedScanPanel({ scan }: { scan: LatestScanSummary }) {
+  const [expanded, setExpanded] = useState(false);
+  const matches = scan.results.filter((r) => r.hits.length > 0);
+
+  return (
+    <div className="card" style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Last scan</span>
+          <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 12 }}>
+            {relativeTime(scan.scannedAt)} · {scan.candidatesScanned} candidates ·{' '}
+            <span style={{ color: scan.matchCount > 0 ? 'var(--green)' : 'var(--muted)' }}>
+              {scan.matchCount > 0 ? `🎯 ${scan.matchCount} match${scan.matchCount !== 1 ? 'es' : ''}` : 'no matches'}
+            </span>
+          </span>
+        </div>
+        <button
+          className="btn"
+          style={{ fontSize: 12 }}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? 'Hide results' : 'Show results'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={{ marginTop: 16 }}>
+          {matches.length > 0 && (
+            <>
+              <h2 style={{ color: 'var(--green)', marginBottom: 12 }}>🎯 Matches</h2>
+              {matches.map((r) => (
+                <ResultRow key={`${r.candidate.arrivalDate}-${r.candidate.nights}`} result={r} />
+              ))}
+            </>
+          )}
+          {scan.results.filter((r) => r.hits.length === 0).length > 0 && (
+            <details style={{ marginTop: 8 }}>
+              <summary style={{ fontSize: 13, color: 'var(--muted)', cursor: 'pointer' }}>
+                {scan.results.filter((r) => r.hits.length === 0).length} non-matching candidates
+              </summary>
+              <div style={{ marginTop: 8 }}>
+                {scan.results.filter((r) => r.hits.length === 0).map((r) => (
+                  <ResultRow key={`${r.candidate.arrivalDate}-${r.candidate.nights}`} result={r} />
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ScanClient({
   targets,
   selectedTargetId,
+  initialSavedScan,
+  initialHits,
 }: {
   targets: Target[];
   selectedTargetId?: string;
+  initialSavedScan?: LatestScanSummary;
+  initialHits: AvailabilityHitRecord[];
 }) {
   const [targetId, setTargetId] = useState(selectedTargetId ?? targets[0]?.id ?? '');
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
@@ -134,7 +243,7 @@ export default function ScanClient({
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           {targets.length > 1 && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 13, color: 'var(--muted)' }}>Target:</span>
               <select
                 value={targetId}
@@ -143,7 +252,7 @@ export default function ScanClient({
                   setState('idle');
                   setData(null);
                 }}
-                style={{ fontSize: 13 }}
+                style={{ fontSize: 13, width: 'auto' }}
               >
                 {targets.map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
@@ -160,6 +269,14 @@ export default function ScanClient({
           )}
         </div>
       </div>
+
+      {/* Hit history (from server-loaded state) */}
+      <HitHistoryPanel hits={initialHits} />
+
+      {/* Saved last scan */}
+      {initialSavedScan && state === 'idle' && (
+        <SavedScanPanel scan={initialSavedScan} />
+      )}
 
       {/* Scan controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -180,12 +297,7 @@ export default function ScanClient({
         )}
       </div>
 
-      {state === 'idle' && (
-        <div className="empty">
-          Click "Run Scan" to check upcoming availability.
-        </div>
-      )}
-
+      {/* Fresh scan results */}
       {state === 'done' && data && (
         <>
           <div style={{ marginBottom: 20, fontSize: 13, color: 'var(--muted)' }}>
@@ -213,13 +325,7 @@ export default function ScanClient({
 
           {nonMatches.length > 0 && (
             <>
-              <h2
-                style={{
-                  color: 'var(--muted)',
-                  fontWeight: 400,
-                  marginTop: matches.length > 0 ? 24 : 0,
-                }}
-              >
+              <h2 style={{ color: 'var(--muted)', fontWeight: 400, marginTop: matches.length > 0 ? 24 : 0 }}>
                 No matches ({nonMatches.length})
               </h2>
               {nonMatches.map((r) => (

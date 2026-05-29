@@ -1,0 +1,70 @@
+// ---------------------------------------------------------------------------
+// Catalog types — provider / park / campground / site hierarchy
+// ---------------------------------------------------------------------------
+
+export interface CatalogBookingRule {
+  type: 'rolling_months_before';
+  monthsBefore: number;
+  releaseTime: string; // HH:MM
+  timezone: string;
+  source: 'known' | 'inferred' | 'default';
+  confidence: 'high' | 'medium' | 'low';
+  lastVerifiedAt?: string;
+}
+
+export interface SiteCatalogEntry {
+  id: string;
+  name: string;
+  type?: string;
+  capacity?: number;
+  attributes?: string[];
+}
+
+export interface CampgroundCatalogEntry {
+  id: string;
+  name: string;
+  bookingUrl?: string;
+  sites: SiteCatalogEntry[];
+  bookingRule?: CatalogBookingRule;
+  lastDiscoveredAt?: string;
+}
+
+export type DiscoveryStatus = 'success' | 'failed' | 'pending' | 'not_started';
+
+export interface ParkCatalogEntry {
+  provider: 'california-parks' | 'recreation-gov' | 'yosemite-lottery';
+  parkName: string;
+  parkPageId: string;
+  campgrounds: CampgroundCatalogEntry[];
+  defaultBookingRule: CatalogBookingRule;
+  // True only when parkPageId is confirmed to resolve against the provider.
+  // Auto-refresh only attempts verified parks; unverified parks populate the
+  // dropdown but are skipped unless explicitly targeted or forced.
+  pageIdVerified?: boolean;
+  // Freshness metadata — maintained by the backend catalog refresh process
+  lastUpdatedAt?: string;
+  lastDiscoveryAttemptAt?: string;
+  discoveryStatus?: DiscoveryStatus;
+  discoveryError?: string;
+  sourceUrl?: string;
+}
+
+export interface ProviderCatalog {
+  provider: string;
+  parks: ParkCatalogEntry[];
+}
+
+// Converts a CatalogBookingRule to the leaner Alert-level BookingRule
+export function catalogRuleToAlertRule(rule: CatalogBookingRule): {
+  type: 'rolling_months_before';
+  monthsBefore: number;
+  releaseTime: string;
+  timezone: string;
+} {
+  return {
+    type: rule.type,
+    monthsBefore: rule.monthsBefore,
+    releaseTime: rule.releaseTime,
+    timezone: rule.timezone,
+  };
+}

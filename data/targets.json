@@ -29,7 +29,11 @@
         "monthsBefore": 6,
         "releaseTime": "08:00",
         "timezone": "America/Los_Angeles"
-      }
+      },
+      "enabled": true,
+      "emailEnabled": true,
+      "calendarEnabled": false,
+      "createdAt": "2026-05-28T00:00:00.000Z"
     }
   ]
 }

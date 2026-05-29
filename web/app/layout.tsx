@@ -6,11 +6,7 @@ export const metadata: Metadata = {
   description: 'Personal camping reservation assistant',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
@@ -21,9 +17,10 @@ export default function RootLayout({
             </div>
             <nav>
               <a href="/">Dashboard</a>
-              <a href="/targets">Targets</a>
-              <a href="/windows">Booking Windows</a>
-              <a href="/scan">Scan</a>
+              <a href="/alerts">Alerts</a>
+              <a href="/scan-history">Scan History</a>
+              <a href="/calendar">Calendar</a>
+              <a href="/settings">Settings</a>
             </nav>
           </aside>
           <main className="main">{children}</main>

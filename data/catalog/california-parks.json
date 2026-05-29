@@ -1,0 +1,363 @@
+{
+  "provider": "california-parks",
+  "parks": [
+    {
+      "provider": "california-parks",
+      "parkName": "Angel Island SP",
+      "parkPageId": "468",
+      "pageIdVerified": true,
+      "campgrounds": [
+        {
+          "id": "ayala-cove-group-picnic-area",
+          "name": "Ayala Cove Group Picnic Area",
+          "sites": [
+            {
+              "id": "group-dailyuse-b-d-a",
+              "name": "Group Dailyuse (B) #D A"
+            },
+            {
+              "id": "group-dailyuse-b-d-b",
+              "name": "Group Dailyuse (B) #D B"
+            },
+            {
+              "id": "group-dailyuse-a-plat",
+              "name": "Group Dailyuse (A) #PLAT"
+            },
+            {
+              "id": "group-dailyuse-c-hill",
+              "name": "Group Dailyuse (C) #HILL"
+            }
+          ],
+          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+        },
+        {
+          "id": "east-bay-sites-1-3",
+          "name": "East Bay (sites 1-3)",
+          "sites": [
+            {
+              "id": "hike-in-campsite-1",
+              "name": "Hike in Campsite #1"
+            },
+            {
+              "id": "hike-in-campsite-2",
+              "name": "Hike in Campsite #2"
+            },
+            {
+              "id": "hike-in-campsite-3",
+              "name": "Hike in Campsite #3"
+            }
+          ],
+          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+        },
+        {
+          "id": "west-garrison-sites-10-kayak",
+          "name": "West Garrison (sites 10 & Kayak)",
+          "sites": [
+            {
+              "id": "group-tent-campsite-kayk",
+              "name": "Group Tent Campsite #KAYK"
+            }
+          ],
+          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+        },
+        {
+          "id": "ridge-sites-4-6",
+          "name": "Ridge (sites 4-6)",
+          "sites": [
+            {
+              "id": "hike-in-campsite-4",
+              "name": "Hike in Campsite #4"
+            },
+            {
+              "id": "hike-in-campsite-5",
+              "name": "Hike in Campsite #5"
+            },
+            {
+              "id": "hike-in-campsite-6",
+              "name": "Hike in Campsite #6"
+            }
+          ],
+          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+        },
+        {
+          "id": "sunrise-sites-7-9",
+          "name": "Sunrise (sites 7-9)",
+          "sites": [
+            {
+              "id": "campsite-7",
+              "name": "Campsite #7"
+            },
+            {
+              "id": "campsite-8",
+              "name": "Campsite #8"
+            },
+            {
+              "id": "campsite-9",
+              "name": "Campsite #9"
+            }
+          ],
+          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+        },
+        {
+          "id": "east-group-garrison-picnic-area",
+          "name": "East Group Garrison Picnic Area",
+          "sites": [
+            {
+              "id": "group-day-use-gg",
+              "name": "Group Day Use #GG"
+            }
+          ],
+          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+        },
+        {
+          "id": "north-garrison-group-camp",
+          "name": "North Garrison Group Camp",
+          "sites": [
+            {
+              "id": "group-tent-campsite-gtc",
+              "name": "Group Tent Campsite #GTC"
+            }
+          ],
+          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+        }
+      ],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "known",
+        "confidence": "high",
+        "lastVerifiedAt": "2026-05-28"
+      },
+      "lastUpdatedAt": "2026-05-29T03:55:42.546Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-06-28&length=1&page_id=468",
+      "discoveryStatus": "success"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Pfeiffer Big Sur SP",
+      "parkPageId": "215",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Julia Pfeiffer Burns SP",
+      "parkPageId": "577",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Big Basin Redwoods SP",
+      "parkPageId": "117",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Samuel P. Taylor SP",
+      "parkPageId": "450",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Mount Tamalpais SP",
+      "parkPageId": "467",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Salt Point SP",
+      "parkPageId": "440",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "MacKerricher SP",
+      "parkPageId": "163",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Patrick's Point SP",
+      "parkPageId": "123",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Prairie Creek Redwoods SP",
+      "parkPageId": "416",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Malibu Creek SP",
+      "parkPageId": "614",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Leo Carrillo SP",
+      "parkPageId": "607",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Crystal Cove SP",
+      "parkPageId": "627",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Point Mugu SP",
+      "parkPageId": "305",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Gaviota SP",
+      "parkPageId": "608",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    },
+    {
+      "provider": "california-parks",
+      "parkName": "Henry W. Coe SP",
+      "parkPageId": "182",
+      "campgrounds": [],
+      "defaultBookingRule": {
+        "type": "rolling_months_before",
+        "monthsBefore": 6,
+        "releaseTime": "08:00",
+        "timezone": "America/Los_Angeles",
+        "source": "default",
+        "confidence": "medium"
+      },
+      "discoveryStatus": "not_started"
+    }
+  ]
+}

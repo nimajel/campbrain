@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadTargets } from '../../../lib/targets';
 import { runScan } from '../../../lib/scanner';
+import { saveScanResults } from '../../../lib/state';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,13 @@ export async function POST(req: NextRequest) {
     }
 
     const results = await runScan(target, body.maxCandidates ?? 9);
+
+    // Persist state (non-fatal if it fails)
+    try {
+      saveScanResults(target.id, target.name, results);
+    } catch {
+      // State write failure should not break the scan response
+    }
 
     return NextResponse.json({ targetId: target.id, targetName: target.name, results });
   } catch (err) {

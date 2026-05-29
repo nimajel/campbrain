@@ -1,129 +1,158 @@
-import { loadTargets } from '../lib/targets';
-import { getBookingWindows } from '../lib/windows';
-import type { Target } from '../../src/config/schemas';
-import type { BookingWindowInfo } from '../../src/rules/booking-window';
+import { listAlertsWeb } from '../lib/alerts';
+import { getLatestScanState, getHitsState } from '../lib/state';
+import type { Alert } from '../lib/alerts';
+import type { LatestScanSummary } from '../lib/state';
 
 export const dynamic = 'force-dynamic';
 
-function nextWindows(target: Target, limit: number): BookingWindowInfo[] {
-  const now = new Date().toISOString();
-  return getBookingWindows(target)
-    .filter((w) => w.bookingOpenTime > now)
-    .slice(0, limit);
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function dateRangeLabel(target: Target): string {
-  switch (target.dateMode) {
-    case 'exact_dates':
-      return `${target.exactStartDate ?? '?'} → ${target.exactEndDate ?? '?'}`;
+function dateRangeLabel(alert: Alert): string {
+  switch (alert.dateMode) {
+    case 'exact_dates': return `${alert.exactStartDate ?? '?'} → ${alert.exactEndDate ?? '?'}`;
     case 'date_range':
-    case 'weekend_range':
-      return `${target.rangeStart ?? '?'} – ${target.rangeEnd ?? '?'}${target.weekendsOnly ? ' (weekends)' : ''}`;
-    case 'next_available_weekend':
-      return `next ${target.nextWeeksCount ?? 12} weekends`;
+    case 'weekend_range': return `${alert.rangeStart ?? '?'} – ${alert.rangeEnd ?? '?'}${alert.weekendsOnly ? ' (wkds)' : ''}`;
+    case 'next_available_weekend': return `Next ${alert.nextWeeksCount ?? 12} weekends`;
   }
 }
 
-function TargetCard({ target }: { target: Target }) {
-  const windows = nextWindows(target, 3);
+function AlertRow({ alert, scan }: { alert: Alert; scan?: LatestScanSummary }) {
   return (
-    <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>{target.name}</h3>
-        <span className="badge badge-blue">{target.provider}</span>
+    <div className="card" style={{ opacity: alert.enabled ? 1 : 0.6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <span className={`dot ${alert.enabled ? 'dot-green' : 'dot-gray'}`} />
+        <h3 style={{ margin: 0, flex: 1 }}>{alert.name}</h3>
+        <span className="badge badge-blue">{alert.provider}</span>
+        {alert.emailEnabled && <span className="badge badge-gray" title="Email enabled">📧</span>}
+        {alert.calendarEnabled && <span className="badge badge-gray" title="Calendar enabled">📅</span>}
       </div>
-      <div className="kv-row">
-        <span className="kv-key">Park</span>
-        <span className="kv-val">{target.parkName}</span>
+
+      <div style={{ display: 'flex', gap: 24, fontSize: 12, color: 'var(--muted)', flexWrap: 'wrap' }}>
+        <span>{alert.parkName} · {alert.campgroundName}</span>
+        <span>{dateRangeLabel(alert)}</span>
+        <span>Sites: {alert.acceptableSites.join(', ')}</span>
       </div>
-      <div className="kv-row">
-        <span className="kv-key">Campground</span>
-        <span className="kv-val">{target.campgroundName}</span>
-      </div>
-      <div className="kv-row">
-        <span className="kv-key">Sites</span>
-        <span className="kv-val">{target.acceptableSites.join(', ')}</span>
-      </div>
-      <div className="kv-row">
-        <span className="kv-key">Dates</span>
-        <span className="kv-val">{dateRangeLabel(target)}</span>
-      </div>
-      <div className="kv-row">
-        <span className="kv-key">Nights</span>
-        <span className="kv-val">{target.minNights}–{target.maxNights}</span>
-      </div>
-      {windows.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 8 }}>
-            Next booking windows
-          </div>
-          {windows.map((w) => (
-            <div key={w.arrivalDate} style={{ display: 'flex', gap: 16, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
-              <span style={{ color: 'var(--muted)', width: 100, flexShrink: 0 }}>
-                {w.arrivalDate}
-              </span>
-              <span>opens {w.bookingOpenTime.slice(0, 10)} at {w.bookingOpenTime.slice(11, 16)}</span>
-            </div>
-          ))}
+
+      {scan && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', gap: 20, fontSize: 12 }}>
+          <span style={{ color: 'var(--muted)' }}>Last scan {relativeTime(scan.scannedAt)}</span>
+          <span style={{ color: scan.matchCount > 0 ? 'var(--green)' : 'var(--muted)', fontWeight: scan.matchCount > 0 ? 600 : 400 }}>
+            {scan.matchCount > 0
+              ? `🎯 ${scan.matchCount} match${scan.matchCount !== 1 ? 'es' : ''}`
+              : `${scan.candidatesScanned} candidates, no matches`}
+          </span>
         </div>
       )}
-      <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-        <a href={`/scan?target=${target.id}`} className="btn" style={{ fontSize: 12 }}>🔍 Scan</a>
-        <a href="/targets" className="btn" style={{ fontSize: 12 }}>Edit</a>
+
+      {!scan && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)' }}>
+          Not scanned yet
+        </div>
+      )}
+
+      <div style={{ marginTop: 10 }}>
+        <a href="/alerts" className="btn btn-ghost btn-sm">Manage →</a>
       </div>
     </div>
   );
 }
 
 export default function DashboardPage() {
-  const targets = loadTargets();
+  const alerts = listAlertsWeb();
+  const scanState = getLatestScanState();
+  const hitsState = getHitsState();
 
-  const totalWindows = targets.reduce(
-    (sum, t) => sum + getBookingWindows(t).length,
-    0
-  );
+  const activeAlerts = alerts.filter((a) => a.enabled);
+  const totalMatches = Object.values(scanState).reduce((sum, s) => sum + s.matchCount, 0);
+  const totalHits = hitsState.hits.length;
+  const lastScanTime = Object.values(scanState)
+    .map((s) => s.scannedAt)
+    .sort()
+    .at(-1);
 
-  const allUpcoming = targets
-    .flatMap((t) => nextWindows(t, 999))
-    .sort((a, b) => a.bookingOpenTime.localeCompare(b.bookingOpenTime))
-    .slice(0, 1);
-
-  const nextWindow = allUpcoming[0];
+  const recentHits = [...hitsState.hits]
+    .sort((a, b) => b.firstSeenAt.localeCompare(a.firstSeenAt))
+    .slice(0, 5);
 
   return (
     <>
       <div className="page-header">
         <h1>Dashboard</h1>
-        <p className="page-subtitle">
-          {targets.length} target{targets.length !== 1 ? 's' : ''} configured
-        </p>
+        <p className="page-subtitle">Campsite availability monitoring</p>
       </div>
 
       <div className="grid-3" style={{ marginBottom: 24 }}>
         <div className="card">
-          <div className="stat-label">Targets</div>
-          <div className="stat-value">{targets.length}</div>
+          <div className="stat-label">Active alerts</div>
+          <div className="stat-value">{activeAlerts.length}<span style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 400 }}>/{alerts.length}</span></div>
         </div>
         <div className="card">
-          <div className="stat-label">Booking windows</div>
-          <div className="stat-value">{totalWindows}</div>
+          <div className="stat-label">Current matches</div>
+          <div className="stat-value" style={{ color: totalMatches > 0 ? 'var(--green)' : undefined }}>{totalMatches}</div>
         </div>
         <div className="card">
-          <div className="stat-label">Next opens</div>
-          <div className="stat-value" style={{ fontSize: 16, paddingTop: 4 }}>
-            {nextWindow ? nextWindow.bookingOpenTime.slice(0, 10) : '—'}
-          </div>
+          <div className="stat-label">Total hits recorded</div>
+          <div className="stat-value">{totalHits}</div>
         </div>
       </div>
 
-      <h2>Targets</h2>
-      {targets.length === 0 && (
-        <div className="empty">
-          No targets configured. <a href="/targets">Add a target</a>.
+      {lastScanTime && (
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 24 }}>
+          Last scan {relativeTime(lastScanTime)} · <a href="/scan-history">View full history</a>
         </div>
       )}
-      {targets.map((t) => (
-        <TargetCard key={t.id} target={t} />
+
+      {recentHits.length > 0 && (
+        <>
+          <h2>Recent Hits</h2>
+          <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Alert</th>
+                  <th>Site</th>
+                  <th>Arrival</th>
+                  <th>Nights</th>
+                  <th>First seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentHits.map((h, i) => (
+                  <tr key={i}>
+                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{h.targetName}</td>
+                    <td><span className="badge badge-match">{h.siteName}</span></td>
+                    <td>{h.arrivalDate}</td>
+                    <td>{h.nights}N</td>
+                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{relativeTime(h.firstSeenAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <h2 style={{ margin: 0, flex: 1 }}>Alerts</h2>
+        <a href="/alerts" className="btn btn-primary btn-sm">+ New alert</a>
+      </div>
+
+      {alerts.length === 0 && (
+        <div className="empty">
+          No alerts configured. <a href="/alerts">Create your first alert →</a>
+        </div>
+      )}
+
+      {alerts.map((a) => (
+        <AlertRow key={a.id} alert={a} scan={scanState[a.id]} />
       ))}
     </>
   );

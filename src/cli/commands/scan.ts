@@ -1,26 +1,22 @@
-import { loadTargets } from '../../config/targets.js';
-import { generateScanCandidates } from '../../rules/scan-candidates.js';
-import { CaliforniaParksProvider } from '../../providers/california-parks-provider.js';
+import { runScan } from '../../scanner/run-scan.js';
 import type { ScanResult, DailySiteStatus } from '../../types/scanner.js';
 
-export async function scanCommand(options?: { debug?: boolean }): Promise<void> {
+export interface ScanCommandOptions {
+  debug?: boolean;
+  notify?: boolean;
+  targetId?: string;
+}
+
+export async function scanCommand(options: ScanCommandOptions = {}): Promise<void> {
   console.log('\n🔍 Availability Scanner\n');
 
-  const targets = loadTargets();
-  const provider = new CaliforniaParksProvider();
-  const debugMode = options?.debug ?? false;
+  const summary = await runScan({
+    debug: options.debug,
+    notify: options.notify !== false,
+    targetId: options.targetId,
+  });
 
-  const allResults: ScanResult[] = [];
-
-  for (const target of targets) {
-    console.log(`Scanning: ${target.name}`);
-    const candidates = generateScanCandidates(target);
-    console.log(`  ${candidates.length} candidates`);
-
-    const results = await provider.scan(target, candidates, debugMode);
-    allResults.push(...results);
-  }
-
+  const allResults = summary.targets.flatMap((t) => t.results);
   const matches = allResults.filter((r) => r.hits.length > 0);
   const nonMatches = allResults.filter((r) => r.hits.length === 0);
 
@@ -35,11 +31,10 @@ export async function scanCommand(options?: { debug?: boolean }): Promise<void> 
     console.log('\nNo matches found.\n');
   }
 
-  // Summary of non-matches (compact)
   if (nonMatches.length > 0) {
     console.log(`📋 ${nonMatches.length} scans with no matches`);
-    const limitedSample = nonMatches.slice(0, 3);
-    for (const r of limitedSample) {
+    const sample = nonMatches.slice(0, 3);
+    for (const r of sample) {
       const range = `${r.candidate.arrivalDate} (${r.candidate.nights}N)`;
       console.log(`  ${range}: ${r.parsingNotes}`);
     }
@@ -48,12 +43,12 @@ export async function scanCommand(options?: { debug?: boolean }): Promise<void> 
     }
   }
 
+  console.log(`\n💾 State saved`);
   console.log('\n' + '═'.repeat(72) + '\n');
 }
 
 function printMatch(result: ScanResult): void {
-  const { candidate, targetName, sourceUrl, bookingUrl, statusBySite, debugHtmlPath } =
-    result;
+  const { candidate, targetName, sourceUrl, bookingUrl, statusBySite, debugHtmlPath } = result;
 
   console.log(`  Target:  ${targetName}`);
   console.log(`  Dates:   ${candidate.arrivalDate} → ${candidate.endDate} (${candidate.nights}N)`);
@@ -64,7 +59,7 @@ function printMatch(result: ScanResult): void {
     console.log('  Sites:');
     for (const [siteName, statuses] of statusBySite) {
       const row = statuses.map(statusIcon).join(' ');
-      const dates = statuses.map((s) => s.date.slice(5)).join(' '); // MM-DD
+      const dates = statuses.map((s) => s.date.slice(5)).join(' ');
       console.log(`    ${siteName}`);
       console.log(`      dates:  ${dates}`);
       console.log(`      status: ${row}`);
