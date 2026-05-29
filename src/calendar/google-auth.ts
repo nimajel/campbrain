@@ -29,8 +29,9 @@ Steps:
      GOOGLE_CLIENT_SECRET=<your client secret>
      GOOGLE_REDIRECT_URI=${DEFAULT_REDIRECT_URI}   (optional)
 
-  6. Add ${DEFAULT_REDIRECT_URI} to your OAuth app's
-     authorized redirect URIs in the Google Console.
+  6. In Google Cloud Console, add this to your OAuth 2.0 app's
+     authorized redirect URIs:
+     http://localhost:3000/oauth2callback
 
   7. Run: campbrain sync-calendar
      CampBrain will open an auth URL for you to visit.
