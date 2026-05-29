@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Alert } from '../../lib/alerts';
 import type { ParkCatalogEntry, CampgroundCatalogEntry, CatalogBookingRule } from '../../lib/catalog';
+import type { LatestScanState } from '../../lib/state';
 import {
   emptyForm,
   alertToForm,
@@ -13,6 +14,20 @@ import {
   applyCampgroundToForm,
 } from '../../lib/alert-form';
 import type { FormState } from '../../lib/alert-form';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,7 +50,7 @@ interface ScanResponse {
 // Inline scan panel (on alert card)
 // ---------------------------------------------------------------------------
 
-function ScanPanel({ alertId, alertName }: { alertId: string; alertName: string }) {
+function ScanPanel({ alertId, alertName, onScanComplete }: { alertId: string; alertName: string; onScanComplete?: () => void }) {
   const [state, setState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [result, setResult] = useState<ScanResponse | null>(null);
 
@@ -46,6 +61,7 @@ function ScanPanel({ alertId, alertName }: { alertId: string; alertName: string 
       const res = await fetch(`/api/alerts/${alertId}/scan`, { method: 'POST' });
       const data = (await res.json()) as ScanResponse;
       setResult(data);
+      onScanComplete?.();
     } catch (e) {
       setResult({ alertId, alertName, results: [], matchCount: 0, error: String(e) });
     }
@@ -86,11 +102,15 @@ function AlertCard({
   onEdit,
   onToggle,
   onDelete,
+  scanState,
+  onScanComplete,
 }: {
   alert: Alert;
   onEdit: (a: Alert) => void;
   onToggle: (a: Alert) => void;
   onDelete: (a: Alert) => void;
+  scanState: LatestScanState;
+  onScanComplete?: () => void;
 }) {
   const dateLabel = (() => {
     switch (alert.dateMode) {
@@ -100,6 +120,14 @@ function AlertCard({
       case 'next_available_weekend': return `Next ${alert.nextWeeksCount ?? 12} weekends`;
     }
   })();
+
+  const lastScan = scanState[alert.id];
+  const hasMatches = lastScan && lastScan.matchCount > 0;
+  const matchedDates = lastScan
+    ? lastScan.results
+        .filter(r => r.hits.length > 0)
+        .map(r => `${r.candidate.arrivalDate} (${r.hits.map(h => h.siteName).join(', ')})`)
+    : [];
 
   return (
     <div className="card" style={{ opacity: alert.enabled ? 1 : 0.6 }}>
@@ -114,6 +142,40 @@ function AlertCard({
         {alert.calendarEnabled && <span className="badge badge-gray">📅 cal</span>}
       </div>
 
+      {lastScan && (
+        <div style={{
+          padding: '10px 12px',
+          marginBottom: 12,
+          borderRadius: 6,
+          background: hasMatches ? 'rgba(34,197,94,.08)' : 'rgba(107,114,128,.06)',
+          borderLeft: `3px solid ${hasMatches ? 'var(--green)' : 'var(--muted)'}`,
+          fontSize: 13,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ color: 'var(--muted)' }}>Last scan: </span>
+              <span style={{ fontWeight: 500, color: 'var(--text)' }}>{relativeTime(lastScan.scannedAt)}</span>
+              {hasMatches && (
+                <span style={{ color: 'var(--green)', fontWeight: 600, marginLeft: 8 }}>
+                  🎯 {lastScan.matchCount} match{lastScan.matchCount !== 1 ? 'es' : ''}
+                </span>
+              )}
+              {!hasMatches && (
+                <span style={{ color: 'var(--muted)', marginLeft: 8 }}>No matches</span>
+              )}
+            </div>
+          </div>
+          {hasMatches && matchedDates.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
+              {matchedDates.slice(0, 2).map((d, i) => (
+                <div key={i}>{d}</div>
+              ))}
+              {matchedDates.length > 2 && <div>+ {matchedDates.length - 2} more</div>}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
         <div className="kv-row"><span className="kv-key">Park</span><span className="kv-val">{alert.parkName}</span></div>
         <div className="kv-row"><span className="kv-key">Campground</span><span className="kv-val">{alert.campgroundName}</span></div>
@@ -124,7 +186,7 @@ function AlertCard({
       </div>
 
       <div className="card-actions">
-        <ScanPanel alertId={alert.id} alertName={alert.name} />
+        <ScanPanel alertId={alert.id} alertName={alert.name} onScanComplete={onScanComplete} />
         <button className="btn btn-sm btn-ghost" onClick={() => onEdit(alert)}>Edit</button>
         <button
           className={`btn btn-sm ${alert.enabled ? 'btn-danger' : 'btn-success'}`}
@@ -659,7 +721,7 @@ interface PostSaveScan {
   alertName: string;
 }
 
-function ScanAfterSaveBanner({ alertId, alertName, onDismiss }: PostSaveScan & { onDismiss: () => void }) {
+function ScanAfterSaveBanner({ alertId, alertName, onDismiss, onScanComplete }: PostSaveScan & { onDismiss: () => void; onScanComplete?: () => void }) {
   const [state, setState] = useState<'scanning' | 'done'>('scanning');
   const [result, setResult] = useState<ScanResponse | null>(null);
 
@@ -670,13 +732,14 @@ function ScanAfterSaveBanner({ alertId, alertName, onDismiss }: PostSaveScan & {
         const res = await fetch(`/api/alerts/${alertId}/scan`, { method: 'POST' });
         const data = (await res.json()) as ScanResponse;
         setResult(data);
+        onScanComplete?.();
       } catch (e) {
         setResult({ alertId, alertName, results: [], matchCount: 0, error: String(e) });
       }
       setState('done');
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [onScanComplete]);
 
   if (state === 'scanning') {
     return (
@@ -721,8 +784,9 @@ function ScanAfterSaveBanner({ alertId, alertName, onDismiss }: PostSaveScan & {
 // Main client component
 // ---------------------------------------------------------------------------
 
-export default function AlertsClient({ initial, parks }: { initial: Alert[]; parks: ParkCatalogEntry[] }) {
+export default function AlertsClient({ initial, parks, scanState: initialScanState }: { initial: Alert[]; parks: ParkCatalogEntry[]; scanState: LatestScanState }) {
   const [alerts, setAlerts] = useState<Alert[]>(initial);
+  const [scanState, setScanState] = useState<LatestScanState>(initialScanState);
   const [modalAlert, setModalAlert] = useState<Alert | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [pageError, setPageError] = useState('');
@@ -820,6 +884,18 @@ export default function AlertsClient({ initial, parks }: { initial: Alert[]; par
 
   const enabled = alerts.filter((a) => a.enabled).length;
 
+  async function refreshScanState() {
+    try {
+      const res = await fetch('/api/scan-state');
+      if (res.ok) {
+        const data = (await res.json()) as LatestScanState;
+        setScanState(data);
+      }
+    } catch (e) {
+      console.error('Failed to refresh scan state:', e);
+    }
+  }
+
   return (
     <>
       <div className="page-header">
@@ -843,6 +919,7 @@ export default function AlertsClient({ initial, parks }: { initial: Alert[]; par
           alertId={pendingScan.alertId}
           alertName={pendingScan.alertName}
           onDismiss={() => setPendingScan(null)}
+          onScanComplete={() => { void refreshScanState(); }}
         />
       )}
 
@@ -862,6 +939,8 @@ export default function AlertsClient({ initial, parks }: { initial: Alert[]; par
           onEdit={openEdit}
           onToggle={handleToggle}
           onDelete={handleDelete}
+          scanState={scanState}
+          onScanComplete={() => { void refreshScanState(); }}
         />
       ))}
 
