@@ -44,19 +44,24 @@ export async function syncCalendarCommand(options: SyncCalendarOptions = {}): Pr
     }
   }
 
+  // Filter out past events
+  const now = new Date();
+  const futureDrafts = allDrafts.filter((draft) => new Date(draft.startTimeIso) > now);
+  const pastCount = allDrafts.length - futureDrafts.length;
+
   console.log(`  Targets:      ${targets.length}`);
-  console.log(`  Event drafts: ${allDrafts.length}`);
+  console.log(`  Event drafts: ${futureDrafts.length}${pastCount > 0 ? ` (${pastCount} past, skipped)` : ''}`);
 
   // Load existing state
   const state = readCalendarState(stateDir());
 
-  // Classify drafts into create / update / skip
-  const toCreate = allDrafts.filter((d) => !state.events[d.key]);
-  const toUpdate = allDrafts.filter((d) => {
+  // Classify future drafts into create / update / skip
+  const toCreate = futureDrafts.filter((d) => !state.events[d.key]);
+  const toUpdate = futureDrafts.filter((d) => {
     const existing = state.events[d.key];
     return existing !== undefined && hasEventChanged(d, existing);
   });
-  const toSkip = allDrafts.length - toCreate.length - toUpdate.length;
+  const toSkip = futureDrafts.length - toCreate.length - toUpdate.length;
 
   console.log(`  To create:    ${toCreate.length}`);
   console.log(`  To update:    ${toUpdate.length}`);
