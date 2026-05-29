@@ -50,12 +50,13 @@ interface ScanResponse {
 // Inline scan panel (on alert card)
 // ---------------------------------------------------------------------------
 
-function ScanPanel({ alertId, alertName, onScanComplete }: { alertId: string; alertName: string; onScanComplete?: () => void }) {
+function ScanPanel({ alertId, alertName, onScanComplete, onScanStateChange }: { alertId: string; alertName: string; onScanComplete?: () => void; onScanStateChange?: (isScanning: boolean) => void }) {
   const [state, setState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [result, setResult] = useState<ScanResponse | null>(null);
 
   async function runScan() {
     setState('scanning');
+    onScanStateChange?.(true);
     setResult(null);
     try {
       const res = await fetch(`/api/alerts/${alertId}/scan`, { method: 'POST' });
@@ -66,6 +67,7 @@ function ScanPanel({ alertId, alertName, onScanComplete }: { alertId: string; al
       setResult({ alertId, alertName, results: [], matchCount: 0, error: String(e) });
     }
     setState('done');
+    onScanStateChange?.(false);
   }
 
   return (
@@ -104,6 +106,8 @@ function AlertCard({
   onDelete,
   scanState,
   onScanComplete,
+  isScanning,
+  onScanStateChange,
 }: {
   alert: Alert;
   onEdit: (a: Alert) => void;
@@ -111,6 +115,8 @@ function AlertCard({
   onDelete: (a: Alert) => void;
   scanState: LatestScanState;
   onScanComplete?: () => void;
+  isScanning?: boolean;
+  onScanStateChange?: (isScanning: boolean) => void;
 }) {
   const dateLabel = (() => {
     switch (alert.dateMode) {
@@ -142,30 +148,36 @@ function AlertCard({
         {alert.calendarEnabled && <span className="badge badge-gray">📅 cal</span>}
       </div>
 
-      {lastScan && (
+      {isScanning || lastScan ? (
         <div style={{
           padding: '10px 12px',
           marginBottom: 12,
           borderRadius: 6,
-          background: hasMatches ? 'rgba(34,197,94,.08)' : 'rgba(107,114,128,.06)',
-          borderLeft: `3px solid ${hasMatches ? 'var(--green)' : 'var(--muted)'}`,
+          background: isScanning ? 'rgba(245,200,66,.08)' : (hasMatches ? 'rgba(34,197,94,.08)' : 'rgba(107,114,128,.06)'),
+          borderLeft: `3px solid ${isScanning ? 'var(--yellow)' : (hasMatches ? 'var(--green)' : 'var(--muted)')}`,
           fontSize: 13,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <span style={{ color: 'var(--muted)' }}>Last scan: </span>
-              <span style={{ fontWeight: 500, color: 'var(--text)' }}>{relativeTime(lastScan.scannedAt)}</span>
-              {hasMatches && (
-                <span style={{ color: 'var(--green)', fontWeight: 600, marginLeft: 8 }}>
-                  🎯 {lastScan.matchCount} match{lastScan.matchCount !== 1 ? 'es' : ''}
-                </span>
-              )}
-              {!hasMatches && (
-                <span style={{ color: 'var(--muted)', marginLeft: 8 }}>No matches</span>
+              {isScanning ? (
+                <span style={{ color: 'var(--yellow)', fontWeight: 600 }}>⏳ Scan in Progress…</span>
+              ) : (
+                <>
+                  <span style={{ color: 'var(--muted)' }}>Last scan: </span>
+                  <span style={{ fontWeight: 500, color: 'var(--text)' }}>{relativeTime(lastScan!.scannedAt)}</span>
+                  {hasMatches && (
+                    <span style={{ color: 'var(--green)', fontWeight: 600, marginLeft: 8 }}>
+                      🎯 {lastScan!.matchCount} match{lastScan!.matchCount !== 1 ? 'es' : ''}
+                    </span>
+                  )}
+                  {!hasMatches && (
+                    <span style={{ color: 'var(--muted)', marginLeft: 8 }}>No matches</span>
+                  )}
+                </>
               )}
             </div>
           </div>
-          {hasMatches && matchedDates.length > 0 && (
+          {!isScanning && hasMatches && matchedDates.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
               {matchedDates.slice(0, 2).map((d, i) => (
                 <div key={i}>{d}</div>
@@ -174,7 +186,7 @@ function AlertCard({
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
         <div className="kv-row"><span className="kv-key">Park</span><span className="kv-val">{alert.parkName}</span></div>
@@ -186,7 +198,7 @@ function AlertCard({
       </div>
 
       <div className="card-actions">
-        <ScanPanel alertId={alert.id} alertName={alert.name} onScanComplete={onScanComplete} />
+        <ScanPanel alertId={alert.id} alertName={alert.name} onScanComplete={onScanComplete} onScanStateChange={onScanStateChange} />
         <button className="btn btn-sm btn-ghost" onClick={() => onEdit(alert)}>Edit</button>
         <button
           className={`btn btn-sm ${alert.enabled ? 'btn-danger' : 'btn-success'}`}
@@ -787,6 +799,7 @@ function ScanAfterSaveBanner({ alertId, alertName, onDismiss, onScanComplete }: 
 export default function AlertsClient({ initial, parks, scanState: initialScanState }: { initial: Alert[]; parks: ParkCatalogEntry[]; scanState: LatestScanState }) {
   const [alerts, setAlerts] = useState<Alert[]>(initial);
   const [scanState, setScanState] = useState<LatestScanState>(initialScanState);
+  const [scanningAlertId, setScanningAlertId] = useState<string | null>(null);
   const [modalAlert, setModalAlert] = useState<Alert | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [pageError, setPageError] = useState('');
@@ -941,6 +954,8 @@ export default function AlertsClient({ initial, parks, scanState: initialScanSta
           onDelete={handleDelete}
           scanState={scanState}
           onScanComplete={() => { void refreshScanState(); }}
+          isScanning={scanningAlertId === a.id}
+          onScanStateChange={(isScanning) => setScanningAlertId(isScanning ? a.id : null)}
         />
       ))}
 

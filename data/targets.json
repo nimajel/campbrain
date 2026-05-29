@@ -155,16 +155,18 @@
       "provider": "california-parks",
       "parkName": "Angel Island SP",
       "parkPageId": "468",
-      "campgroundName": "Sunrise (sites 7-9)",
+      "campgroundName": "Ayala Cove Group Picnic Area",
       "acceptableSites": [
-        "Campsite #7",
-        "Campsite #8",
-        "Campsite #9"
+        "Group Dailyuse (B) #D A",
+        "Group Dailyuse (B) #D B",
+        "Group Dailyuse (A) #PLAT",
+        "Group Dailyuse (C) #HILL"
       ],
       "preferredSites": [
-        "Campsite #7",
-        "Campsite #8",
-        "Campsite #9"
+        "Group Dailyuse (B) #D A",
+        "Group Dailyuse (B) #D B",
+        "Group Dailyuse (A) #PLAT",
+        "Group Dailyuse (C) #HILL"
       ],
       "campingType": "hike-in",
       "people": 2,
@@ -184,7 +186,7 @@
       "emailEnabled": true,
       "calendarEnabled": false,
       "createdAt": "2026-05-29T19:28:18.701Z",
-      "updatedAt": "2026-05-29T19:28:18.701Z"
+      "updatedAt": "2026-05-29T19:30:47.186Z"
     }
   ]
 }

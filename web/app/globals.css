@@ -117,6 +117,13 @@ input[type="text"], input[type="number"], input[type="date"], input:not([type]),
   color: var(--text); padding: 8px 10px; font-size: 13px; font-family: var(--font);
   width: 100%;
 }
+input[type="date"] {
+  color-scheme: dark;
+}
+input[type="date"]::webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
 input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus,
 input:not([type]):focus, select:focus, textarea:focus {
   outline: none; border-color: var(--accent);
