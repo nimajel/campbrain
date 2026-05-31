@@ -1,35 +1,46 @@
 // ---------------------------------------------------------------------------
-// Availability cache — proactive scanner writes here; UI reads from here
+// Availability cache — v2
+//
+// One entry = one park × one 14-day window.
+// Stores raw per-site per-day availability so any night-count query can be
+// answered at read time without additional fetches.
 // ---------------------------------------------------------------------------
 
-export interface CachedCampground {
-  id: string;
+export interface SiteDailyAvailability {
   name: string;
-  availableSites: string[];
-  nightlyFee?: number;
-  bookingUrl?: string;
+  /** Keys are YYYY-MM-DD dates within the window */
+  dates: Record<string, 'available' | 'unavailable' | 'unknown'>;
 }
 
-export interface AvailabilityCacheEntry {
-  // Lookup key fields
+export interface CampgroundWindow {
+  id: string;
+  name: string;
+  nightlyFee?: number;
+  bookingUrl?: string;
+  sites: SiteDailyAvailability[];
+}
+
+export interface AvailabilityWindowEntry {
   parkPageId: string;
   parkName: string;
-  arrivalDate: string;   // YYYY-MM-DD
-  nights: number;
-  departureDate: string; // YYYY-MM-DD
-  // Scan metadata
-  scannedAt: string;     // ISO 8601
+  /** First date in the window, inclusive (YYYY-MM-DD) */
+  windowStart: string;
+  /** Last date in the window, inclusive (YYYY-MM-DD = windowStart + 13 days) */
+  windowEnd: string;
+  scannedAt: string;
   sourceUrl: string;
-  // Results — all campgrounds for this park/date/nights combo
-  campgrounds: CachedCampground[];
+  campgrounds: CampgroundWindow[];
 }
 
 export interface AvailabilityCache {
-  version: 1;
-  // Key: `${parkPageId}::${arrivalDate}::${nights}`
-  entries: Record<string, AvailabilityCacheEntry>;
+  version: 2;
+  /** Key: `${parkPageId}::${windowStart}` */
+  entries: Record<string, AvailabilityWindowEntry>;
 }
 
-export function cacheKey(parkPageId: string, arrivalDate: string, nights: number): string {
-  return `${parkPageId}::${arrivalDate}::${nights}`;
+export function cacheKey(parkPageId: string, windowStart: string): string {
+  return `${parkPageId}::${windowStart}`;
 }
+
+/** Number of days the parks.ca.gov endpoint returns per fetch. */
+export const WINDOW_DAYS = 8;

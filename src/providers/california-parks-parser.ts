@@ -111,6 +111,72 @@ export function parseAvailabilityHtml(
 }
 
 // ---------------------------------------------------------------------------
+// Full-page parser — returns every campground/site/date without filtering
+// Used by the proactive scanner to populate the window cache.
+// ---------------------------------------------------------------------------
+
+export interface AllAvailabilitySite {
+  name: string;
+  /** YYYY-MM-DD → status for every date column returned by the page */
+  dates: Record<string, 'available' | 'unavailable' | 'unknown'>;
+}
+
+export interface AllAvailabilityCampground {
+  name: string;
+  bookingUrl: string;
+  sites: AllAvailabilitySite[];
+}
+
+export function parseAllAvailability(html: string): AllAvailabilityCampground[] {
+  try {
+    const $ = load(html);
+    const campgrounds: AllAvailabilityCampground[] = [];
+
+    $('section.card').each((_i, sectionEl) => {
+      const section = $(sectionEl);
+      const name = section.find('header.card-header h4').text().trim();
+      if (!name) return;
+
+      const bookingUrl =
+        (section.find('header.card-header a').first().attr('href') as string | undefined) ?? '';
+
+      // Date columns
+      const headerCells = section.find('table thead tr th').slice(1);
+      const dates: string[] = [];
+      headerCells.each((j) => {
+        const parsed = parseHeaderDate(headerCells.eq(j).text().trim());
+        if (parsed) dates.push(parsed);
+      });
+      if (dates.length === 0) return;
+
+      // All site rows
+      const sites: AllAvailabilitySite[] = [];
+      section.find('tbody tr').each((_j, trEl) => {
+        const tr = $(trEl);
+        const siteName = tr.find('td.unit-name').text().trim();
+        if (!siteName) return;
+
+        const dateMap: Record<string, 'available' | 'unavailable' | 'unknown'> = {};
+        const cells = tr.find('td').slice(1);
+        cells.each((dateIndex) => {
+          if (dateIndex >= dates.length) return;
+          dateMap[dates[dateIndex]!] = classifyCell(cells.eq(dateIndex));
+        });
+
+        sites.push({ name: siteName, dates: dateMap });
+      });
+
+      if (sites.length > 0) campgrounds.push({ name, bookingUrl, sites });
+    });
+
+    return campgrounds;
+  } catch (err) {
+    console.error('parseAllAvailability error:', err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Candidate evaluation — exported for tests
 // ---------------------------------------------------------------------------
 

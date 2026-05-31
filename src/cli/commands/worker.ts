@@ -111,11 +111,18 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
   // Schedule proactive availability cache scans (independent interval)
   let proactiveRunning = false;
   const proactiveIntervalMs = PROACTIVE_INTERVAL_MINUTES * 60 * 1_000;
-  const proactiveTimer = setInterval(() => {
+
+  function runProactiveNow() {
     if (proactiveRunning) return;
     proactiveRunning = true;
     console.log(`[${timestamp()}] Proactive scan starting…`);
-    runProactiveScan({ daysAhead: 180, logger: (msg) => console.log(`[${timestamp()}] ${msg}`) })
+    // verifiedOnly: false — all parks with catalog site data are eligible,
+    // not just the single park that has pageIdVerified set.
+    runProactiveScan({
+      daysAhead: 180,
+      verifiedOnly: false,
+      logger: (msg) => console.log(`[${timestamp()}] ${msg}`),
+    })
       .then((summary) => {
         console.log(
           `[${timestamp()}] Proactive scan done — ` +
@@ -129,7 +136,9 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
         console.error(`[${timestamp()}] Proactive scan error:`, err instanceof Error ? err.message : err);
       })
       .finally(() => { proactiveRunning = false; });
-  }, proactiveIntervalMs);
+  }
+
+  const proactiveTimer = setInterval(runProactiveNow, proactiveIntervalMs);
 
   // Graceful shutdown
   process.on('SIGINT', () => {
@@ -139,10 +148,14 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
     process.exit(0);
   });
 
-  // Initial scan
+  // Run both scans immediately on startup, then repeat on their own intervals
   if (scanOnStart) {
     await runScheduledScan();
   } else {
-    console.log(`[${timestamp()}] Waiting ${intervalMinutes}m before first scan (scan-on-start disabled)`);
+    console.log(`[${timestamp()}] Waiting ${intervalMinutes}m before first alert scan (scan-on-start disabled)`);
   }
+
+  // Always start the proactive scan immediately — don't wait 2 hours for the
+  // first cache population.
+  runProactiveNow();
 }

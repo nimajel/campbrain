@@ -70,16 +70,27 @@ export function selectParksToRefresh(
 }
 
 // ---------------------------------------------------------------------------
-// Sample date — used to load the availability page. We aim for ~175 days out
-// (just inside the 6-month booking window) because that's when reservations
-// have just opened and most sites are still available. A 30-day summer date
-// risks every park being fully booked, which produces 0 campground cards.
+// Sample dates — used to load the availability page.
+//
+// We need campground cards to appear, which only happens when a park is:
+//   (a) open for that season, AND (b) has at least one available site.
+//
+// A single fixed offset fails in two common cases:
+//   - 175 days out in summer lands in winter, when seasonal parks are closed.
+//   - Near-future summer dates may be fully booked at popular parks.
+//
+// Strategy: try several offsets in order and use the first that returns data.
+// Start near (15 days) to catch currently-open seasonal parks, then step
+// outward to catch parks whose near-future dates are fully booked.
 // ---------------------------------------------------------------------------
 
 export function defaultSampleDate(nowMs: number, daysAhead = 175): string {
   const d = new Date(nowMs + daysAhead * MS_PER_DAY);
   return d.toISOString().slice(0, 10);
 }
+
+// Candidate offsets tried in order during catalog discovery.
+const SAMPLE_DATE_OFFSETS = [15, 60, 120, 175];
 
 // ---------------------------------------------------------------------------
 // Refresh runner
@@ -154,19 +165,29 @@ export async function refreshCatalog(opts: RefreshOptions = {}): Promise<Refresh
     );
 
     try {
-      await discover({
-        parkPageId: park.parkPageId,
-        parkName: park.parkName,
-        sampleDate,
-        ...(opts.dataDir !== undefined ? { dataDir: opts.dataDir } : {}),
-      });
+      // Try the configured sample date first. If no campgrounds come back,
+      // work through fallback dates — the park may be seasonally closed or
+      // fully booked on that date. Only give up after all candidates fail.
+      const datesToTry: string[] = opts.sampleDate
+        ? [sampleDate]
+        : SAMPLE_DATE_OFFSETS.map((d) => defaultSampleDate(nowMs, d));
 
-      // Re-read to count freshly written campgrounds.
-      const refreshed = getCatalogPark(park.parkPageId, opts.dataDir);
-      const campgroundCount = refreshed?.campgrounds.length ?? 0;
+      let campgroundCount = 0;
+      for (const candidateDate of datesToTry) {
+        await discover({
+          parkPageId: park.parkPageId,
+          parkName: park.parkName,
+          sampleDate: candidateDate,
+          ...(opts.dataDir !== undefined ? { dataDir: opts.dataDir } : {}),
+        });
+        const refreshed = getCatalogPark(park.parkPageId, opts.dataDir);
+        campgroundCount = refreshed?.campgrounds.length ?? 0;
+        if (campgroundCount > 0) break;
+        if (candidateDate !== datesToTry[datesToTry.length - 1]) await sleep(delayMs);
+      }
 
-      // A page that returns no campgrounds usually means the page ID is wrong.
-      // Treat it as a failure rather than a misleading "success".
+      // A page that returns no campgrounds on any candidate date usually means
+      // the page ID is wrong or the park has no bookable camping.
       if (campgroundCount === 0) {
         const message = 'No campgrounds found — the page ID may be incorrect.';
         updateParkMetadata(
