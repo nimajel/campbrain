@@ -2,6 +2,8 @@ import path from 'path';
 import { listAlerts } from '../config/alerts.js';
 import { generateScanCandidates } from '../rules/scan-candidates.js';
 import { CaliforniaParksProvider } from '../providers/california-parks-provider.js';
+import { RecreationGovProvider } from '../providers/recreation-gov-provider.js';
+import type { AvailabilityProvider } from '../providers/availability-provider.js';
 import { serializeResult } from '../types/scanner.js';
 import {
   buildScanSummary,
@@ -50,6 +52,15 @@ export interface RunScanSummary {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function getProvider(providerName: string): AvailabilityProvider {
+  switch (providerName) {
+    case 'recreation-gov':
+      return new RecreationGovProvider();
+    default:
+      return new CaliforniaParksProvider();
+  }
+}
 
 function defaultStateDir(): string {
   return path.join(process.cwd(), '.campbrain', 'state');
@@ -104,7 +115,6 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
     alerts = allAlerts.filter((a) => a.enabled);
   }
 
-  const provider = new CaliforniaParksProvider();
   const targetResults: ScanTargetResult[] = [];
   let totalCandidates = 0;
   const consoleNotifyItems: AvailabilityAlert[] = [];
@@ -125,6 +135,7 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
     console.log(`  ${candidates.length} candidates`);
     totalCandidates += candidates.length;
 
+    const provider = getProvider(alert.provider);
     const results = await provider.scan(alert, candidates, debug);
 
     const serialized = results.map(serializeResult);

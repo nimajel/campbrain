@@ -6,7 +6,8 @@ import type {
   CatalogBookingRule,
 } from './types.js';
 import { buildAvailabilityUrl } from '../providers/california-parks-provider.js';
-import { upsertCatalogPark } from './catalog-store.js';
+import { upsertCatalogPark, getCatalogPark, updateParkMetadata } from './catalog-store.js';
+import { geocodeParkName } from './geocode.js';
 
 // ---------------------------------------------------------------------------
 // Default California Parks booking rule
@@ -93,7 +94,9 @@ function discoveredToCatalogEntry(
 
   const bookingUrl = discovered.bookingUrl || existing?.bookingUrl;
   if (bookingUrl) entry.bookingUrl = bookingUrl;
+  // Preserve hand-curated or previously discovered values — never overwrite with undefined
   if (existing?.bookingRule) entry.bookingRule = existing.bookingRule;
+  if (existing?.nightlyFee !== undefined) entry.nightlyFee = existing.nightlyFee;
 
   return entry;
 }
@@ -131,7 +134,21 @@ export async function discoverCaliforniaParkCatalog(
   }
   const html = await response.text();
 
-  return discoverFromHtml(html, { ...opts, nights }, sourceUrl);
+  const result = discoverFromHtml(html, { ...opts, nights }, sourceUrl);
+
+  // Geocode if coordinates aren't already stored for this park.
+  // Only attempt when campgrounds were found (i.e. the page ID is valid).
+  if (result.campgrounds.length > 0) {
+    const existing = getCatalogPark(opts.parkPageId, opts.dataDir);
+    if (existing && existing.lat === undefined) {
+      const coords = await geocodeParkName(opts.parkName);
+      if (coords) {
+        updateParkMetadata(opts.parkPageId, { lat: coords.lat, lon: coords.lon }, opts.dataDir);
+      }
+    }
+  }
+
+  return result;
 }
 
 // Separate function for testability — accepts pre-fetched HTML
@@ -143,16 +160,24 @@ export function discoverFromHtml(
   const campgrounds = parseCampgroundsFromHtml(html);
   const now = new Date().toISOString();
 
-  // Load existing park entry if any (to preserve existing IDs / rules)
-  // We build the updated ParkCatalogEntry
+  // Read existing entry so we can preserve hand-curated fields
+  const existing = getCatalogPark(opts.parkPageId, opts.dataDir);
+
   const updatedPark: ParkCatalogEntry = {
     provider: 'california-parks',
     parkName: opts.parkName,
     parkPageId: opts.parkPageId,
-    campgrounds: campgrounds.map((c) => discoveredToCatalogEntry(c)),
-    defaultBookingRule: CALIFORNIA_PARKS_DEFAULT_RULE,
+    campgrounds: campgrounds.map((c) =>
+      discoveredToCatalogEntry(
+        c,
+        existing?.campgrounds.find((ec) => ec.name === c.name)
+      )
+    ),
+    defaultBookingRule: existing?.defaultBookingRule ?? CALIFORNIA_PARKS_DEFAULT_RULE,
     lastUpdatedAt: now,
     sourceUrl: sourceUrl ?? '',
+    // Mark as verified when we successfully get campground data back
+    ...(campgrounds.length > 0 ? { pageIdVerified: true } : existing?.pageIdVerified !== undefined ? { pageIdVerified: existing.pageIdVerified } : {}),
   };
 
   upsertCatalogPark(updatedPark, opts.dataDir);

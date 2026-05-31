@@ -26,6 +26,9 @@ export interface CampgroundCatalogEntry {
   bookingUrl?: string;
   sites: SiteCatalogEntry[];
   bookingRule?: CatalogBookingRule;
+  // Nightly fee in USD. Not available from the parks.ca.gov availability
+  // endpoint — must be populated manually or via a future enrichment step.
+  nightlyFee?: number;
   lastDiscoveredAt?: string;
 }
 
@@ -41,6 +44,10 @@ export interface ParkCatalogEntry {
   // Auto-refresh only attempts verified parks; unverified parks populate the
   // dropdown but are skipped unless explicitly targeted or forced.
   pageIdVerified?: boolean;
+  // Geographic coordinates — populated by catalog refresh via Nominatim geocoding.
+  // Once set they are preserved across refreshes (never overwritten with undefined).
+  lat?: number;
+  lon?: number;
   // Freshness metadata — maintained by the backend catalog refresh process
   lastUpdatedAt?: string;
   lastDiscoveryAttemptAt?: string;

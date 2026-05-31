@@ -1,8 +1,11 @@
 import { runScan } from '../../scanner/run-scan.js';
+import { runProactiveScan } from '../../scanner/proactive-scanner.js';
 import { loadTargets } from '../../config/targets.js';
 
 const MIN_INTERVAL_MINUTES = 15;
 const DEFAULT_INTERVAL_MINUTES = 60;
+// Proactive scan runs less frequently — no need to hit every park every hour
+const PROACTIVE_INTERVAL_MINUTES = 120;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,16 +102,40 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
     }
   }
 
-  // Schedule recurring scans
+  // Schedule recurring alert scans
   const intervalMs = intervalMinutes * 60 * 1_000;
   const timer = setInterval(() => {
     void runScheduledScan();
   }, intervalMs);
 
+  // Schedule proactive availability cache scans (independent interval)
+  let proactiveRunning = false;
+  const proactiveIntervalMs = PROACTIVE_INTERVAL_MINUTES * 60 * 1_000;
+  const proactiveTimer = setInterval(() => {
+    if (proactiveRunning) return;
+    proactiveRunning = true;
+    console.log(`[${timestamp()}] Proactive scan starting…`);
+    runProactiveScan({ daysAhead: 180, logger: (msg) => console.log(`[${timestamp()}] ${msg}`) })
+      .then((summary) => {
+        console.log(
+          `[${timestamp()}] Proactive scan done — ` +
+            `${summary.fetchCount} fetches, ` +
+            `${summary.cacheWrites} cache writes, ` +
+            `${summary.fetchErrors} errors, ` +
+            `${(summary.durationMs / 1000).toFixed(1)}s`
+        );
+      })
+      .catch((err) => {
+        console.error(`[${timestamp()}] Proactive scan error:`, err instanceof Error ? err.message : err);
+      })
+      .finally(() => { proactiveRunning = false; });
+  }, proactiveIntervalMs);
+
   // Graceful shutdown
   process.on('SIGINT', () => {
     console.log(`\n[${timestamp()}] Shutting down worker…`);
     clearInterval(timer);
+    clearInterval(proactiveTimer);
     process.exit(0);
   });
 

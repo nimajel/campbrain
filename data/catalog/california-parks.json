@@ -5,7 +5,6 @@
       "provider": "california-parks",
       "parkName": "Angel Island SP",
       "parkPageId": "468",
-      "pageIdVerified": true,
       "campgrounds": [
         {
           "id": "ayala-cove-group-picnic-area",
@@ -28,7 +27,8 @@
               "name": "Group Dailyuse (C) #HILL"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+          "lastDiscoveredAt": "2026-05-31T02:37:27.549Z",
+          "bookingUrl": "https://reservecalifornia.com/park/614/405?date=2026-11-22&night=1"
         },
         {
           "id": "east-bay-sites-1-3",
@@ -47,7 +47,9 @@
               "name": "Hike in Campsite #3"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+          "lastDiscoveredAt": "2026-05-31T02:37:27.549Z",
+          "bookingUrl": "https://reservecalifornia.com/park/614/406?date=2026-11-22&night=1",
+          "nightlyFee": 30
         },
         {
           "id": "west-garrison-sites-10-kayak",
@@ -58,7 +60,9 @@
               "name": "Group Tent Campsite #KAYK"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+          "lastDiscoveredAt": "2026-05-31T02:37:27.549Z",
+          "bookingUrl": "https://reservecalifornia.com/park/614/407?date=2026-11-22&night=1",
+          "nightlyFee": 30
         },
         {
           "id": "ridge-sites-4-6",
@@ -77,7 +81,9 @@
               "name": "Hike in Campsite #6"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+          "lastDiscoveredAt": "2026-05-31T02:37:27.549Z",
+          "bookingUrl": "https://reservecalifornia.com/park/614/408?date=2026-11-22&night=1",
+          "nightlyFee": 30
         },
         {
           "id": "sunrise-sites-7-9",
@@ -96,7 +102,9 @@
               "name": "Campsite #9"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+          "lastDiscoveredAt": "2026-05-31T02:37:27.549Z",
+          "bookingUrl": "https://reservecalifornia.com/park/614/409?date=2026-11-22&night=1",
+          "nightlyFee": 30
         },
         {
           "id": "east-group-garrison-picnic-area",
@@ -107,7 +115,8 @@
               "name": "Group Day Use #GG"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+          "lastDiscoveredAt": "2026-05-31T02:37:27.549Z",
+          "bookingUrl": "https://reservecalifornia.com/park/614/2149?date=2026-11-22&night=1"
         },
         {
           "id": "north-garrison-group-camp",
@@ -118,7 +127,8 @@
               "name": "Group Tent Campsite #GTC"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T03:55:42.547Z"
+          "lastDiscoveredAt": "2026-05-31T02:37:27.549Z",
+          "bookingUrl": "https://reservecalifornia.com/park/614/2155?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -130,9 +140,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T03:55:42.546Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-06-28&length=1&page_id=468",
-      "discoveryStatus": "success"
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=468",
+      "pageIdVerified": true,
+      "lat": 37.8629304,
+      "lon": -122.4303636,
+      "discoveryStatus": "success",
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -400,8 +414,8 @@
               "name": "Campsite #SC78"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:33:45.466Z",
-          "bookingUrl": "https://reservecalifornia.com/park/690/611?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:31.908Z",
+          "bookingUrl": "https://reservecalifornia.com/park/690/611?date=2026-11-22&night=1"
         },
         {
           "id": "weyland-camp-sites-79-130",
@@ -576,8 +590,8 @@
               "name": "Premium Campsite #W130"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:33:45.466Z",
-          "bookingUrl": "https://reservecalifornia.com/park/690/612?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:31.908Z",
+          "bookingUrl": "https://reservecalifornia.com/park/690/612?date=2026-11-22&night=1"
         },
         {
           "id": "main-camp-sites-131-188",
@@ -772,8 +786,8 @@
               "name": "Campsite #P188"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:33:45.466Z",
-          "bookingUrl": "https://reservecalifornia.com/park/690/767?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:31.908Z",
+          "bookingUrl": "https://reservecalifornia.com/park/690/767?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -785,10 +799,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:33:44.056Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=570",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=570",
+      "pageIdVerified": true,
+      "lat": 36.2533055,
+      "lon": -121.7832953,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:33:44.056Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -804,10 +821,10 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:39:23.155Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=578",
+      "lastUpdatedAt": "2026-05-31T02:37:35.224Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=578",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:39:21.947Z",
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z",
       "discoveryError": "No campgrounds found — the page ID may be incorrect."
     },
     {
@@ -824,10 +841,10 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:39:27.579Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=540",
+      "lastUpdatedAt": "2026-05-31T02:37:39.569Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=540",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:39:21.947Z",
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z",
       "discoveryError": "No campgrounds found — the page ID may be incorrect."
     },
     {
@@ -928,8 +945,8 @@
               "name": "Tent Campsite #25"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:33:56.802Z",
-          "bookingUrl": "https://reservecalifornia.com/park/705/653?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:43.423Z",
+          "bookingUrl": "https://reservecalifornia.com/park/705/653?date=2026-11-22&night=1"
         },
         {
           "id": "madrone-group-camping",
@@ -940,8 +957,8 @@
               "name": "Group Tent Campsite #GMA"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:33:56.802Z",
-          "bookingUrl": "https://reservecalifornia.com/park/705/656?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:43.423Z",
+          "bookingUrl": "https://reservecalifornia.com/park/705/656?date=2026-11-22&night=1"
         },
         {
           "id": "orchard-hill-loop-sites-26-59",
@@ -1060,8 +1077,8 @@
               "name": "Group Campsite #MG3"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:33:56.802Z",
-          "bookingUrl": "https://reservecalifornia.com/park/705/657?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:43.423Z",
+          "bookingUrl": "https://reservecalifornia.com/park/705/657?date=2026-11-22&night=1"
         },
         {
           "id": "group-picnic-areas",
@@ -1076,8 +1093,8 @@
               "name": "Group Dailyuse (A) #GRED"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:33:56.802Z",
-          "bookingUrl": "https://reservecalifornia.com/park/705/658?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:43.423Z",
+          "bookingUrl": "https://reservecalifornia.com/park/705/658?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -1089,10 +1106,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:33:44.056Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=469",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=469",
+      "pageIdVerified": true,
+      "lat": 38.0245743,
+      "lon": -122.7311915,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:33:44.056Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -1112,8 +1132,8 @@
               "name": "Group Tent Primitive Campsite #GAEB"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:00.921Z",
-          "bookingUrl": "https://reservecalifornia.com/park/682/588?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:48.246Z",
+          "bookingUrl": "https://reservecalifornia.com/park/682/588?date=2026-11-22&night=1"
         },
         {
           "id": "frank-valley-horse-camp",
@@ -1124,8 +1144,8 @@
               "name": "Equestrian Group Tent Campsite #GFVH"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:00.921Z",
-          "bookingUrl": "https://reservecalifornia.com/park/682/589?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:48.246Z",
+          "bookingUrl": "https://reservecalifornia.com/park/682/589?date=2026-11-22&night=1"
         },
         {
           "id": "s-rav-camp-area-sites-e1-e7",
@@ -1156,8 +1176,8 @@
               "name": "Hike In Primitive Campsite #EN06"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:00.921Z",
-          "bookingUrl": "https://reservecalifornia.com/park/682/590?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:48.246Z",
+          "bookingUrl": "https://reservecalifornia.com/park/682/590?date=2026-11-22&night=1"
         },
         {
           "id": "s-rav-cabin-area",
@@ -1200,8 +1220,8 @@
               "name": "Cabin (5 People) #CB10"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:00.921Z",
-          "bookingUrl": "https://reservecalifornia.com/park/682/766?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:48.246Z",
+          "bookingUrl": "https://reservecalifornia.com/park/682/766?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -1213,10 +1233,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:33:44.056Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=471",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=471",
+      "pageIdVerified": true,
+      "lat": 37.8968316,
+      "lon": -122.6135409,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:33:44.056Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -1232,156 +1255,8 @@
               "name": "Group Tent Campsite #G001"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:16.619Z",
-          "bookingUrl": "https://reservecalifornia.com/park/703/613?date=2026-06-28&night=1"
-        },
-        {
-          "id": "woodside-upper-loop-sites-71-109",
-          "name": "Woodside Upper Loop (sites 71-109)",
-          "sites": [
-            {
-              "id": "campsite-w71",
-              "name": "Campsite #W71"
-            },
-            {
-              "id": "campsite-w72",
-              "name": "Campsite #W72"
-            },
-            {
-              "id": "campsite-w73",
-              "name": "Campsite #W73"
-            },
-            {
-              "id": "campsite-w74",
-              "name": "Campsite #W74"
-            },
-            {
-              "id": "campsite-w75",
-              "name": "Campsite #W75"
-            },
-            {
-              "id": "campsite-w76",
-              "name": "Campsite #W76"
-            },
-            {
-              "id": "campsite-w77",
-              "name": "Campsite #W77"
-            },
-            {
-              "id": "campsite-w78",
-              "name": "Campsite #W78"
-            },
-            {
-              "id": "campsite-w80",
-              "name": "Campsite #W80"
-            },
-            {
-              "id": "campsite-w81",
-              "name": "Campsite #W81"
-            },
-            {
-              "id": "campsite-w83",
-              "name": "Campsite #W83"
-            },
-            {
-              "id": "campsite-w84",
-              "name": "Campsite #W84"
-            },
-            {
-              "id": "campsite-w85",
-              "name": "Campsite #W85"
-            },
-            {
-              "id": "campsite-w86",
-              "name": "Campsite #W86"
-            },
-            {
-              "id": "campsite-w87",
-              "name": "Campsite #W87"
-            },
-            {
-              "id": "campsite-w88",
-              "name": "Campsite #W88"
-            },
-            {
-              "id": "campsite-w89",
-              "name": "Campsite #W89"
-            },
-            {
-              "id": "campsite-w90",
-              "name": "Campsite #W90"
-            },
-            {
-              "id": "campsite-w91",
-              "name": "Campsite #W91"
-            },
-            {
-              "id": "campsite-w92",
-              "name": "Campsite #W92"
-            },
-            {
-              "id": "campsite-w93",
-              "name": "Campsite #W93"
-            },
-            {
-              "id": "campsite-w94",
-              "name": "Campsite #W94"
-            },
-            {
-              "id": "campsite-w95",
-              "name": "Campsite #W95"
-            },
-            {
-              "id": "campsite-w96",
-              "name": "Campsite #W96"
-            },
-            {
-              "id": "campsite-w97",
-              "name": "Campsite #W97"
-            },
-            {
-              "id": "campsite-w99",
-              "name": "Campsite #W99"
-            },
-            {
-              "id": "campsite-w100",
-              "name": "Campsite #W100"
-            },
-            {
-              "id": "campsite-w101",
-              "name": "Campsite #W101"
-            },
-            {
-              "id": "campsite-w102",
-              "name": "Campsite #W102"
-            },
-            {
-              "id": "campsite-w103",
-              "name": "Campsite #W103"
-            },
-            {
-              "id": "campsite-w104",
-              "name": "Campsite #W104"
-            },
-            {
-              "id": "campsite-w105",
-              "name": "Campsite #W105"
-            },
-            {
-              "id": "campsite-w106",
-              "name": "Campsite #W106"
-            },
-            {
-              "id": "campsite-w107",
-              "name": "Campsite #W107"
-            },
-            {
-              "id": "campsite-w108",
-              "name": "Campsite #W108"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:16.619Z",
-          "bookingUrl": "https://reservecalifornia.com/park/703/614?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:52.328Z",
+          "bookingUrl": "https://reservecalifornia.com/park/703/613?date=2026-11-22&night=1"
         },
         {
           "id": "gerstle-cove-campground-sites-1-30",
@@ -1488,156 +1363,8 @@
               "name": "Campsite #GC30"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:16.619Z",
-          "bookingUrl": "https://reservecalifornia.com/park/703/648?date=2026-06-28&night=1"
-        },
-        {
-          "id": "woodside-lower-loop-sites-31-70",
-          "name": "Woodside Lower Loop (sites 31-70)",
-          "sites": [
-            {
-              "id": "campsite-w31",
-              "name": "Campsite #W31"
-            },
-            {
-              "id": "campsite-w32",
-              "name": "Campsite #W32"
-            },
-            {
-              "id": "campsite-w33",
-              "name": "Campsite #W33"
-            },
-            {
-              "id": "campsite-w34",
-              "name": "Campsite #W34"
-            },
-            {
-              "id": "campsite-w35",
-              "name": "Campsite #W35"
-            },
-            {
-              "id": "campsite-w36",
-              "name": "Campsite #W36"
-            },
-            {
-              "id": "campsite-w37",
-              "name": "Campsite #W37"
-            },
-            {
-              "id": "campsite-w38",
-              "name": "Campsite #W38"
-            },
-            {
-              "id": "campsite-w39",
-              "name": "Campsite #W39"
-            },
-            {
-              "id": "campsite-w41",
-              "name": "Campsite #W41"
-            },
-            {
-              "id": "campsite-w42",
-              "name": "Campsite #W42"
-            },
-            {
-              "id": "campsite-w43",
-              "name": "Campsite #W43"
-            },
-            {
-              "id": "campsite-w44",
-              "name": "Campsite #W44"
-            },
-            {
-              "id": "campsite-w45",
-              "name": "Campsite #W45"
-            },
-            {
-              "id": "campsite-w46",
-              "name": "Campsite #W46"
-            },
-            {
-              "id": "campsite-w47",
-              "name": "Campsite #W47"
-            },
-            {
-              "id": "campsite-w48",
-              "name": "Campsite #W48"
-            },
-            {
-              "id": "campsite-w49",
-              "name": "Campsite #W49"
-            },
-            {
-              "id": "campsite-w50",
-              "name": "Campsite #W50"
-            },
-            {
-              "id": "campsite-w51",
-              "name": "Campsite #W51"
-            },
-            {
-              "id": "campsite-w52",
-              "name": "Campsite #W52"
-            },
-            {
-              "id": "campsite-w53",
-              "name": "Campsite #W53"
-            },
-            {
-              "id": "campsite-w54",
-              "name": "Campsite #W54"
-            },
-            {
-              "id": "campsite-w55",
-              "name": "Campsite #W55"
-            },
-            {
-              "id": "campsite-w57",
-              "name": "Campsite #W57"
-            },
-            {
-              "id": "campsite-w58",
-              "name": "Campsite #W58"
-            },
-            {
-              "id": "campsite-w60",
-              "name": "Campsite #W60"
-            },
-            {
-              "id": "campsite-w61",
-              "name": "Campsite #W61"
-            },
-            {
-              "id": "campsite-w62",
-              "name": "Campsite #W62"
-            },
-            {
-              "id": "campsite-w63",
-              "name": "Campsite #W63"
-            },
-            {
-              "id": "campsite-w64",
-              "name": "Campsite #W64"
-            },
-            {
-              "id": "campsite-w65",
-              "name": "Campsite #W65"
-            },
-            {
-              "id": "campsite-w67",
-              "name": "Campsite #W67"
-            },
-            {
-              "id": "campsite-w68",
-              "name": "Campsite #W68"
-            },
-            {
-              "id": "campsite-w70",
-              "name": "Campsite #W70"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:16.619Z",
-          "bookingUrl": "https://reservecalifornia.com/park/703/649?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:52.328Z",
+          "bookingUrl": "https://reservecalifornia.com/park/703/648?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -1649,332 +1376,19 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:29:56.649Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-06-28&length=1&page_id=453",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=453",
+      "pageIdVerified": true,
+      "lat": 38.5772163,
+      "lon": -123.3124906,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:29:56.649Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
       "parkName": "MacKerricher SP",
       "parkPageId": "436",
       "campgrounds": [
-        {
-          "id": "cleone-group-area",
-          "name": "Cleone Group Area",
-          "sites": [
-            {
-              "id": "group-camping-gcea",
-              "name": "Group Camping #GCEA"
-            },
-            {
-              "id": "group-campsite-gcwe",
-              "name": "Group Campsite #GCWE"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:19.959Z",
-          "bookingUrl": "https://reservecalifornia.com/park/668/553?date=2026-06-28&night=1"
-        },
-        {
-          "id": "surfwood-campground",
-          "name": "Surfwood Campground",
-          "sites": [
-            {
-              "id": "hike-in-primitive-campsite-t1",
-              "name": "Hike In Primitive Campsite #T1"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t2",
-              "name": "Hike In Primitive Campsite #T2"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t3",
-              "name": "Hike In Primitive Campsite #T3"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t4",
-              "name": "Hike In Primitive Campsite #T4"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t5",
-              "name": "Hike In Primitive Campsite #T5"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t6",
-              "name": "Hike In Primitive Campsite #T6"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t7",
-              "name": "Hike In Primitive Campsite #T7"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t8",
-              "name": "Hike In Primitive Campsite #T8"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t9",
-              "name": "Hike In Primitive Campsite #T9"
-            },
-            {
-              "id": "hike-in-primitive-campsite-t10",
-              "name": "Hike In Primitive Campsite #T10"
-            },
-            {
-              "id": "campsite-108",
-              "name": "Campsite #108"
-            },
-            {
-              "id": "campsite-109",
-              "name": "Campsite #109"
-            },
-            {
-              "id": "campsite-110",
-              "name": "Campsite #110"
-            },
-            {
-              "id": "campsite-112",
-              "name": "Campsite #112"
-            },
-            {
-              "id": "campsite-113",
-              "name": "Campsite #113"
-            },
-            {
-              "id": "campsite-114",
-              "name": "Campsite #114"
-            },
-            {
-              "id": "campsite-116",
-              "name": "Campsite #116"
-            },
-            {
-              "id": "campsite-117",
-              "name": "Campsite #117"
-            },
-            {
-              "id": "campsite-119",
-              "name": "Campsite #119"
-            },
-            {
-              "id": "campsite-121",
-              "name": "Campsite #121"
-            },
-            {
-              "id": "campsite-122",
-              "name": "Campsite #122"
-            },
-            {
-              "id": "campsite-123",
-              "name": "Campsite #123"
-            },
-            {
-              "id": "campsite-124",
-              "name": "Campsite #124"
-            },
-            {
-              "id": "campsite-125",
-              "name": "Campsite #125"
-            },
-            {
-              "id": "campsite-126",
-              "name": "Campsite #126"
-            },
-            {
-              "id": "campsite-127",
-              "name": "Campsite #127"
-            },
-            {
-              "id": "campsite-131",
-              "name": "Campsite #131"
-            },
-            {
-              "id": "campsite-132",
-              "name": "Campsite #132"
-            },
-            {
-              "id": "campsite-133",
-              "name": "Campsite #133"
-            },
-            {
-              "id": "campsite-134",
-              "name": "Campsite #134"
-            },
-            {
-              "id": "campsite-135",
-              "name": "Campsite #135"
-            },
-            {
-              "id": "campsite-136",
-              "name": "Campsite #136"
-            },
-            {
-              "id": "campsite-137",
-              "name": "Campsite #137"
-            },
-            {
-              "id": "campsite-138",
-              "name": "Campsite #138"
-            },
-            {
-              "id": "campsite-139",
-              "name": "Campsite #139"
-            },
-            {
-              "id": "campsite-140",
-              "name": "Campsite #140"
-            },
-            {
-              "id": "campsite-141",
-              "name": "Campsite #141"
-            },
-            {
-              "id": "campsite-142",
-              "name": "Campsite #142"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:19.959Z",
-          "bookingUrl": "https://reservecalifornia.com/park/668/556?date=2026-06-28&night=1"
-        },
-        {
-          "id": "east-pinewood-campground",
-          "name": "East Pinewood  Campground",
-          "sites": [
-            {
-              "id": "tent-campsite-21",
-              "name": "Tent Campsite #21"
-            },
-            {
-              "id": "tent-campsite-22",
-              "name": "Tent Campsite #22"
-            },
-            {
-              "id": "tent-campsite-23",
-              "name": "Tent Campsite #23"
-            },
-            {
-              "id": "tent-campsite-24",
-              "name": "Tent Campsite #24"
-            },
-            {
-              "id": "tent-campsite-25",
-              "name": "Tent Campsite #25"
-            },
-            {
-              "id": "tent-campsite-28",
-              "name": "Tent Campsite #28"
-            },
-            {
-              "id": "tent-campsite-29",
-              "name": "Tent Campsite #29"
-            },
-            {
-              "id": "tent-campsite-31",
-              "name": "Tent Campsite #31"
-            },
-            {
-              "id": "tent-campsite-32",
-              "name": "Tent Campsite #32"
-            },
-            {
-              "id": "tent-campsite-33",
-              "name": "Tent Campsite #33"
-            },
-            {
-              "id": "tent-campsite-34",
-              "name": "Tent Campsite #34"
-            },
-            {
-              "id": "tent-campsite-35",
-              "name": "Tent Campsite #35"
-            },
-            {
-              "id": "tent-campsite-36",
-              "name": "Tent Campsite #36"
-            },
-            {
-              "id": "tent-campsite-37",
-              "name": "Tent Campsite #37"
-            },
-            {
-              "id": "tent-campsite-39",
-              "name": "Tent Campsite #39"
-            },
-            {
-              "id": "tent-campsite-40",
-              "name": "Tent Campsite #40"
-            },
-            {
-              "id": "tent-campsite-41",
-              "name": "Tent Campsite #41"
-            },
-            {
-              "id": "tent-campsite-42",
-              "name": "Tent Campsite #42"
-            },
-            {
-              "id": "tent-campsite-43",
-              "name": "Tent Campsite #43"
-            },
-            {
-              "id": "tent-campsite-44",
-              "name": "Tent Campsite #44"
-            },
-            {
-              "id": "tent-campsite-45",
-              "name": "Tent Campsite #45"
-            },
-            {
-              "id": "tent-campsite-46",
-              "name": "Tent Campsite #46"
-            },
-            {
-              "id": "tent-campsite-48",
-              "name": "Tent Campsite #48"
-            },
-            {
-              "id": "tent-campsite-50",
-              "name": "Tent Campsite #50"
-            },
-            {
-              "id": "tent-campsite-51",
-              "name": "Tent Campsite #51"
-            },
-            {
-              "id": "tent-campsite-52",
-              "name": "Tent Campsite #52"
-            },
-            {
-              "id": "tent-campsite-53",
-              "name": "Tent Campsite #53"
-            },
-            {
-              "id": "tent-campsite-54",
-              "name": "Tent Campsite #54"
-            },
-            {
-              "id": "tent-campsite-55",
-              "name": "Tent Campsite #55"
-            },
-            {
-              "id": "tent-campsite-56",
-              "name": "Tent Campsite #56"
-            },
-            {
-              "id": "tent-campsite-57",
-              "name": "Tent Campsite #57"
-            },
-            {
-              "id": "tent-campsite-58",
-              "name": "Tent Campsite #58"
-            },
-            {
-              "id": "tent-campsite-59",
-              "name": "Tent Campsite #59"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:19.959Z",
-          "bookingUrl": "https://reservecalifornia.com/park/668/557?date=2026-06-28&night=1"
-        },
         {
           "id": "west-pinewood-campground",
           "name": "West Pinewood Campground",
@@ -2132,8 +1546,8 @@
               "name": "Campsite #107"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:19.959Z",
-          "bookingUrl": "https://reservecalifornia.com/park/668/558?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:56.474Z",
+          "bookingUrl": "https://reservecalifornia.com/park/668/558?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -2145,252 +1559,19 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:29:56.649Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-06-28&length=1&page_id=436",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=436",
+      "pageIdVerified": true,
+      "lat": 39.4995581,
+      "lon": -123.7902983,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:29:56.649Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
       "parkName": "Sue-meg SP",
       "parkPageId": "417",
       "campgrounds": [
-        {
-          "id": "abalone-campground-sites-16-85",
-          "name": "Abalone Campground (sites 16-85)",
-          "sites": [
-            {
-              "id": "campsite-16",
-              "name": "Campsite #16"
-            },
-            {
-              "id": "campsite-17",
-              "name": "Campsite #17"
-            },
-            {
-              "id": "campsite-18",
-              "name": "Campsite #18"
-            },
-            {
-              "id": "campsite-20",
-              "name": "Campsite #20"
-            },
-            {
-              "id": "campsite-21",
-              "name": "Campsite #21"
-            },
-            {
-              "id": "campsite-23",
-              "name": "Campsite #23"
-            },
-            {
-              "id": "campsite-24",
-              "name": "Campsite #24"
-            },
-            {
-              "id": "campsite-25",
-              "name": "Campsite #25"
-            },
-            {
-              "id": "campsite-27",
-              "name": "Campsite #27"
-            },
-            {
-              "id": "campsite-28",
-              "name": "Campsite #28"
-            },
-            {
-              "id": "campsite-29",
-              "name": "Campsite #29"
-            },
-            {
-              "id": "campsite-30",
-              "name": "Campsite #30"
-            },
-            {
-              "id": "campsite-31",
-              "name": "Campsite #31"
-            },
-            {
-              "id": "campsite-32",
-              "name": "Campsite #32"
-            },
-            {
-              "id": "campsite-33",
-              "name": "Campsite #33"
-            },
-            {
-              "id": "campsite-34",
-              "name": "Campsite #34"
-            },
-            {
-              "id": "campsite-35",
-              "name": "Campsite #35"
-            },
-            {
-              "id": "campsite-36",
-              "name": "Campsite #36"
-            },
-            {
-              "id": "campsite-37",
-              "name": "Campsite #37"
-            },
-            {
-              "id": "campsite-38",
-              "name": "Campsite #38"
-            },
-            {
-              "id": "campsite-39",
-              "name": "Campsite #39"
-            },
-            {
-              "id": "campsite-40",
-              "name": "Campsite #40"
-            },
-            {
-              "id": "campsite-41",
-              "name": "Campsite #41"
-            },
-            {
-              "id": "campsite-42",
-              "name": "Campsite #42"
-            },
-            {
-              "id": "campsite-43",
-              "name": "Campsite #43"
-            },
-            {
-              "id": "campsite-44",
-              "name": "Campsite #44"
-            },
-            {
-              "id": "campsite-50",
-              "name": "Campsite #50"
-            },
-            {
-              "id": "campsite-51",
-              "name": "Campsite #51"
-            },
-            {
-              "id": "campsite-52",
-              "name": "Campsite #52"
-            },
-            {
-              "id": "tent-campsite-53",
-              "name": "Tent Campsite #53"
-            },
-            {
-              "id": "campsite-54",
-              "name": "Campsite #54"
-            },
-            {
-              "id": "tent-campsite-55",
-              "name": "Tent Campsite #55"
-            },
-            {
-              "id": "campsite-56",
-              "name": "Campsite #56"
-            },
-            {
-              "id": "campsite-57",
-              "name": "Campsite #57"
-            },
-            {
-              "id": "campsite-58",
-              "name": "Campsite #58"
-            },
-            {
-              "id": "campsite-59",
-              "name": "Campsite #59"
-            },
-            {
-              "id": "tent-campsite-60",
-              "name": "Tent Campsite #60"
-            },
-            {
-              "id": "tent-campsite-61",
-              "name": "Tent Campsite #61"
-            },
-            {
-              "id": "tent-campsite-62",
-              "name": "Tent Campsite #62"
-            },
-            {
-              "id": "campsite-63",
-              "name": "Campsite #63"
-            },
-            {
-              "id": "campsite-64",
-              "name": "Campsite #64"
-            },
-            {
-              "id": "campsite-66",
-              "name": "Campsite #66"
-            },
-            {
-              "id": "campsite-67",
-              "name": "Campsite #67"
-            },
-            {
-              "id": "campsite-70",
-              "name": "Campsite #70"
-            },
-            {
-              "id": "campsite-71",
-              "name": "Campsite #71"
-            },
-            {
-              "id": "tent-campsite-72",
-              "name": "Tent Campsite #72"
-            },
-            {
-              "id": "campsite-73",
-              "name": "Campsite #73"
-            },
-            {
-              "id": "campsite-74",
-              "name": "Campsite #74"
-            },
-            {
-              "id": "campsite-75",
-              "name": "Campsite #75"
-            },
-            {
-              "id": "campsite-77",
-              "name": "Campsite #77"
-            },
-            {
-              "id": "campsite-78",
-              "name": "Campsite #78"
-            },
-            {
-              "id": "campsite-79",
-              "name": "Campsite #79"
-            },
-            {
-              "id": "campsite-80",
-              "name": "Campsite #80"
-            },
-            {
-              "id": "campsite-81",
-              "name": "Campsite #81"
-            },
-            {
-              "id": "campsite-82",
-              "name": "Campsite #82"
-            },
-            {
-              "id": "campsite-83",
-              "name": "Campsite #83"
-            },
-            {
-              "id": "campsite-85",
-              "name": "Campsite #85"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:23.624Z",
-          "bookingUrl": "https://reservecalifornia.com/park/688/602?date=2026-06-28&night=1"
-        },
         {
           "id": "agate-campground-sites-86-124",
           "name": "Agate Campground (sites 86-124)",
@@ -2524,96 +1705,8 @@
               "name": "Campsite #124"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:23.624Z",
-          "bookingUrl": "https://reservecalifornia.com/park/688/603?date=2026-06-28&night=1"
-        },
-        {
-          "id": "group-camping-areas",
-          "name": "Group Camping Areas",
-          "sites": [
-            {
-              "id": "group-campsite-lgc",
-              "name": "Group Campsite #LGC"
-            },
-            {
-              "id": "group-tent-campsite-bcgc",
-              "name": "Group Tent Campsite #BCGC"
-            },
-            {
-              "id": "group-tent-campsite-gred",
-              "name": "Group Tent Campsite #GRED"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:23.624Z",
-          "bookingUrl": "https://reservecalifornia.com/park/688/604?date=2026-06-28&night=1"
-        },
-        {
-          "id": "penn-creek-campground-sites-1-15",
-          "name": "Penn Creek Campground (sites 1-15)",
-          "sites": [
-            {
-              "id": "tent-campsite-1",
-              "name": "Tent Campsite #1"
-            },
-            {
-              "id": "tent-campsite-2",
-              "name": "Tent Campsite #2"
-            },
-            {
-              "id": "tent-campsite-3",
-              "name": "Tent Campsite #3"
-            },
-            {
-              "id": "tent-campsite-4",
-              "name": "Tent Campsite #4"
-            },
-            {
-              "id": "tent-campsite-5",
-              "name": "Tent Campsite #5"
-            },
-            {
-              "id": "tent-campsite-6",
-              "name": "Tent Campsite #6"
-            },
-            {
-              "id": "tent-campsite-7",
-              "name": "Tent Campsite #7"
-            },
-            {
-              "id": "tent-campsite-8",
-              "name": "Tent Campsite #8"
-            },
-            {
-              "id": "tent-campsite-9",
-              "name": "Tent Campsite #9"
-            },
-            {
-              "id": "tent-campsite-10",
-              "name": "Tent Campsite #10"
-            },
-            {
-              "id": "tent-campsite-11",
-              "name": "Tent Campsite #11"
-            },
-            {
-              "id": "tent-campsite-12",
-              "name": "Tent Campsite #12"
-            },
-            {
-              "id": "tent-campsite-13",
-              "name": "Tent Campsite #13"
-            },
-            {
-              "id": "tent-campsite-14",
-              "name": "Tent Campsite #14"
-            },
-            {
-              "id": "tent-campsite-15",
-              "name": "Tent Campsite #15"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:23.624Z",
-          "bookingUrl": "https://reservecalifornia.com/park/688/606?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:59.330Z",
+          "bookingUrl": "https://reservecalifornia.com/park/688/603?date=2026-11-22&night=1"
         },
         {
           "id": "agate-cabin-area",
@@ -2636,20 +1729,8 @@
               "name": "Cabin (6 People) #104"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:23.624Z",
-          "bookingUrl": "https://reservecalifornia.com/park/688/2150?date=2026-06-28&night=1"
-        },
-        {
-          "id": "lookout-rock-picnic-area",
-          "name": "Lookout Rock Picnic Area",
-          "sites": [
-            {
-              "id": "group-day-use-lrpa",
-              "name": "Group Day Use #LRPA"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:23.624Z",
-          "bookingUrl": "https://reservecalifornia.com/park/688/2178?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:37:59.330Z",
+          "bookingUrl": "https://reservecalifornia.com/park/688/2150?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -2661,10 +1742,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:29:56.649Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-06-28&length=1&page_id=417",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=417",
+      "pageIdVerified": true,
+      "lat": 41.1422253,
+      "lon": -124.1412527,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:29:56.649Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -2924,8 +2008,8 @@
               "name": "Campsite #76"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:03.897Z",
-          "bookingUrl": "https://reservecalifornia.com/park/696/631?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:02.773Z",
+          "bookingUrl": "https://reservecalifornia.com/park/696/631?date=2026-11-22&night=1"
         },
         {
           "id": "meadow-cabin-colony",
@@ -2948,8 +2032,8 @@
               "name": "Cabin (6 People) #4"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:03.897Z",
-          "bookingUrl": "https://reservecalifornia.com/park/696/914?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:02.773Z",
+          "bookingUrl": "https://reservecalifornia.com/park/696/914?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -2961,10 +2045,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:33:44.056Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=415",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=415",
+      "pageIdVerified": true,
+      "lat": 41.4079975,
+      "lon": -124.0369898,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:33:44.056Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -2980,8 +2067,8 @@
               "name": "Group Campsite #MCG1"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:29.673Z",
-          "bookingUrl": "https://reservecalifornia.com/park/670/561?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:06.924Z",
+          "bookingUrl": "https://reservecalifornia.com/park/670/561?date=2026-11-22&night=1"
         },
         {
           "id": "creek-campground-sites-1-41",
@@ -3120,8 +2207,8 @@
               "name": "Campsite #MC41"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:29.673Z",
-          "bookingUrl": "https://reservecalifornia.com/park/670/562?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:06.924Z",
+          "bookingUrl": "https://reservecalifornia.com/park/670/562?date=2026-11-22&night=1"
         },
         {
           "id": "lower-loop-sites-42-63",
@@ -3204,8 +2291,8 @@
               "name": "Campsite #MC63"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:30:29.673Z",
-          "bookingUrl": "https://reservecalifornia.com/park/670/2184?date=2026-06-28&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:06.924Z",
+          "bookingUrl": "https://reservecalifornia.com/park/670/2184?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -3217,10 +2304,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:29:56.649Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-06-28&length=1&page_id=614",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=614",
+      "pageIdVerified": true,
+      "lat": 34.0835976,
+      "lon": -118.7453333,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:29:56.649Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -3508,8 +2598,8 @@
               "name": "Hook Up (E ) Campsite #L133"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:07.148Z",
-          "bookingUrl": "https://reservecalifornia.com/park/665/539?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:10.868Z",
+          "bookingUrl": "https://reservecalifornia.com/park/665/539?date=2026-11-22&night=1"
         },
         {
           "id": "canyon-campground-sites-25-77-134-139",
@@ -3712,8 +2802,8 @@
               "name": "Hook Up (E ) Campsite #L139"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:34:07.148Z",
-          "bookingUrl": "https://reservecalifornia.com/park/665/542?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:10.868Z",
+          "bookingUrl": "https://reservecalifornia.com/park/665/542?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -3725,10 +2815,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:33:44.056Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=616",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=616",
+      "pageIdVerified": true,
+      "lat": 34.0609826,
+      "lon": -118.932806,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:33:44.056Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
@@ -3744,10 +2837,10 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:39:30.704Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=644",
+      "lastUpdatedAt": "2026-05-31T02:38:14.654Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=644",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:39:21.947Z",
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z",
       "discoveryError": "No campgrounds found — the page ID may be incorrect."
     },
     {
@@ -3764,8 +2857,8 @@
               "name": "Group Campsite #GLAJ"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:39:34.193Z",
-          "bookingUrl": "https://reservecalifornia.com/park/694/623?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:18.070Z",
+          "bookingUrl": "https://reservecalifornia.com/park/694/623?date=2026-11-22&night=1"
         },
         {
           "id": "sycamore-campground",
@@ -3968,8 +3061,8 @@
               "name": "Campsite #SC57"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:39:34.193Z",
-          "bookingUrl": "https://reservecalifornia.com/park/694/624?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:18.070Z",
+          "bookingUrl": "https://reservecalifornia.com/park/694/624?date=2026-11-22&night=1"
         },
         {
           "id": "thornhill-broome-campground",
@@ -4112,8 +3205,8 @@
               "name": "Campsite #TB45"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:39:34.193Z",
-          "bookingUrl": "https://reservecalifornia.com/park/694/2031?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:18.070Z",
+          "bookingUrl": "https://reservecalifornia.com/park/694/2031?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -4125,177 +3218,19 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:39:21.947Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=630",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=630",
+      "pageIdVerified": true,
+      "lat": 34.1069181,
+      "lon": -119.0210285,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:39:21.947Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     },
     {
       "provider": "california-parks",
       "parkName": "Gaviota SP",
       "parkPageId": "606",
-      "campgrounds": [
-        {
-          "id": "gaviota-campground",
-          "name": "Gaviota Campground",
-          "sites": [
-            {
-              "id": "campsite-1",
-              "name": "Campsite #1"
-            },
-            {
-              "id": "campsite-2",
-              "name": "Campsite #2"
-            },
-            {
-              "id": "campsite-3",
-              "name": "Campsite #3"
-            },
-            {
-              "id": "campsite-4",
-              "name": "Campsite #4"
-            },
-            {
-              "id": "campsite-5",
-              "name": "Campsite #5"
-            },
-            {
-              "id": "campsite-6",
-              "name": "Campsite #6"
-            },
-            {
-              "id": "campsite-7",
-              "name": "Campsite #7"
-            },
-            {
-              "id": "campsite-8",
-              "name": "Campsite #8"
-            },
-            {
-              "id": "campsite-9",
-              "name": "Campsite #9"
-            },
-            {
-              "id": "campsite-10",
-              "name": "Campsite #10"
-            },
-            {
-              "id": "campsite-11",
-              "name": "Campsite #11"
-            },
-            {
-              "id": "campsite-12",
-              "name": "Campsite #12"
-            },
-            {
-              "id": "campsite-13",
-              "name": "Campsite #13"
-            },
-            {
-              "id": "campsite-14",
-              "name": "Campsite #14"
-            },
-            {
-              "id": "campsite-15",
-              "name": "Campsite #15"
-            },
-            {
-              "id": "campsite-16",
-              "name": "Campsite #16"
-            },
-            {
-              "id": "campsite-17",
-              "name": "Campsite #17"
-            },
-            {
-              "id": "campsite-18",
-              "name": "Campsite #18"
-            },
-            {
-              "id": "campsite-19",
-              "name": "Campsite #19"
-            },
-            {
-              "id": "campsite-20",
-              "name": "Campsite #20"
-            },
-            {
-              "id": "campsite-21",
-              "name": "Campsite #21"
-            },
-            {
-              "id": "campsite-22",
-              "name": "Campsite #22"
-            },
-            {
-              "id": "campsite-23",
-              "name": "Campsite #23"
-            },
-            {
-              "id": "campsite-24",
-              "name": "Campsite #24"
-            },
-            {
-              "id": "campsite-25",
-              "name": "Campsite #25"
-            },
-            {
-              "id": "campsite-26",
-              "name": "Campsite #26"
-            },
-            {
-              "id": "campsite-27",
-              "name": "Campsite #27"
-            },
-            {
-              "id": "campsite-28",
-              "name": "Campsite #28"
-            },
-            {
-              "id": "campsite-29",
-              "name": "Campsite #29"
-            },
-            {
-              "id": "campsite-30",
-              "name": "Campsite #30"
-            },
-            {
-              "id": "campsite-31",
-              "name": "Campsite #31"
-            },
-            {
-              "id": "campsite-33",
-              "name": "Campsite #33"
-            },
-            {
-              "id": "campsite-34",
-              "name": "Campsite #34"
-            },
-            {
-              "id": "campsite-35",
-              "name": "Campsite #35"
-            },
-            {
-              "id": "campsite-36",
-              "name": "Campsite #36"
-            },
-            {
-              "id": "campsite-37",
-              "name": "Campsite #37"
-            },
-            {
-              "id": "campsite-38",
-              "name": "Campsite #38"
-            },
-            {
-              "id": "campsite-39",
-              "name": "Campsite #39"
-            }
-          ],
-          "lastDiscoveredAt": "2026-05-29T18:30:40.450Z",
-          "bookingUrl": "https://reservecalifornia.com/park/646/491?date=2026-06-28&night=1"
-        }
-      ],
+      "campgrounds": [],
       "defaultBookingRule": {
         "type": "rolling_months_before",
         "monthsBefore": 6,
@@ -4305,10 +3240,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:29:56.649Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-06-28&length=1&page_id=606",
-      "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:29:56.649Z"
+      "lastUpdatedAt": "2026-05-31T02:38:20.893Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=606",
+      "discoveryStatus": "failed",
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z",
+      "discoveryError": "No campgrounds found — the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -4380,8 +3316,8 @@
               "name": "Primitive Campsite #CR19"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:39:39.112Z",
-          "bookingUrl": "https://reservecalifornia.com/park/656/506?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:25.219Z",
+          "bookingUrl": "https://reservecalifornia.com/park/656/506?date=2026-11-22&night=1"
         },
         {
           "id": "manzanita-point-hike-in-group-camps",
@@ -4424,8 +3360,8 @@
               "name": "Equestrain Group Tent Primitive Campsite #BOGC"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:39:39.112Z",
-          "bookingUrl": "https://reservecalifornia.com/park/656/519?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:25.219Z",
+          "bookingUrl": "https://reservecalifornia.com/park/656/519?date=2026-11-22&night=1"
         },
         {
           "id": "poverty-flat-hike-in-group-camp",
@@ -4436,8 +3372,8 @@
               "name": "Group Tent Primitive Campsite #FLAT"
             }
           ],
-          "lastDiscoveredAt": "2026-05-29T18:39:39.112Z",
-          "bookingUrl": "https://reservecalifornia.com/park/656/2147?date=2026-11-20&night=1"
+          "lastDiscoveredAt": "2026-05-31T02:38:25.219Z",
+          "bookingUrl": "https://reservecalifornia.com/park/656/2147?date=2026-11-22&night=1"
         }
       ],
       "defaultBookingRule": {
@@ -4449,10 +3385,13 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-29T18:39:21.947Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-20&length=1&page_id=561",
+      "lastUpdatedAt": "2026-05-31T02:37:24.956Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=561",
+      "pageIdVerified": true,
+      "lat": 37.172023,
+      "lon": -121.4373083,
       "discoveryStatus": "success",
-      "lastDiscoveryAttemptAt": "2026-05-29T18:39:21.947Z"
+      "lastDiscoveryAttemptAt": "2026-05-31T02:37:24.956Z"
     }
   ]
 }

@@ -6,32 +6,40 @@ import type { ProviderCatalog, ParkCatalogEntry, CampgroundCatalogEntry } from '
 // Path helpers
 // ---------------------------------------------------------------------------
 
+const SUPPORTED_PROVIDERS = ['california-parks', 'recreation-gov'] as const;
+
 function catalogDir(dataDir?: string): string {
   return path.join(dataDir ?? path.join(process.cwd(), 'data'), 'catalog');
 }
 
-function californiaParksPath(dataDir?: string): string {
-  return path.join(catalogDir(dataDir), 'california-parks.json');
+function catalogPath(provider: string, dataDir?: string): string {
+  return path.join(catalogDir(dataDir), `${provider}.json`);
 }
 
 // ---------------------------------------------------------------------------
 // Read
 // ---------------------------------------------------------------------------
 
-export function readCaliforniaParksRaw(dataDir?: string): ProviderCatalog {
-  const p = californiaParksPath(dataDir);
-  if (!fs.existsSync(p)) {
-    return { provider: 'california-parks', parks: [] };
-  }
+function readProviderCatalogRaw(provider: string, dataDir?: string): ProviderCatalog {
+  const p = catalogPath(provider, dataDir);
+  if (!fs.existsSync(p)) return { provider, parks: [] };
   try {
     return JSON.parse(fs.readFileSync(p, 'utf-8')) as ProviderCatalog;
   } catch {
-    return { provider: 'california-parks', parks: [] };
+    return { provider, parks: [] };
   }
 }
 
+export function readCaliforniaParksRaw(dataDir?: string): ProviderCatalog {
+  return readProviderCatalogRaw('california-parks', dataDir);
+}
+
+export function readRecreationGovRaw(dataDir?: string): ProviderCatalog {
+  return readProviderCatalogRaw('recreation-gov', dataDir);
+}
+
 export function listCatalogParks(dataDir?: string): ParkCatalogEntry[] {
-  return readCaliforniaParksRaw(dataDir).parks;
+  return SUPPORTED_PROVIDERS.flatMap((p) => readProviderCatalogRaw(p, dataDir).parks);
 }
 
 export function getCatalogPark(parkPageId: string, dataDir?: string): ParkCatalogEntry | undefined {
@@ -58,14 +66,14 @@ export function writeCatalog(catalog: ProviderCatalog, dataDir?: string): void {
   const dir = catalogDir(dataDir);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
-    californiaParksPath(dataDir),
+    catalogPath(catalog.provider, dataDir),
     JSON.stringify(catalog, null, 2) + '\n',
     'utf-8'
   );
 }
 
 export function upsertCatalogPark(park: ParkCatalogEntry, dataDir?: string): void {
-  const catalog = readCaliforniaParksRaw(dataDir);
+  const catalog = readProviderCatalogRaw(park.provider, dataDir);
   const idx = catalog.parks.findIndex((p) => p.parkPageId === park.parkPageId);
   if (idx === -1) {
     catalog.parks.push(park);
@@ -83,13 +91,16 @@ export function updateParkMetadata(
   patch: { [K in keyof ParkCatalogEntry]?: ParkCatalogEntry[K] | undefined },
   dataDir?: string
 ): void {
-  const catalog = readCaliforniaParksRaw(dataDir);
-  const idx = catalog.parks.findIndex((p) => p.parkPageId === parkPageId);
-  if (idx === -1) return;
-  const merged = { ...catalog.parks[idx], ...patch } as ParkCatalogEntry;
-  for (const key of Object.keys(merged) as (keyof ParkCatalogEntry)[]) {
-    if (merged[key] === undefined) delete merged[key];
+  for (const provider of SUPPORTED_PROVIDERS) {
+    const catalog = readProviderCatalogRaw(provider, dataDir);
+    const idx = catalog.parks.findIndex((p) => p.parkPageId === parkPageId);
+    if (idx === -1) continue;
+    const merged = { ...catalog.parks[idx], ...patch } as ParkCatalogEntry;
+    for (const key of Object.keys(merged) as (keyof ParkCatalogEntry)[]) {
+      if (merged[key] === undefined) delete merged[key];
+    }
+    catalog.parks[idx] = merged;
+    writeCatalog(catalog, dataDir);
+    return;
   }
-  catalog.parks[idx] = merged;
-  writeCatalog(catalog, dataDir);
 }

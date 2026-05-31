@@ -5,6 +5,7 @@ export interface AvailabilityProvider {
   name: string;
   scan(
     target: Target,
-    candidates: ScanCandidate[]
+    candidates: ScanCandidate[],
+    debugMode?: boolean
   ): Promise<ScanResult[]>;
 }
