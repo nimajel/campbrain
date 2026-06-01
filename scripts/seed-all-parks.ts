@@ -1,0 +1,265 @@
+#!/usr/bin/env tsx
+// One-off script: seeds all California State Parks from the authoritative
+// parks.ca.gov/Find-a-Park list into california-parks.json.
+// Existing entries (with discovered campground data) are preserved.
+// New parks are added as stubs with empty campgrounds — the catalog refresh
+// will discover campground data on subsequent runs.
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CATALOG_PATH = path.join(__dirname, '../data/catalog/california-parks.json');
+
+// Authoritative list from https://www.parks.ca.gov/Find-a-Park
+// Format: [parkName, pageId]
+const ALL_CA_PARKS: [string, string][] = [
+  ['Admiral William Standley SRA', '424'],
+  ['Ahjumawi Lava Springs SP', '464'],
+  ['Albany SMR', '22880'],
+  ['Anderson Marsh SHP', '483'],
+  ['Andrew Molera SP', '582'],
+  ['Angel Island SP', '468'],
+  ['Año Nuevo SP', '523'],
+  ['Antelope Valley California Poppy Reserve SNR', '627'],
+  ['Antelope Valley Indian Museum SHP', '632'],
+  ['Anza-Borrego Desert SP', '638'],
+  ['Armstrong Redwoods SNR', '450'],
+  ['Arthur B. Ripley Desert Woodland SP', '634'],
+  ['Asilomar SB', '566'],
+  ['Auburn SRA', '502'],
+  ['Austin Creek SRA', '452'],
+  ['Azalea SNR', '420'],
+  ['Bale Grist Mill SHP', '482'],
+  ['Bean Hollow SB', '527'],
+  ['Benbow SRA', '426'],
+  ['Benicia Capitol SHP', '475'],
+  ['Benicia SRA', '476'],
+  ['Bethany Reservoir SRA', '562'],
+  ['Bidwell Mansion SHP', '460'],
+  ['Bidwell-Sacramento River SP', '463'],
+  ['Big Basin Redwoods SP', '540'],
+  ['Bodie SHP', '509'],
+  ['Bolsa Chica SB', '642'],
+  ['Border Field SP', '664'],
+  ['Bothe-Napa Valley SP', '477'],
+  ['Brannan Island SRA', '487'],
+  ['Burleigh H. Murray Ranch', '535'],
+  ['Burton Creek SP', '512'],
+  ['Butano SP', '536'],
+  ['Calaveras Big Trees SP', '551'],
+  ['California Citrus SHP', '649'],
+  ['Cambria SMP', '27201'],
+  ['Candlestick Point SRA', '519'],
+  ['Cardiff SB', '656'],
+  ['Carlsbad SB', '653'],
+  ['Carmel River SB', '567'],
+  ['Carnegie SVRA', '1172'],
+  ['Carpinteria SB', '599'],
+  ['Caspar Headlands SB', '445'],
+  ['Caspar Headlands SNR', '444'],
+  ['Castaic Lake SRA', '628'],
+  ['Castle Crags SP', '454'],
+  ['Castle Rock SP', '538'],
+  ['Caswell Memorial SP', '557'],
+  ['Cayucos SB', '596'],
+  ['China Camp SP', '466'],
+  ['Chino Hills SP', '648'],
+  ['Clear Lake SP', '473'],
+  ['Colonel Allensworth SHP', '583'],
+  ['Columbia SHP', '552'],
+  ['Colusa-Sacramento River SRA', '461'],
+  ['Corona del Mar SB', '652'],
+  ['Crystal Cove SP', '644'],
+  ['Cuyamaca Rancho SP', '667'],
+  ['D. L. Bliss SP', '505'],
+  ['Del Norte Coast Redwoods SP', '414'],
+  ['Dockweiler SB', '617'],
+  ['Doheny SB', '645'],
+  ['Donner Memorial SP', '503'],
+  ['Dos Rios', '31363'],
+  ['Eastern Kern County Onyx Ranch SVRA', '28617'],
+  ['Ed Z\'berg Sugar Pine Point SP', '510'],
+  ['El Capitán SB', '601'],
+  ['Emerald Bay SP', '506'],
+  ['Emma Wood SB', '604'],
+  ['Estero Bluffs SP', '22263'],
+  ['Folsom Lake SRA', '500'],
+  ['Fort Ord Dunes SP', '580'],
+  ['Fort Ross SHP', '449'],
+  ['Fort Tejon SHP', '585'],
+  ['Franks Tract SRA', '490'],
+  ['Fremont Peak SP', '564'],
+  ['Garrapata SP', '579'],
+  ['Gaviota SP', '606'],
+  ['George J. Hatfield SRA', '556'],
+  ['Gray Whale Cove SB', '528'],
+  ['Great Valley Grasslands SP', '559'],
+  ['Grizzly Creek Redwoods SP', '421'],
+  ['Grover Hot Springs SP', '508'],
+  ['Half Moon Bay SB', '531'],
+  ['Harry A. Merlo SRA', '431'],
+  ['Hearst San Simeon SP', '590'],
+  ['Heber Dunes SVRA', '25642'],
+  ['Hendy Woods SP', '438'],
+  ['Henry Cowell Redwoods SP', '546'],
+  ['Henry W. Coe SP', '561'],
+  ['Hollister Hills SVRA', '1179'],
+  ['Humboldt Lagoons SP', '416'],
+  ['Humboldt Redwoods SP', '425'],
+  ['Hungry Valley SVRA', '1192'],
+  ['Huntington SB', '643'],
+  ['Indian Grinding Rock SHP', '553'],
+  ['Ishxenta SP', '569'],
+  ['Jack London SHP', '478'],
+  ['Jedediah Smith Redwoods SP', '413'],
+  ['Jug Handle SNR', '441'],
+  ['Julia Pfeiffer Burns SP', '578'],
+  ['Kenneth Hahn SRA', '612'],
+  ['Kings Beach SRA', '511'],
+  ['La Purísima Mission SHP', '598'],
+  ['Lake Del Valle SRA', '537'],
+  ['Lake Oroville SRA', '462'],
+  ['Lake Perris SRA', '651'],
+  ['Lake Valley SRA', '515'],
+  ['Leo Carrillo SP', '616'],
+  ['Leucadia SB', '661'],
+  ['Limekiln SP', '577'],
+  ['Little River SB', '419'],
+  ['MacKerricher SP', '436'],
+  ['Malakoff Diggins SHP', '494'],
+  ['Malibu Creek SP', '614'],
+  ['Malibu Lagoon SB', '835'],
+  ['Manchester SP', '437'],
+  ['Mandalay SB', '609'],
+  ['Manresa SB', '545'],
+  ['Marina SB', '581'],
+  ['Marsh Creek SP', '525'],
+  ['Marshall Gold Discovery SHP', '484'],
+  ['McArthur-Burney Falls Memorial SP', '455'],
+  ['McConnell SRA', '554'],
+  ['McGrath SB', '607'],
+  ['Mendocino Headlands SP', '442'],
+  ['Mendocino Woodlands SP', '443'],
+  ['Millerton Lake SRA', '587'],
+  ['Montaña de Oro SP', '592'],
+  ['Montara SB', '532'],
+  ['Monterey SB', '576'],
+  ['Morro Bay SP', '594'],
+  ['Morro Strand SB', '593'],
+  ['Moss Landing SB', '574'],
+  ['Mount Diablo SP', '517'],
+  ['Mount San Jacinto SP', '636'],
+  ['Mount Tamalpais SP', '471'],
+  ['Natural Bridges SB', '541'],
+  ['Navarro River Redwoods SP', '435'],
+  ['New Brighton SB', '542'],
+  ['Oceano Dunes SVRA', '1207'],
+  ['Ocotillo Wells SVRA', '1217'],
+  ['Olompali SHP', '465'],
+  ['Pacheco SP', '560'],
+  ['Palomar Mountain SP', '637'],
+  ['Pelican SB', '412'],
+  ['Pescadero SB', '522'],
+  ['Pfeiffer Big Sur SP', '570'],
+  ['Picacho SRA', '641'],
+  ['Pismo SB', '595'],
+  ['Plumas-Eureka SP', '507'],
+  ['Point Dume SB', '623'],
+  ['Point Mugu SP', '630'],
+  ['Portola Redwoods SP', '539'],
+  ['Prairie City SVRA', '1221'],
+  ['Prairie Creek Redwoods SP', '415'],
+  ['Providence Mountains SRA', '615'],
+  ['Red Rock Canyon SP', '631'],
+  ['Refugio SB', '603'],
+  ['Richardson Grove SP', '422'],
+  ['Robert H. Meyer Memorial SB', '633'],
+  ['Russian Gulch SP', '432'],
+  ['Saddleback Butte SP', '618'],
+  ['Salinas River SB', '573'],
+  ['Salt Point SP', '453'],
+  ['Salton Sea SRA', '639'],
+  ['Samuel P. Taylor SP', '469'],
+  ['San Bruno Mountain SP', '518'],
+  ['San Buenaventura SB', '600'],
+  ['San Clemente SB', '646'],
+  ['San Elijo SB', '662'],
+  ['San Gregorio SB', '529'],
+  ['San Luis Reservoir SRA', '558'],
+  ['San Onofre SB', '647'],
+  ['Seacliff SB', '543'],
+  ['Silverwood Lake SRA', '650'],
+  ['Sinkyone Wilderness SP', '429'],
+  ['Sonoma Coast SP', '451'],
+  ['South Carlsbad SB', '660'],
+  ['South Yuba River SP', '496'],
+  ['Standish-Hickey SRA', '423'],
+  ['Sue-meg SP', '417'],
+  ['Sugarloaf Ridge SP', '481'],
+  ['Sunset SB', '544'],
+  ['Tahoe SRA', '504'],
+  ['The Forest of Nisene Marks SP', '666'],
+  ['Tolowa Dunes SP', '430'],
+  ['Tomales Bay SP', '470'],
+  ['Topanga SP', '629'],
+  ['Torrey Pines SB', '658'],
+  ['Trinidad SB', '418'],
+  ['Trione-Annadel SP', '480'],
+  ['Turlock Lake SRA', '555'],
+  ['Twin Lakes SB', '547'],
+  ['Van Damme SP', '433'],
+  ['Washoe Meadows SP', '516'],
+  ['Westport-Union Landing SB', '440'],
+  ['Wilder Ranch SP', '549'],
+  ['Will Rogers SB', '625'],
+  ['Zmudowski SB', '572'],
+];
+
+const DEFAULT_BOOKING_RULE = {
+  type: 'rolling_months_before',
+  monthsBefore: 6,
+  releaseTime: '08:00',
+  timezone: 'America/Los_Angeles',
+  source: 'known',
+  confidence: 'high',
+  lastVerifiedAt: '2026-05-28',
+};
+
+interface ParkEntry {
+  provider: string;
+  parkName: string;
+  parkPageId: string;
+  campgrounds: unknown[];
+  defaultBookingRule: typeof DEFAULT_BOOKING_RULE;
+  [key: string]: unknown;
+}
+
+interface Catalog {
+  provider: string;
+  parks: ParkEntry[];
+}
+
+const catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf-8')) as Catalog;
+const existingIds = new Set(catalog.parks.map((p) => p.parkPageId));
+
+let added = 0;
+for (const [parkName, pageId] of ALL_CA_PARKS) {
+  if (existingIds.has(pageId)) continue;
+  catalog.parks.push({
+    provider: 'california-parks',
+    parkName,
+    parkPageId: pageId,
+    campgrounds: [],
+    defaultBookingRule: DEFAULT_BOOKING_RULE,
+    discoveryStatus: 'pending',
+  });
+  added++;
+}
+
+// Sort parks by numeric pageId for deterministic ordering
+catalog.parks.sort((a, b) => Number(a.parkPageId) - Number(b.parkPageId));
+
+fs.writeFileSync(CATALOG_PATH, JSON.stringify(catalog, null, 2) + '\n', 'utf-8');
+console.log(`Done. Added ${added} new parks. Total: ${catalog.parks.length}.`);

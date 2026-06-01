@@ -12,3 +12,4 @@ build/
 web/.next/
 web/node_modules/
 web/*.tsbuildinfo
+web/.campbrain/

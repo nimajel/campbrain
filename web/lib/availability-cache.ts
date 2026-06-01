@@ -1,7 +1,6 @@
 import path from 'path';
 import {
   readCache,
-  listFreshEntries,
   getAvailableSitesForStay,
 } from '../../src/cache/availability-cache';
 import type { AvailabilityWindowEntry, CampgroundWindow, SiteDailyAvailability } from '../../src/cache/types';
@@ -14,8 +13,9 @@ export function readAvailabilityCacheWeb() {
   return readCache(dataDir());
 }
 
+/** Returns all cached entries for display — stale entries still show, they just trigger a background rescan. */
 export function listFreshEntriesWeb(): AvailabilityWindowEntry[] {
-  return listFreshEntries(dataDir());
+  return Object.values(readCache(dataDir()).entries);
 }
 
 export { getAvailableSitesForStay };
