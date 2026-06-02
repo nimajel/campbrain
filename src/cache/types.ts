@@ -44,3 +44,17 @@ export function cacheKey(parkPageId: string, windowStart: string): string {
 
 /** Number of days the parks.ca.gov endpoint returns per fetch. */
 export const WINDOW_DAYS = 8;
+
+export interface AvailableStay {
+  parkPageId: string;
+  parkName: string;
+  campgroundName: string;
+  nightlyFee: number | null;
+  bookingUrl: string | null;
+  arrivalDate: string;
+  nights: number;
+  /** Bookable (reservable online) sites. Walk-up / first-come sites are in walkUpSites. */
+  availableSites: string[];
+  /** Walk-up / first-come sites that cannot be reserved online (e.g. hike/bike campsites). */
+  walkUpSites: string[];
+}

@@ -18,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav>
               <a href="/">Dashboard</a>
               <a href="/available">What&apos;s Available</a>
+              <a href="/map">Map</a>
               <a href="/explore">Take Me Camping!</a>
               <a href="/alerts">Alerts</a>
               <a href="/scan-history">Scan History</a>

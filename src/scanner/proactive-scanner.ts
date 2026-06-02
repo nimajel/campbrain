@@ -1,26 +1,28 @@
 // ---------------------------------------------------------------------------
-// Proactive scanner — populates the availability cache with 14-day windows.
+// Proactive scanner — populates the availability cache with 8-day windows.
 //
 // Architecture (v2):
-//   - One fetch per (parkPageId × windowStart): `length=14` returns 14 days
-//     of per-site per-day availability in a single HTML response.
+//   - One cache entry per (parkPageId × windowStart).
+//   - The parks.ca.gov API only returns a grid when arrival_date has ≥1 open site,
+//     so we probe each day in the window (up to WINDOW_DAYS attempts) until we
+//     get a hit or confirm the entire window is fully booked.
 //   - parseAllAvailability extracts every campground/site/date from the page.
 //   - The full daily grid is stored; 1N/2N/3N queries are answered at read time.
-//   - 64 parks × 13 windows = ~832 fetches per full 180-day scan cycle
-//     (vs 23,040 with the old per-date-per-nights approach).
 // ---------------------------------------------------------------------------
 
 import dayjs from 'dayjs';
 import { listCatalogParks } from '../catalog/catalog-store.js';
 import { buildAvailabilityUrl } from '../providers/california-parks-provider.js';
-import { parseAllAvailability } from '../providers/california-parks-parser.js';
+import { parseAllAvailability, isNoAvailabilityPage } from '../providers/california-parks-parser.js';
 import {
   generateWindowStarts,
   windowEnd,
   findStaleWindows,
   upsertEntry,
   evictExpired,
+  refreshMaterializedView,
 } from '../cache/availability-cache.js';
+import { initDb } from '../cache/db.js';
 import { runWithConcurrency } from '../utils/concurrency.js';
 import type { AvailabilityWindowEntry, CampgroundWindow } from '../cache/types.js';
 import { WINDOW_DAYS } from '../cache/types.js';
@@ -33,7 +35,6 @@ const BATCH_DELAY_MS = 500;
 // ---------------------------------------------------------------------------
 
 export interface ProactiveScanOptions {
-  dataDir?: string;
   /** Days ahead to cover. Default: 180 (full CA Parks booking window). */
   daysAhead?: number;
   /** Scan all parks with site data, not just pageIdVerified ones. Default: false. */
@@ -65,8 +66,10 @@ export async function runProactiveScan(
   const daysAhead = opts.daysAhead ?? 180;
   const verifiedOnly = opts.verifiedOnly ?? false;
 
+  await initDb();
+
   // 1. Eligible parks
-  const parks = listCatalogParks(opts.dataDir).filter((p) => {
+  const parks = listCatalogParks().filter((p) => {
     if (p.provider !== 'california-parks') return false;
     if (verifiedOnly && !p.pageIdVerified) return false;
     return p.campgrounds.some((c) => c.sites.length > 0);
@@ -87,14 +90,14 @@ export async function runProactiveScan(
   // 3. Filter to stale/missing
   const toScan = opts.force
     ? allCandidates
-    : findStaleWindows(allCandidates, opts.dataDir);
+    : await findStaleWindows(allCandidates);
   const staleCount = toScan.length;
 
   log(`Proactive scan: ${parks.length} parks, ${windowStarts.length} windows (${daysAhead}d ahead)`);
   log(`  ${totalWindows} total — ${staleCount} stale / missing`);
 
   if (staleCount === 0) {
-    evictExpired(opts.dataDir);
+    await evictExpired();
     return { totalWindows, staleCount: 0, fetchCount: 0, fetchErrors: 0, cacheWrites: 0, durationMs: Date.now() - startMs };
   }
 
@@ -108,30 +111,61 @@ export async function runProactiveScan(
     if (!park) return;
 
     const wEnd = windowEnd(windowStart);
-    const sourceUrl = buildAvailabilityUrl(parkPageId, {
-      arrivalDate: windowStart,
-      nights: WINDOW_DAYS,
-      endDate: wEnd,
-    });
+    const catalogCgByName = new Map(park.campgrounds.map((c) => [c.name, c]));
 
-    fetchCount++;
+    // The API only returns a grid when the arrival_date itself has ≥1 available site.
+    // Probe each day in the window until we get data or exhaust the probe limit.
+    // Far-out windows use fewer probes — cancellations 90+ days out are rare.
+    const daysUntilWindow = dayjs(windowStart).diff(dayjs(), 'day');
+    const maxProbes = daysUntilWindow < 30 ? WINDOW_DAYS : 3;
 
-    let html: string;
-    try {
-      const res = await fetch(sourceUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      html = await res.text();
-    } catch (err) {
-      fetchErrors++;
-      log(`  ✗ ${park.parkName} ${windowStart} — ${err instanceof Error ? err.message : String(err)}`);
-      return;
+    let parsed: ReturnType<typeof parseAllAvailability> = [];
+    let successUrl = '';
+
+    for (let offset = 0; offset < maxProbes; offset++) {
+      const arrivalDate = dayjs(windowStart).add(offset, 'day').format('YYYY-MM-DD');
+      const url = buildAvailabilityUrl(parkPageId, { arrivalDate, nights: 1, endDate: wEnd });
+      fetchCount++;
+
+      let html: string;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        html = await res.text();
+      } catch (err) {
+        fetchErrors++;
+        log(`  ✗ ${park.parkName} ${windowStart}+${offset} — ${err instanceof Error ? err.message : String(err)}`);
+        return;
+      }
+
+      parsed = parseAllAvailability(html);
+      if (parsed.length > 0) {
+        successUrl = url;
+        break;
+      }
+
+      if (!isNoAvailabilityPage(html)) {
+        // Unexpected response (landing page / error) — stop probing this window
+        log(`  ⚠ ${park.parkName} ${windowStart}+${offset} — unexpected empty parse, skipping`);
+        return;
+      }
+      // isNoAvailabilityPage: this day is fully booked, try next
     }
 
-    // Parse the full page — all campgrounds, all sites, all date columns
-    const parsed = parseAllAvailability(html);
-
-    // Map catalog entries by name to pick up nightlyFee and bookingUrl
-    const catalogCgByName = new Map(park.campgrounds.map((c) => [c.name, c]));
+    if (parsed.length === 0) {
+      // All days in the window confirmed fully booked
+      await upsertEntry({
+        parkPageId,
+        parkName: park.parkName,
+        windowStart,
+        windowEnd: wEnd,
+        scannedAt: new Date().toISOString(),
+        sourceUrl: buildAvailabilityUrl(parkPageId, { arrivalDate: windowStart, nights: 1, endDate: wEnd }),
+        campgrounds: [],
+      });
+      cacheWrites++;
+      return;
+    }
 
     const campgrounds: CampgroundWindow[] = parsed.map((pc) => {
       const catalogCg = catalogCgByName.get(pc.name);
@@ -152,11 +186,11 @@ export async function runProactiveScan(
       windowStart,
       windowEnd: wEnd,
       scannedAt: new Date().toISOString(),
-      sourceUrl,
+      sourceUrl: successUrl,
       campgrounds,
     };
 
-    upsertEntry(entry, opts.dataDir);
+    await upsertEntry(entry);
     cacheWrites++;
 
     const windowsWithAvail = campgrounds.filter((c) =>
@@ -176,8 +210,15 @@ export async function runProactiveScan(
     }
   }
 
-  const evicted = evictExpired(opts.dataDir);
+  const evicted = await evictExpired();
   if (evicted > 0) log(`  Evicted ${evicted} expired cache entries`);
+
+  try {
+    await refreshMaterializedView();
+    log('  MV refreshed: mv_available_stays');
+  } catch (err) {
+    log(`  MV refresh failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   return { totalWindows, staleCount, fetchCount, fetchErrors, cacheWrites, durationMs: Date.now() - startMs };
 }

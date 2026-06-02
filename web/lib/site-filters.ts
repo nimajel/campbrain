@@ -12,12 +12,28 @@ export interface SiteFilter {
   test: (siteName: string, campgroundName: string) => boolean;
 }
 
+/**
+ * True for sites that are walk-up / first-come-first-served only and therefore
+ * cannot be reserved online (e.g. CA State Parks "Hike/Bike" sites). These show
+ * as "Available" on the parks.ca.gov grid but are NOT bookable on ReserveCalifornia,
+ * so they must never count toward bookable availability.
+ */
+export function isWalkUpSite(siteName: string, campgroundName = ''): boolean {
+  return /\bhike\s*[/&]?\s*bike\b/i.test(`${siteName} ${campgroundName}`);
+}
+
 export const AVAILABLE_FILTERS: SiteFilter[] = [
   {
     id: 'exclude_group',
     label: 'Exclude group sites',
     description: 'Hide group campgrounds, group tent sites, and group picnic areas',
     test: (site, cg) => !/\bgroup\b/i.test(`${site} ${cg}`),
+  },
+  {
+    id: 'exclude_walk_up',
+    label: 'Exclude walk-up sites',
+    description: 'Hide walk-up / first-come hike-bike sites that cannot be reserved online',
+    test: (site, cg) => !isWalkUpSite(site, cg),
   },
   {
     id: 'exclude_day_use',

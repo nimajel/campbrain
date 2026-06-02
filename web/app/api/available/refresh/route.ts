@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import path from 'path';
 import { runProactiveScan } from '../../../../../src/scanner/proactive-scanner';
-import { readCache } from '../../../../../src/cache/availability-cache';
+import { getCacheStats } from '../../../../../src/cache/availability-cache';
 
 // Minimum gap between manual refreshes — prevents hammering the provider
 const MIN_REFRESH_GAP_MS = 5 * 60 * 1000; // 5 minutes
@@ -9,10 +8,6 @@ const MIN_REFRESH_GAP_MS = 5 * 60 * 1000; // 5 minutes
 // Track last refresh time in module scope (persists across requests in same process)
 let lastRefreshAt = 0;
 let refreshRunning = false;
-
-function dataDirFromWeb(): string {
-  return path.join(process.cwd(), '..', '.campbrain', 'state');
-}
 
 export async function POST() {
   if (refreshRunning) {
@@ -38,7 +33,6 @@ export async function POST() {
   try {
     const messages: string[] = [];
     const summary = await runProactiveScan({
-      dataDir: dataDirFromWeb(),
       logger: (msg) => messages.push(msg),
     });
 
@@ -52,17 +46,10 @@ export async function POST() {
 }
 
 export async function GET() {
-  const dataDir = dataDirFromWeb();
-  const cache = readCache(dataDir);
-  const entryCount = Object.keys(cache.entries).length;
-  const lastScan = Object.values(cache.entries)
-    .map((e) => e.scannedAt)
-    .sort()
-    .at(-1);
-
+  const { entryCount, lastScanAt } = await getCacheStats();
   return NextResponse.json({
     entryCount,
-    lastScanAt: lastScan ?? null,
+    lastScanAt,
     refreshRunning,
     lastRefreshAt: lastRefreshAt > 0 ? new Date(lastRefreshAt).toISOString() : null,
     minRefreshGapMs: MIN_REFRESH_GAP_MS,

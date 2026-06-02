@@ -116,11 +116,7 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
     if (proactiveRunning) return;
     proactiveRunning = true;
     console.log(`[${timestamp()}] Proactive scan starting…`);
-    // verifiedOnly: false — all parks with catalog site data are eligible,
-    // not just the single park that has pageIdVerified set.
     runProactiveScan({
-      daysAhead: 180,
-      verifiedOnly: false,
       logger: (msg) => console.log(`[${timestamp()}] ${msg}`),
     })
       .then((summary) => {

@@ -29,8 +29,14 @@ export function isParkStale(
   nowMs: number,
   maxAgeDays = DEFAULT_MAX_AGE_DAYS
 ): boolean {
-  // Missing campground data is always considered stale.
-  if (park.campgrounds.length === 0) return true;
+  if (park.campgrounds.length === 0) {
+    // Never attempted → always stale.
+    if (!park.lastDiscoveryAttemptAt) return true;
+    // Recently attempted but still empty → respect maxAgeDays to avoid constant retries.
+    const attemptMs = new Date(park.lastDiscoveryAttemptAt).getTime();
+    if (Number.isNaN(attemptMs)) return true;
+    return nowMs - attemptMs > maxAgeDays * MS_PER_DAY;
+  }
   // Never successfully discovered.
   if (!park.lastUpdatedAt) return true;
   const updatedMs = new Date(park.lastUpdatedAt).getTime();

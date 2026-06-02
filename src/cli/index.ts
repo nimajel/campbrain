@@ -6,6 +6,9 @@ import { workerCommand } from './commands/worker.js';
 import { syncCalendarCommand } from './commands/sync-calendar.js';
 import { alertsListCommand, alertsEnableCommand, alertsDisableCommand } from './commands/alerts.js';
 import { catalogRefreshCommand, catalogListCommand } from './commands/catalog.js';
+import { cacheRefreshCommand } from './commands/cache-refresh.js';
+import { dbInitCommand } from './commands/db-init.js';
+import { dbMigrateCommand } from './commands/db-migrate.js';
 
 program
   .name('campbrain')
@@ -140,6 +143,20 @@ catalogCmd
   });
 
 program
+  .command('cache-refresh')
+  .description('Refresh the availability cache for all parks across the 180-day window')
+  .option('--force', 'Re-fetch all windows, even if cache is still fresh')
+  .option('--days-ahead <n>', 'Days to cover (default 180)', parseInt)
+  .action(async (options) => {
+    try {
+      await cacheRefreshCommand({ force: options.force, daysAhead: options.daysAhead });
+    } catch (error) {
+      console.error('Error:', error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
+program
   .command('sync-calendar')
   .description('Sync booking-window reminder events to Google Calendar')
   .option('--dry-run', 'Print events that would be created/updated without calling Google')
@@ -151,6 +168,33 @@ program
       console.error('Error:', error instanceof Error ? error.message : error);
       process.exit(1);
     }
+  });
+
+const dbCmd = program.command('db').description('Database management');
+
+dbCmd.command('init').description('Initialize database schema').action(async () => {
+  try { await dbInitCommand(); }
+  catch (e) { console.error(e); process.exit(1); }
+});
+
+dbCmd.command('migrate').description('Migrate JSON cache to PostgreSQL').action(async () => {
+  try { await dbMigrateCommand(); }
+  catch (e) { console.error(e); process.exit(1); }
+});
+
+dbCmd.command('rebuild-mv')
+  .description('Rebuild materialized view (required after MV schema changes)')
+  .action(async () => {
+    try {
+      const { rebuildMaterializedView, refreshMaterializedView } = await import('../cache/availability-cache.js');
+      const { endDb } = await import('../cache/db.js');
+      console.log('Dropping and recreating mv_available_stays…');
+      await rebuildMaterializedView();
+      console.log('Refreshing data…');
+      await refreshMaterializedView();
+      console.log('Done.');
+      await endDb();
+    } catch (e) { console.error(e); process.exit(1); }
   });
 
 program.parse();

@@ -1,32 +1,25 @@
 'use client';
 
 import { useState, useMemo, useEffect, memo } from 'react';
-import type { AvailabilityWindowEntry } from '../../lib/availability-cache';
+import type { AvailableStay } from '../../lib/available-display';
 import SiteFilterPanel from '../components/SiteFilterPanel';
 import ParkMapPopover from '../components/ParkMapPopover';
-import { passesSiteFilters, campgroundPassesFilters } from '../../lib/site-filters';
 import { injectBookingDates } from '../../lib/booking-url';
+import {
+  buildLookup,
+  groupFromLookup,
+  parseDateLocal,
+  addDaysToIso,
+  isWeekendArrival,
+} from '../../lib/available-display';
+import type { CampgroundResult, ParkGroup, DateGroup } from '../../lib/available-display';
 
 // ---------------------------------------------------------------------------
-// Date helpers (string-only, no Date objects in hot paths)
+// Display-only date helpers (not exported — render path only)
 // ---------------------------------------------------------------------------
-
-function parseDateLocal(iso: string): Date {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y!, m! - 1, d!);
-}
-
-function addDaysToIso(iso: string, n: number): string {
-  const d = parseDateLocal(iso);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
-}
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function isWeekendArrival(iso: string): boolean {
-  return parseDateLocal(iso).getDay() === 5 || parseDateLocal(iso).getDay() === 6;
-}
 function dowLabel(iso: string): string {
   return WEEKDAY_LABELS[parseDateLocal(iso).getDay()] ?? '';
 }
@@ -38,177 +31,7 @@ function formatDeparture(arrivalIso: string, nights: number): string {
   d.setDate(d.getDate() + nights);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  return `${Math.floor(mins / 60)}h ago`;
-}
 function todayIso(): string { return new Date().toISOString().slice(0, 10); }
-
-// ---------------------------------------------------------------------------
-// Pre-computed lookup: built once when entries change.
-// parkPageId → campgroundName → siteName → date → status
-// ---------------------------------------------------------------------------
-
-type SiteStatus = 'available' | 'unavailable' | 'unknown';
-type CampgroundMeta = {
-  id: string; nightlyFee?: number; bookingUrl?: string;
-  sites: Map<string, Map<string, SiteStatus>>;
-};
-type ParkMeta = { parkName: string; minNightlyFee?: number; campgrounds: Map<string, CampgroundMeta> };
-type Lookup = { parks: Map<string, ParkMeta>; allDates: string[] };
-
-function buildLookup(windows: AvailabilityWindowEntry[]): Lookup {
-  const parks = new Map<string, ParkMeta>();
-  const allDatesSet = new Set<string>();
-
-  for (const w of windows) {
-    let d = w.windowStart;
-    while (d <= w.windowEnd) { allDatesSet.add(d); d = addDaysToIso(d, 1); }
-
-    if (!parks.has(w.parkPageId)) parks.set(w.parkPageId, { parkName: w.parkName, campgrounds: new Map() });
-    const park = parks.get(w.parkPageId)!;
-
-    for (const cg of w.campgrounds) {
-      if (!park.campgrounds.has(cg.name)) park.campgrounds.set(cg.name, { id: cg.id, sites: new Map() });
-      const cgMeta = park.campgrounds.get(cg.name)!;
-
-      if (cg.nightlyFee !== undefined) {
-        if (park.minNightlyFee === undefined || cg.nightlyFee < park.minNightlyFee) park.minNightlyFee = cg.nightlyFee;
-        cgMeta.nightlyFee = cg.nightlyFee;
-      }
-      if (cg.bookingUrl) cgMeta.bookingUrl = cg.bookingUrl;
-
-      for (const site of cg.sites) {
-        if (!cgMeta.sites.has(site.name)) cgMeta.sites.set(site.name, new Map());
-        const dateLookup = cgMeta.sites.get(site.name)!;
-        for (const [date, status] of Object.entries(site.dates)) {
-          dateLookup.set(date, status as SiteStatus);
-        }
-      }
-    }
-  }
-
-  return { parks, allDates: Array.from(allDatesSet).sort() };
-}
-
-// Fast site availability check: O(nights × sites) using the pre-built map
-function availableSites(cgMeta: CampgroundMeta, arrivalDate: string, nights: number): string[] {
-  // Pre-build required dates once
-  const required: string[] = [];
-  for (let i = 0; i < nights; i++) required.push(addDaysToIso(arrivalDate, i));
-
-  const out: string[] = [];
-  for (const [siteName, dateLookup] of cgMeta.sites) {
-    if (required.every((d) => dateLookup.get(d) === 'available')) out.push(siteName);
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type CampgroundResult = {
-  id: string; name: string; nightlyFee?: number; bookingUrl?: string;
-  nights: number; arrivalDate: string; departureDate: string; availableSites: string[];
-};
-type ParkGroup = {
-  parkName: string; parkPageId: string; campgrounds: CampgroundResult[]; minNightlyFee?: number;
-};
-type DateGroup = { arrivalDate: string; parks: ParkGroup[]; totalAvailable: number };
-
-// ---------------------------------------------------------------------------
-// Grouping with early exit — stops once `limit` date groups are collected.
-// Campground filter results are cached per (name, filterKey) to avoid
-// re-running regex on every date × park iteration.
-// ---------------------------------------------------------------------------
-
-function groupFromLookup(
-  lookup: Lookup,
-  opts: {
-    activeFilters: string[]; showUnavailable: boolean; weekendsOnly: boolean;
-    nightsFilter: number | null; dateFrom: string; dateTo: string; limit: number;
-  }
-): { groups: DateGroup[]; hasMore: boolean; totalDatesChecked: number } {
-  const { activeFilters, showUnavailable, weekendsOnly, nightsFilter, dateFrom, dateTo, limit } = opts;
-  const nightsCounts = nightsFilter !== null ? [nightsFilter] : [1, 2];
-
-  // Cache campground filter results for this call (avoids regex per iteration)
-  const filterKey = activeFilters.join(',');
-  const cgFilterCache = new Map<string, boolean>();
-  function cgPasses(name: string): boolean {
-    const k = `${name}::${filterKey}`;
-    if (!cgFilterCache.has(k)) cgFilterCache.set(k, campgroundPassesFilters(name, activeFilters));
-    return cgFilterCache.get(k)!;
-  }
-
-  const groups: DateGroup[] = [];
-  let totalDatesChecked = 0;
-
-  for (const date of lookup.allDates) {
-    if (weekendsOnly && !isWeekendArrival(date)) continue;
-    if (dateFrom && date < dateFrom) continue;
-    if (dateTo && date > dateTo) continue;
-    totalDatesChecked++;
-
-    const parkGroups: ParkGroup[] = [];
-
-    for (const [parkPageId, parkMeta] of lookup.parks) {
-      const campgrounds: CampgroundResult[] = [];
-
-      for (const [cgName, cgMeta] of parkMeta.campgrounds) {
-        if (!cgPasses(cgName)) continue;
-
-        for (const nights of nightsCounts) {
-          const allAvail = availableSites(cgMeta, date, nights);
-          const filtered = activeFilters.length
-            ? allAvail.filter((s) => passesSiteFilters(s, cgName, activeFilters))
-            : allAvail;
-
-          if (!showUnavailable && filtered.length === 0) continue;
-
-          campgrounds.push({
-            id: cgMeta.id, name: cgName,
-            nightlyFee: cgMeta.nightlyFee, bookingUrl: cgMeta.bookingUrl,
-            nights, arrivalDate: date, departureDate: addDaysToIso(date, nights),
-            availableSites: filtered,
-          });
-        }
-      }
-
-      if (campgrounds.length > 0) {
-        parkGroups.push({ parkPageId, parkName: parkMeta.parkName, campgrounds, minNightlyFee: parkMeta.minNightlyFee });
-      }
-    }
-
-    if (!showUnavailable && parkGroups.length === 0) continue;
-
-    const totalAvailable = parkGroups.reduce(
-      (n, p) => n + p.campgrounds.reduce((m, c) => m + c.availableSites.length, 0), 0
-    );
-    if (!showUnavailable && totalAvailable === 0) continue;
-
-    parkGroups.sort((a, b) => a.parkName.localeCompare(b.parkName));
-    groups.push({ arrivalDate: date, parks: parkGroups, totalAvailable });
-
-    if (groups.length >= limit) {
-      // Found enough — check if there are more dates to process
-      const remaining = lookup.allDates.filter((d) => {
-        if (d <= date) return false;
-        if (weekendsOnly && !isWeekendArrival(d)) return false;
-        if (dateFrom && d < dateFrom) return false;
-        if (dateTo && d > dateTo) return false;
-        return true;
-      });
-      return { groups, hasMore: remaining.length > 0, totalDatesChecked };
-    }
-  }
-
-  return { groups, hasMore: false, totalDatesChecked };
-}
 
 // ---------------------------------------------------------------------------
 // Sub-components — memoized so unchanged cards don't re-render on filter change
@@ -216,6 +39,7 @@ function groupFromLookup(
 
 const CampgroundRow = memo(function CampgroundRow({ cg }: { cg: CampgroundResult }) {
   const hasAvail = cg.availableSites.length > 0;
+  const hasWalkUp = (cg.walkUpSites?.length ?? 0) > 0;
   return (
     <div style={{ padding: '7px 0', borderTop: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -246,6 +70,17 @@ const CampgroundRow = memo(function CampgroundRow({ cg }: { cg: CampgroundResult
           ))}
         </div>
       )}
+      {hasWalkUp && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4, alignItems: 'center' }}>
+          <span className="badge badge-gray" style={{ fontSize: 9 }}>walk-up</span>
+          {cg.walkUpSites!.map((site) => (
+            <span key={site} className="chip" style={{ fontSize: 11, opacity: 0.6 }}>{site}</span>
+          ))}
+          <span style={{ fontSize: 10, color: 'var(--muted)', fontStyle: 'italic' }}>
+            first-come, not reservable
+          </span>
+        </div>
+      )}
     </div>
   );
 });
@@ -258,14 +93,11 @@ const ParkCard = memo(function ParkCard({
 }) {
   const totalAvail = group.campgrounds.reduce((n, c) => n + c.availableSites.length, 0);
   const hasAvail = totalAvail > 0;
-  // Start collapsed — expand on click. Keeps the render tree small on initial load
-  // and after filter changes (only the header row renders for each park).
   const [open, setOpen] = useState(false);
   useEffect(() => { setOpen(false); }, [group.parkPageId, group.parkName]);
 
   return (
     <div className="card" style={{ marginBottom: 8, padding: open ? undefined : '8px 16px' }}>
-      {/* div (not button) — ParkMapPopover renders its own button inside */}
       <div
         style={{
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
@@ -345,10 +177,11 @@ export default function AvailableClient({
   initialEntries,
   coordsByParkId = {},
 }: {
-  initialEntries: AvailabilityWindowEntry[];
+  initialEntries: AvailableStay[];
   coordsByParkId?: Record<string, { lat: number; lon: number }>;
 }) {
   const [entries, setEntries] = useState(initialEntries);
+  const [loading, setLoading] = useState(initialEntries.length === 0);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showUnavailable, setShowUnavailable] = useState(false);
   const [weekendsOnly, setWeekendsOnly] = useState(true);
@@ -359,18 +192,24 @@ export default function AvailableClient({
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<RefreshStatus | null>(null);
+  const [readAt, setReadAt] = useState<string | null>(null);
 
-  const lastScanAt = entries.length > 0 ? entries.map((e) => e.scannedAt).sort().at(-1) : null;
+  useEffect(() => {
+    if (initialEntries.length === 0) {
+      void fetch('/api/available').then(async (r) => {
+        const data = (await r.json()) as { stays: AvailableStay[]; readAt: string };
+        setEntries(data.stays);
+        setReadAt(data.readAt);
+        setLoading(false);
+      }).catch(() => { setLoading(false); });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Build flat lookup once when entries change (O(entries) — amortised across all filter changes)
   const lookup = useMemo(() => buildLookup(entries), [entries]);
 
-  // Reset pagination when filters change (but not when limit changes — that's the "show more" action)
   const filterKey = `${activeFilters.join(',')}|${showUnavailable}|${weekendsOnly}|${nightsFilter}|${dateFrom}|${dateTo}`;
   useEffect(() => { setLimit(PAGE_SIZE); }, [filterKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Synchronous useMemo — fast because groupFromLookup exits early at `limit` results.
-  // With PAGE_SIZE=15 this processes only the first ~15–20 matching dates, not all 180.
   const { groups, hasMore } = useMemo(
     () => {
       const r = groupFromLookup(lookup, { activeFilters, showUnavailable, weekendsOnly, nightsFilter, dateFrom, dateTo, limit });
@@ -381,7 +220,6 @@ export default function AvailableClient({
 
   const totalAvailable = useMemo(() => groups.reduce((n, g) => n + g.totalAvailable, 0), [groups]);
 
-  // Fix: useEffect (not useMemo) for the side-effect fetch
   useEffect(() => {
     void fetch('/api/available/refresh').then(async (r) => {
       setRefreshStatus((await r.json()) as RefreshStatus);
@@ -402,8 +240,9 @@ export default function AvailableClient({
         const s = data.summary!;
         setRefreshMsg(`Done — ${s.cacheWrites} entries updated in ${(s.durationMs / 1000).toFixed(0)}s`);
         const fresh = await fetch('/api/available');
-        const { entries: newEntries } = (await fresh.json()) as { entries: AvailabilityWindowEntry[] };
-        setEntries(newEntries);
+        const { stays: newStays, readAt: newReadAt } = (await fresh.json()) as { stays: AvailableStay[]; readAt: string };
+        setEntries(newStays);
+        setReadAt(newReadAt);
       }
     } catch (err) {
       setRefreshMsg(err instanceof Error ? err.message : 'Network error');
@@ -476,8 +315,8 @@ export default function AvailableClient({
               {refreshMsg}
             </span>
           )}
-          {!refreshMsg && lastScanAt && (
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Last scan {relativeTime(lastScanAt)}</span>
+          {!refreshMsg && readAt && (
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Data as of {new Date(readAt).toLocaleTimeString()}</span>
           )}
           {refreshStatus && (
             <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>
@@ -487,17 +326,23 @@ export default function AvailableClient({
         </div>
       </div>
 
-      {entries.length === 0 && (
+      {loading && (
+        <div className="empty">
+          <p>Loading availability data…</p>
+        </div>
+      )}
+
+      {!loading && entries.length === 0 && (
         <div className="empty">
           <p>No cached availability data yet.</p>
           <p style={{ fontSize: 13 }}>Start the worker (<code>npm run worker</code>) or hit <strong>Refresh now</strong>.</p>
         </div>
       )}
-      {entries.length > 0 && groups.length === 0 && (
+      {!loading && entries.length > 0 && groups.length === 0 && (
         <div className="empty">No results match your current filters.</div>
       )}
 
-      {groups.length > 0 && (
+      {!loading && groups.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ margin: 0, flex: 1 }}>
             {groups.length} date{groups.length !== 1 ? 's' : ''}{weekendsOnly ? ' (weekends)' : ''}

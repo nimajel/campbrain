@@ -127,6 +127,18 @@ export interface AllAvailabilityCampground {
   sites: AllAvailabilitySite[];
 }
 
+/**
+ * Returns true when the API responded with a "fully booked" summary card
+ * (div.card with "Availability: No") rather than a per-site table.
+ * Distinguishes genuine "no sites open" from unexpected landing pages / errors.
+ */
+export function isNoAvailabilityPage(html: string): boolean {
+  return (
+    !html.includes('<section class="card">') &&
+    /Availability:\s*<strong><span[^>]*class="text-danger"/.test(html)
+  );
+}
+
 export function parseAllAvailability(html: string): AllAvailabilityCampground[] {
   try {
     const $ = load(html);

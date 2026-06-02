@@ -167,12 +167,17 @@ export function discoverFromHtml(
     provider: 'california-parks',
     parkName: opts.parkName,
     parkPageId: opts.parkPageId,
-    campgrounds: campgrounds.map((c) =>
-      discoveredToCatalogEntry(
-        c,
-        existing?.campgrounds.find((ec) => ec.name === c.name)
-      )
-    ),
+    // Preserve existing campgrounds when probe returns nothing — parks fully
+    // booked on all probe dates no longer show the per-site table in HTML.
+    campgrounds:
+      campgrounds.length > 0
+        ? campgrounds.map((c) =>
+            discoveredToCatalogEntry(
+              c,
+              existing?.campgrounds.find((ec) => ec.name === c.name)
+            )
+          )
+        : (existing?.campgrounds ?? []),
     defaultBookingRule: existing?.defaultBookingRule ?? CALIFORNIA_PARKS_DEFAULT_RULE,
     lastUpdatedAt: now,
     sourceUrl: sourceUrl ?? '',

@@ -40,8 +40,18 @@ const ONE_CG = [{ id: 'cg1', name: 'CG1', sites: [{ id: 's1', name: 'Site 1' }] 
 // ---------------------------------------------------------------------------
 
 describe('isParkStale', () => {
-  it('treats parks with no campgrounds as stale', () => {
-    expect(isParkStale(park({ campgrounds: [], lastUpdatedAt: new Date(NOW).toISOString() }), NOW)).toBe(true);
+  it('treats parks with no campgrounds and no prior attempt as stale', () => {
+    expect(isParkStale(park({ campgrounds: [] }), NOW)).toBe(true);
+  });
+
+  it('treats parks with no campgrounds but a recent attempt as fresh', () => {
+    const p = park({ campgrounds: [], lastDiscoveryAttemptAt: new Date(NOW - 2 * DAY).toISOString() });
+    expect(isParkStale(p, NOW, 30)).toBe(false);
+  });
+
+  it('treats parks with no campgrounds whose last attempt is old as stale', () => {
+    const p = park({ campgrounds: [], lastDiscoveryAttemptAt: new Date(NOW - 40 * DAY).toISOString() });
+    expect(isParkStale(p, NOW, 30)).toBe(true);
   });
 
   it('treats parks with no lastUpdatedAt as stale', () => {
