@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dayjs from 'dayjs';
 import SiteFilterPanel from '../components/SiteFilterPanel';
 import { injectBookingDates } from '../../lib/booking-url';
 import { ALL_REGIONS, REGION_LABELS } from '../../lib/regions';
@@ -15,11 +16,8 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function nightCount(from: string, to: string): number {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  return Math.round(
-    (new Date(to).getTime() - new Date(from).getTime()) / msPerDay
-  );
+function minCheckOut(checkIn: string): string {
+  return checkIn ? dayjs(checkIn).add(1, 'day').format('YYYY-MM-DD') : todayIso();
 }
 
 // ---------------------------------------------------------------------------
@@ -87,14 +85,14 @@ function ParkCard({
       </div>
 
       {open &&
-        park.campgrounds.map((cg, i) => {
+        park.campgrounds.map((cg) => {
           const hasAvail = cg.availableSites.length > 0;
           const hasWalkUp = showWalkUp && cg.walkUpSites.length > 0;
           if (!hasAvail && !hasWalkUp) return null;
 
           return (
             <div
-              key={i}
+              key={cg.name}
               style={{ padding: '7px 0', borderTop: '1px solid var(--border)' }}
             >
               <div
@@ -209,9 +207,13 @@ export default function FindCampsitesClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const nights = checkIn && checkOut ? nightCount(checkIn, checkOut) : 0;
-
+  const nights = checkIn && checkOut ? dayjs(checkOut).diff(dayjs(checkIn), 'day') : 0;
   const showWalkUp = !activeFilters.includes('exclude_walk_up');
+
+  // Clear stale results when dates become invalid
+  useEffect(() => {
+    if (!checkIn || !checkOut || checkIn >= checkOut) setData(null);
+  }, [checkIn, checkOut]);
 
   const runSearch = useCallback(async () => {
     if (!checkIn || !checkOut || checkIn >= checkOut) return;
@@ -246,7 +248,9 @@ export default function FindCampsitesClient() {
     void runSearch();
   }, [runSearch]);
 
-  const totalAvailable = data?.parks.reduce((n, p) => n + p.totalAvailable, 0) ?? 0;
+  const bookableParks = data?.parks.filter((p) => p.totalAvailable > 0) ?? [];
+  const walkUpOnlyParks = data?.parks.filter((p) => p.totalAvailable === 0) ?? [];
+  const totalAvailable = bookableParks.reduce((n, p) => n + p.totalAvailable, 0);
 
   return (
     <div>
@@ -270,7 +274,7 @@ export default function FindCampsitesClient() {
               min={todayIso()}
               onChange={(e) => {
                 setCheckIn(e.target.value);
-                // push check-out forward if it would be before new check-in
+                // clear check-out if it would be on or before new check-in
                 if (checkOut && e.target.value >= checkOut) setCheckOut('');
               }}
             />
@@ -280,7 +284,7 @@ export default function FindCampsitesClient() {
             <input
               type="date"
               value={checkOut}
-              min={checkIn || todayIso()}
+              min={minCheckOut(checkIn)}
               onChange={(e) => setCheckOut(e.target.value)}
             />
           </label>
@@ -317,7 +321,7 @@ export default function FindCampsitesClient() {
               className={`btn btn-sm ${selectedRegion === null ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setSelectedRegion(null)}
             >
-              {selectedRegion === null ? '✓ All' : 'All'}
+              All
             </button>
             {ALL_REGIONS.map((region) => (
               <button
@@ -338,14 +342,14 @@ export default function FindCampsitesClient() {
         <SiteFilterPanel activeFilters={activeFilters} onChange={setActiveFilters} />
       </div>
 
-      {/* States */}
-      {!checkIn && !checkOut && (
+      {/* Empty states — guarded by !loading to avoid overlap with spinner */}
+      {!loading && !checkIn && !checkOut && (
         <div className="empty">
           <p>Pick a check-in and check-out date to see available campsites.</p>
         </div>
       )}
 
-      {checkIn && !checkOut && (
+      {!loading && checkIn && !checkOut && (
         <div className="empty">
           <p>Now pick a check-out date.</p>
         </div>
@@ -366,24 +370,37 @@ export default function FindCampsitesClient() {
       {/* Results */}
       {!loading && data && (
         <>
-          {data.parks.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <h2 style={{ margin: 0, flex: 1 }}>
-                {data.parks.length} park{data.parks.length !== 1 ? 's' : ''}
-              </h2>
-              <span className="badge badge-green">
-                {totalAvailable} site{totalAvailable !== 1 ? 's' : ''} available
-              </span>
-            </div>
+          {/* Bookable parks */}
+          {bookableParks.length > 0 && (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <h2 style={{ margin: 0, flex: 1 }}>
+                  {bookableParks.length} park{bookableParks.length !== 1 ? 's' : ''}
+                </h2>
+                <span className="badge badge-green">
+                  {totalAvailable} site{totalAvailable !== 1 ? 's' : ''} available
+                </span>
+              </div>
+              {bookableParks.map((park) => (
+                <ParkCard
+                  key={park.parkPageId}
+                  park={park}
+                  checkIn={checkIn}
+                  nights={nights}
+                  showWalkUp={showWalkUp}
+                />
+              ))}
+            </>
           )}
 
-          {data.parks.map((park) => (
+          {/* Walk-up-only parks (no bookable sites) */}
+          {showWalkUp && walkUpOnlyParks.map((park) => (
             <ParkCard
               key={park.parkPageId}
               park={park}
@@ -393,38 +410,29 @@ export default function FindCampsitesClient() {
             />
           ))}
 
-          {/* Fallback panel */}
+          {/* Fallback panel — shown when no bookable sites found */}
           {data.fallback && (
             <div className="empty" style={{ textAlign: 'left' }}>
               <p style={{ fontWeight: 600, marginBottom: 8 }}>
-                No availability for those dates.
+                {walkUpOnlyParks.length > 0
+                  ? 'No reservable campsites — walk-up sites shown above.'
+                  : 'No availability for those dates.'}
               </p>
 
               {activeFilters.length > 0 && (
                 <p style={{ fontSize: 13, marginBottom: 12 }}>
-                  Try removing some site filters — they may be hiding available
-                  sites.
+                  Try removing some site filters — they may be hiding available sites.
                 </p>
               )}
 
               {data.fallback.alternateDates.length > 0 && (
                 <div>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--muted)',
-                      marginBottom: 8,
-                    }}
-                  >
-                    Next openings in{' '}
-                    {selectedRegion ? REGION_LABELS[selectedRegion] : 'all regions'}
-                    :
+                  <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
+                    Next bookable openings in{' '}
+                    {selectedRegion ? REGION_LABELS[selectedRegion] : 'all regions'}:
                   </p>
                   {data.fallback.alternateDates.map((p) => (
-                    <div
-                      key={p.parkPageId}
-                      style={{ fontSize: 13, marginBottom: 4 }}
-                    >
+                    <div key={p.parkPageId} style={{ fontSize: 13, marginBottom: 4 }}>
                       <strong>{p.parkName}</strong>{' '}
                       <span style={{ color: 'var(--muted)' }}>
                         &mdash; openings from{' '}
@@ -440,7 +448,7 @@ export default function FindCampsitesClient() {
 
               {data.fallback.alternateDates.length === 0 && (
                 <p style={{ fontSize: 13 }}>
-                  No availability found in the next 60 days for this region.
+                  No bookable availability found in the next 60 days for this region.
                   Try expanding your region or date range.
                 </p>
               )}
