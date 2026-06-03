@@ -12,6 +12,7 @@ import {
   type DiscoverOptions,
   type DiscoverResult,
 } from './discover-california-parks.js';
+import { discoverRecreationGovCatalog } from './discover-recreation-gov.js';
 
 export type DiscoverFn = (opts: DiscoverOptions) => Promise<DiscoverResult>;
 
@@ -138,9 +139,32 @@ function sleep(ms: number): Promise<void> {
 export async function refreshCatalog(opts: RefreshOptions = {}): Promise<RefreshSummary> {
   const nowMs = opts.nowMs ?? Date.now();
   const log = opts.logger ?? (() => {});
-  const discover = opts.discover ?? discoverCaliforniaParkCatalog;
   const delayMs = opts.delayMs ?? DEFAULT_DELAY_MS;
   const sampleDate = opts.sampleDate ?? defaultSampleDate(nowMs);
+
+  // Recreation.gov catalog discovery works differently — it fetches all CA facilities
+  // in one paginated pass. Return early rather than going through per-park discovery.
+  if (opts.provider === 'recreation-gov') {
+    const apiKey = process.env.RIDB_API_KEY;
+    if (!apiKey) {
+      log('RIDB_API_KEY is not set. Get a free key at https://ridb.recreation.gov/register');
+      return { attempted: 0, succeeded: 0, failed: 1, results: [] };
+    }
+    const summary = await discoverRecreationGovCatalog({
+      apiKey,
+      ...(opts.dataDir !== undefined ? { dataDir: opts.dataDir } : {}),
+      logger: log,
+    });
+    log(`Done: ${summary.facilitiesFound} facilities found, ${summary.written} written, ${summary.errors} errors`);
+    return {
+      attempted: summary.facilitiesFound,
+      succeeded: summary.written,
+      failed: summary.errors,
+      results: [],
+    };
+  }
+
+  const discover = opts.discover ?? discoverCaliforniaParkCatalog;
 
   const allParks = listCatalogParks(opts.dataDir);
   const selected = selectParksToRefresh(allParks, {
