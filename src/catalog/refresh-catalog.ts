@@ -145,13 +145,7 @@ export async function refreshCatalog(opts: RefreshOptions = {}): Promise<Refresh
   // Recreation.gov catalog discovery works differently — it fetches all CA facilities
   // in one paginated pass. Return early rather than going through per-park discovery.
   if (opts.provider === 'recreation-gov') {
-    const apiKey = process.env.RIDB_API_KEY;
-    if (!apiKey) {
-      log('RIDB_API_KEY is not set. Get a free key at https://ridb.recreation.gov/register');
-      return { attempted: 0, succeeded: 0, failed: 1, results: [] };
-    }
     const summary = await discoverRecreationGovCatalog({
-      apiKey,
       ...(opts.dataDir !== undefined ? { dataDir: opts.dataDir } : {}),
       logger: log,
     });

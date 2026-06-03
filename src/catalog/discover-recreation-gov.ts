@@ -1,8 +1,18 @@
+// ---------------------------------------------------------------------------
+// Recreation.gov catalog discovery — uses the recreation.gov public search API
+// (the same endpoint the website uses). No API key required.
+//
+// Approach: fetch pages of campground search results, collect all with
+// state_code === 'California', stop when pages run dry.
+// ---------------------------------------------------------------------------
+
 import type { ParkCatalogEntry, CatalogBookingRule } from './types.js';
 import { upsertCatalogPark } from './catalog-store.js';
 
-const RIDB_BASE_URL = 'https://ridb.recreation.gov/api/v1';
-const PAGE_SIZE = 50;
+const SEARCH_BASE = 'https://www.recreation.gov/api/search';
+const PAGE_SIZE = 100;
+// Stop after this many total records fetched (10k = 100 pages — well beyond actual count)
+const MAX_RECORDS = 10_000;
 
 const REC_GOV_DEFAULT_RULE: CatalogBookingRule = {
   type: 'rolling_months_before',
@@ -14,23 +24,23 @@ const REC_GOV_DEFAULT_RULE: CatalogBookingRule = {
 };
 
 // Exported for tests
-export function buildRidbFacilitiesUrl(apiKey: string, offset: number): string {
+export function buildSearchUrl(offset: number): string {
   const params = new URLSearchParams({
-    apikey: apiKey,
-    state: 'CA',
-    activity: '9',
-    limit: String(PAGE_SIZE),
-    offset: String(offset),
+    q: 'campground',
+    entity_type: 'campground',
+    size: String(PAGE_SIZE),
+    start: String(offset),
   });
-  return `${RIDB_BASE_URL}/facilities?${params}`;
+  return `${SEARCH_BASE}?${params}`;
 }
 
-export interface RidbFacility {
-  FacilityID: string;
-  FacilityName: string;
-  FacilityLatitude: number;
-  FacilityLongitude: number;
-  FacilityTypeDescription?: string;
+export interface RecGovSearchResult {
+  entity_id: string;
+  name: string;
+  state_code?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  reservable?: boolean;
 }
 
 function titleCase(name: string): string {
@@ -40,25 +50,27 @@ function titleCase(name: string): string {
 }
 
 // Exported for tests
-export function parseRidbFacilities(facilities: RidbFacility[]): ParkCatalogEntry[] {
-  return facilities.map((f): ParkCatalogEntry => {
-    const entry: ParkCatalogEntry = {
-      provider: 'recreation-gov',
-      parkName: titleCase(f.FacilityName),
-      parkPageId: String(f.FacilityID),
-      campgrounds: [],
-      defaultBookingRule: REC_GOV_DEFAULT_RULE,
-      discoveryStatus: 'not_started',
-    };
-    // Omit coordinates if zero (unset in RIDB) — exactOptionalPropertyTypes forbids lat: undefined
-    if (f.FacilityLatitude) entry.lat = f.FacilityLatitude;
-    if (f.FacilityLongitude) entry.lon = f.FacilityLongitude;
-    return entry;
-  });
+export function parseSearchResults(results: RecGovSearchResult[]): ParkCatalogEntry[] {
+  return results
+    .filter((r) => r.state_code === 'California' && r.entity_id)
+    .map((r): ParkCatalogEntry => {
+      const lat = r.latitude ? Number(r.latitude) : 0;
+      const lon = r.longitude ? Number(r.longitude) : 0;
+      const entry: ParkCatalogEntry = {
+        provider: 'recreation-gov',
+        parkName: titleCase(r.name),
+        parkPageId: String(r.entity_id),
+        campgrounds: [],
+        defaultBookingRule: REC_GOV_DEFAULT_RULE,
+        discoveryStatus: 'not_started',
+      };
+      if (lat) entry.lat = lat;
+      if (lon) entry.lon = lon;
+      return entry;
+    });
 }
 
 export interface DiscoverRecGovOptions {
-  apiKey: string;
   dataDir?: string;
   logger?: (msg: string) => void;
 }
@@ -74,39 +86,38 @@ export async function discoverRecreationGovCatalog(
 ): Promise<DiscoverRecGovSummary> {
   const log = opts.logger ?? (() => {});
   let offset = 0;
-  let total = 0;
+  let totalFetched = 0;
   let written = 0;
   let errors = 0;
+  const seen = new Set<string>(); // deduplicate by entity_id
 
-  log('Fetching CA camping facilities from RIDB API…');
+  log('Discovering CA campgrounds from recreation.gov search API…');
 
-  while (true) {
-    const url = buildRidbFacilitiesUrl(opts.apiKey, offset);
-    let facilities: RidbFacility[];
+  while (totalFetched < MAX_RECORDS) {
+    const url = buildSearchUrl(offset);
+    let results: RecGovSearchResult[];
 
     try {
       const res = await fetch(url, {
         headers: { 'User-Agent': 'campbrain/1.0 (personal-use catalog discovery)' },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as {
-        RECDATA: RidbFacility[];
-        METADATA: { Results: { CURRENT_COUNT: number; TOTAL_COUNT: number } };
-      };
-      facilities = json.RECDATA ?? [];
-      if (offset === 0) {
-        log(`  Total facilities available: ${json.METADATA?.Results?.TOTAL_COUNT ?? '?'}`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}${body ? `: ${body.slice(0, 100)}` : ''}`);
       }
+      const json = (await res.json()) as { results: RecGovSearchResult[] };
+      results = json.results ?? [];
     } catch (err) {
       log(`  Error fetching offset ${offset}: ${err instanceof Error ? err.message : String(err)}`);
       errors++;
       break;
     }
 
-    if (facilities.length === 0) break;
+    if (results.length === 0) break;
 
-    const entries = parseRidbFacilities(facilities);
-    for (const entry of entries) {
+    const caEntries = parseSearchResults(results).filter((e) => !seen.has(e.parkPageId));
+    for (const entry of caEntries) {
+      seen.add(entry.parkPageId);
       try {
         upsertCatalogPark(entry, opts.dataDir);
         written++;
@@ -116,13 +127,18 @@ export async function discoverRecreationGovCatalog(
       }
     }
 
-    total += facilities.length;
-    log(`  Fetched ${total} facilities so far…`);
+    totalFetched += results.length;
+    if (caEntries.length > 0) {
+      log(`  Fetched ${totalFetched} records, ${written} CA campgrounds written so far…`);
+    }
+
+    if (results.length < PAGE_SIZE) break; // last page
     offset += PAGE_SIZE;
 
     // Politeness delay between pages
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 500));
   }
 
-  return { facilitiesFound: total, written, errors };
+  log(`  Discovery complete: ${written} CA campgrounds written, ${errors} errors`);
+  return { facilitiesFound: written, written, errors };
 }

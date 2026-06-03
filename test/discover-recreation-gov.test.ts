@@ -1,66 +1,77 @@
 import { describe, it, expect } from 'vitest';
-import { buildRidbFacilitiesUrl, parseRidbFacilities } from '../src/catalog/discover-recreation-gov.js';
+import { buildSearchUrl, parseSearchResults } from '../src/catalog/discover-recreation-gov.js';
+import type { RecGovSearchResult } from '../src/catalog/discover-recreation-gov.js';
 
-describe('buildRidbFacilitiesUrl', () => {
-  it('includes the API key and state=CA filter', () => {
-    const url = buildRidbFacilitiesUrl('TESTKEY', 0);
-    expect(url).toContain('apikey=TESTKEY');
-    expect(url).toContain('state=CA');
+describe('buildSearchUrl', () => {
+  it('targets the recreation.gov search API', () => {
+    const url = buildSearchUrl(0);
+    expect(url).toContain('recreation.gov/api/search');
   });
 
-  it('includes activity=9 (Camping)', () => {
-    const url = buildRidbFacilitiesUrl('TESTKEY', 0);
-    expect(url).toContain('activity=9');
+  it('requests campground entity type', () => {
+    const url = buildSearchUrl(0);
+    expect(url).toContain('entity_type=campground');
   });
 
-  it('sets the correct offset', () => {
-    const url = buildRidbFacilitiesUrl('TESTKEY', 50);
-    expect(url).toContain('offset=50');
+  it('sets the correct start offset', () => {
+    const url = buildSearchUrl(50);
+    expect(url).toContain('start=50');
+  });
+
+  it('does not include any API key', () => {
+    const url = buildSearchUrl(0);
+    expect(url).not.toContain('apikey');
   });
 });
 
-describe('parseRidbFacilities', () => {
-  it('maps RIDB facility to ParkCatalogEntry shape', () => {
-    const rawFacilities = [
-      {
-        FacilityID: '232447',
-        FacilityName: 'UPPER PINES',
-        FacilityLatitude: 37.7393,
-        FacilityLongitude: -119.5593,
-        FacilityTypeDescription: 'Campground',
-      },
-    ];
+describe('parseSearchResults', () => {
+  const ca: RecGovSearchResult = {
+    entity_id: '232447',
+    name: 'UPPER PINES',
+    state_code: 'California',
+    latitude: 37.7393,
+    longitude: -119.5593,
+  };
 
-    const entries = parseRidbFacilities(rawFacilities);
+  const other: RecGovSearchResult = {
+    entity_id: '999',
+    name: 'SOME PARK',
+    state_code: 'Oregon',
+    latitude: 45,
+    longitude: -122,
+  };
+
+  it('keeps only California campgrounds', () => {
+    const entries = parseSearchResults([ca, other]);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.parkPageId).toBe('232447');
+  });
+
+  it('title-cases ALL_CAPS names', () => {
+    const entries = parseSearchResults([ca]);
     expect(entries[0]!.parkName).toBe('Upper Pines');
+  });
+
+  it('sets provider to recreation-gov', () => {
+    const entries = parseSearchResults([ca]);
     expect(entries[0]!.provider).toBe('recreation-gov');
+  });
+
+  it('sets lat/lon when present', () => {
+    const entries = parseSearchResults([ca]);
     expect(entries[0]!.lat).toBeCloseTo(37.7393);
     expect(entries[0]!.lon).toBeCloseTo(-119.5593);
   });
 
-  it('title-cases ALL_CAPS facility names', () => {
-    const rawFacilities = [
-      { FacilityID: '1', FacilityName: 'LOWER PINES', FacilityLatitude: 0, FacilityLongitude: 0 },
-    ];
-    const entries = parseRidbFacilities(rawFacilities);
-    expect(entries[0]!.parkName).toBe('Lower Pines');
-  });
-
-  it('omits lat/lon when coordinates are zero', () => {
-    const rawFacilities = [
-      { FacilityID: '999', FacilityName: 'NO COORDS', FacilityLatitude: 0, FacilityLongitude: 0 },
-    ];
-    const entries = parseRidbFacilities(rawFacilities);
+  it('omits lat/lon when zero', () => {
+    const noCoords: RecGovSearchResult = { entity_id: '1', name: 'NO COORDS', state_code: 'California', latitude: 0, longitude: 0 };
+    const entries = parseSearchResults([noCoords]);
     expect(entries[0]!.lat).toBeUndefined();
     expect(entries[0]!.lon).toBeUndefined();
   });
 
-  it('sets provider to recreation-gov', () => {
-    const entries = parseRidbFacilities([
-      { FacilityID: '1', FacilityName: 'TEST', FacilityLatitude: 37, FacilityLongitude: -120 },
-    ]);
-    expect(entries[0]!.provider).toBe('recreation-gov');
+  it('excludes entries without entity_id', () => {
+    const noId: RecGovSearchResult = { entity_id: '', name: 'MISSING ID', state_code: 'California' };
+    expect(parseSearchResults([noId])).toHaveLength(0);
   });
 });
