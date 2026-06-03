@@ -42,6 +42,41 @@ export function listCatalogParks(dataDir?: string): ParkCatalogEntry[] {
   return SUPPORTED_PROVIDERS.flatMap((p) => readProviderCatalogRaw(p, dataDir).parks);
 }
 
+/**
+ * Returns a human-readable summary of what the proactive scanner will cover,
+ * grouped by provider. Uses the same eligibility rules as the scanner itself.
+ * Use this anywhere we display "X CA parks + Y Rec.gov campgrounds" so the
+ * count stays in sync with the actual catalog automatically.
+ *
+ * Example: "88 CA state parks · 878 Recreation.gov campgrounds"
+ */
+export function describeScanCoverage(dataDir?: string): string {
+  const all = listCatalogParks(dataDir);
+
+  const counts: Record<string, number> = {};
+  for (const p of all) {
+    const eligible =
+      p.provider === 'recreation-gov'
+        ? !!p.parkPageId
+        : p.campgrounds.some((c) => c.sites.length > 0);
+    if (eligible) {
+      counts[p.provider] = (counts[p.provider] ?? 0) + 1;
+    }
+  }
+
+  const labels: Record<string, string> = {
+    'california-parks': 'CA state park',
+    'recreation-gov': 'Recreation.gov campground',
+  };
+
+  return Object.entries(counts)
+    .map(([provider, n]) => {
+      const label = labels[provider] ?? provider;
+      return `${n} ${label}${n !== 1 ? 's' : ''}`;
+    })
+    .join(' · ');
+}
+
 export function getCatalogPark(parkPageId: string, dataDir?: string): ParkCatalogEntry | undefined {
   return listCatalogParks(dataDir).find((p) => p.parkPageId === parkPageId);
 }

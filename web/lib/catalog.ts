@@ -3,6 +3,7 @@ import {
   listCatalogParks,
   getCatalogPark,
   getCatalogParkByName,
+  describeScanCoverage,
 } from '../../src/catalog/catalog-store';
 import type { ParkCatalogEntry, CampgroundCatalogEntry, CatalogBookingRule, DiscoveryStatus } from '../../src/catalog/types';
 
@@ -35,4 +36,8 @@ export function inferBookingRule(parkPageId: string, campgroundId?: string): Cat
   return park.defaultBookingRule;
 }
 
+/** Web-context wrapper: resolves the data dir relative to the Next.js process. */
+export function describeScanCoverageWeb(): string {
+  return describeScanCoverage(dataDir());
+}
 export type { ParkCatalogEntry, CampgroundCatalogEntry, CatalogBookingRule, DiscoveryStatus };

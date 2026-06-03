@@ -1,6 +1,7 @@
 import path from 'path';
 import { getSetupStatus } from '../../../src/status/setup-status';
 import { getCacheStats } from '../../lib/availability-cache';
+import { describeScanCoverageWeb } from '../../lib/catalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,7 +100,7 @@ export default async function SettingsPage() {
             {workerActive ? 'Active' : cacheStats?.lastScanAt ? 'Idle (last scan too old)' : 'Not running'}
           </span>
         </div>
-        <KvRow label="Cache refresh interval" value={`Every ${worker.proactiveIntervalMinutes} minutes — CA state parks + Recreation.gov campgrounds`} />
+        <KvRow label="Cache refresh interval" value={`Every ${worker.proactiveIntervalMinutes} minutes — ${describeScanCoverageWeb()}`} />
         <KvRow label="Alert scan interval" value={`Every ${worker.alertIntervalMinutes} minutes — saved alert targets`} />
         <KvRow label="Scan on start" value={worker.scanOnStart ? 'Yes' : 'No (CAMPBRAIN_SCAN_ON_START=false)'} />
         <KvRow label="Start command" value="npm run worker" />

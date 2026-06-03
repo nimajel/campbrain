@@ -1,6 +1,7 @@
 import { runScan } from '../../scanner/run-scan.js';
 import { runProactiveScan } from '../../scanner/proactive-scanner.js';
 import { loadTargets } from '../../config/targets.js';
+import { describeScanCoverage } from '../../catalog/catalog-store.js';
 
 const MIN_INTERVAL_MINUTES = 15;
 const DEFAULT_INTERVAL_MINUTES = 60;
@@ -70,7 +71,7 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
   console.log('\n🏕️  CampBrain Worker\n');
   console.log(`  Started:        ${timestamp()}`);
   console.log(`  Alert scan:     every ${intervalMinutes} minute${intervalMinutes !== 1 ? 's' : ''} (${targets.length} target${targets.length !== 1 ? 's' : ''})`);
-  console.log(`  Cache refresh:  every ${proactiveIntervalMinutes} minute${proactiveIntervalMinutes !== 1 ? 's' : ''} (all 88 CA parks)`);
+  console.log(`  Cache refresh:  every ${proactiveIntervalMinutes} minute${proactiveIntervalMinutes !== 1 ? 's' : ''} (${describeScanCoverage()})`);
   if (targets.length > 0) {
     for (const t of targets) console.log(`    • ${t.name}`);
   }
