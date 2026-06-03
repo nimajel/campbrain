@@ -579,7 +579,9 @@ export type SearchParkResult = {
 /**
  * Find all sites with status='available' on EVERY night from `from` (inclusive)
  * to `to` (exclusive — last night is the night before `to`).
- * Applies FILTER_SQL patterns for the given filterIds.
+ * Applies FILTER_SQL patterns for the given filterIds. `exclude_walk_up` is
+ * intentionally not in FILTER_SQL — walk-up sites are always returned in the
+ * `walkUpSites` array and the caller decides whether to display them.
  * Walk-up (hike/bike) sites are separated into walkUpSites; bookable sites go
  * into availableSites. Parks with zero bookable sites still appear if they have
  * walk-up sites.
