@@ -125,7 +125,8 @@ export async function runProactiveScan(
   let fetchErrors = 0;
   let cacheWrites = 0;
 
-  const fetchTasks = toScan.map((candidate) => async () => {
+  // Build task function for a single candidate
+  const makeTask = (candidate: Candidate) => async () => {
     const park = parkByPageId.get(candidate.parkPageId);
     if (!park) return;
     const provider = getProvider(park.provider);
@@ -153,14 +154,31 @@ export async function runProactiveScan(
     if (windowsWithAvail > 0) {
       log(`  ✓ ${park.parkName} ${candidate.windowStart} — ${windowsWithAvail} campground(s) with availability`);
     }
-  });
+  };
 
-  // Run with concurrency + politeness delay between batches
-  for (let i = 0; i < fetchTasks.length; i += FETCH_CONCURRENCY * 2) {
-    const batch = fetchTasks.slice(i, i + FETCH_CONCURRENCY * 2);
-    await runWithConcurrency(batch, FETCH_CONCURRENCY);
-    if (i + batch.length < fetchTasks.length) {
-      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+  // Run each provider's tasks with its declared concurrency. Different providers
+  // have different rate limits — Rec.gov is much stricter than CA Parks.
+  const byProvider = new Map<string, Candidate[]>();
+  for (const c of toScan) {
+    const list = byProvider.get(c.providerName) ?? [];
+    list.push(c);
+    byProvider.set(c.providerName, list);
+  }
+
+  for (const [providerName, candidates] of byProvider) {
+    const provider = getProvider(providerName);
+    const concurrency = provider.proactiveConcurrency ?? FETCH_CONCURRENCY;
+    const tasks = candidates.map(makeTask);
+    const batchSize = concurrency * 2;
+
+    log(`  Scanning ${candidates.length} windows for ${providerName} (concurrency: ${concurrency})…`);
+
+    for (let i = 0; i < tasks.length; i += batchSize) {
+      const batch = tasks.slice(i, i + batchSize);
+      await runWithConcurrency(batch, concurrency);
+      if (i + batch.length < tasks.length) {
+        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+      }
     }
   }
 

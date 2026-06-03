@@ -261,9 +261,10 @@ describe('RecreationGovProvider.proactiveScanWindow', () => {
     global.fetch = originalFetch;
   });
 
-  it('returns null on non-ok HTTP response', async () => {
+  it('returns null on non-ok HTTP response (non-429)', async () => {
+    // Use 503 so we don't trigger the 429 retry loop
     const originalFetch = global.fetch;
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 429 }) as typeof fetch;
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 }) as typeof fetch;
     const result = await provider.proactiveScanWindow(
       '232447',
       { windowStart: '2026-07-01', windowEnd: '2026-07-31' },
@@ -271,6 +272,29 @@ describe('RecreationGovProvider.proactiveScanWindow', () => {
       []
     );
     expect(result).toBeNull();
+    global.fetch = originalFetch;
+  });
+
+  it('retries on 429 then succeeds', async () => {
+    const mockResponse = makeMockResponse({ 'A01': { '2026-07-04': 'Available' } });
+    const originalFetch = global.fetch;
+    let callCount = 0;
+    global.fetch = vi.fn().mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) return { ok: false, status: 429 };
+      return { ok: true, json: async () => mockResponse };
+    }) as typeof fetch;
+
+    // Use zero delays so the test runs instantly
+    const result = await provider.fetchWithRetry(
+      'https://www.recreation.gov/api/camps/availability/campground/232447/month?start_date=2026-07-01T00:00:00.000Z',
+      'Upper Pines',
+      '2026-07-01',
+      [0, 0, 0]
+    );
+
+    expect(callCount).toBe(2);
+    expect(result.count).toBeDefined();
     global.fetch = originalFetch;
   });
 

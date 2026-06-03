@@ -49,10 +49,39 @@ function titleCase(name: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Name fragments that identify non-campground facilities the availability API
+// doesn't serve. These slip through the "campground" entity_type filter.
+const NON_CAMPGROUND_PATTERNS = [
+  /\bday use\b/i,
+  /\bvisitor center\b/i,
+  /\bboat ramp\b/i,
+  /\bpicnic\b/i,
+  /\btrailhead\b/i,
+  /\bohv\b/i,
+  /\boff.highway\b/i,
+  /\bwilderness permit\b/i,
+  /\bbackpack permit\b/i,
+  /\blong term visitor area\b/i,
+  /\briver access\b/i,
+  /\bnatural area\b/i,
+  /\bmanagement area\b/i,
+  /\brecreation area\b/i,
+  /\bwild & scenic\b/i,
+  /\bchristmas tree permit\b/i,
+  /put.in$/i,
+];
+
+function isLikelyCampground(name: string, reservable?: boolean): boolean {
+  // Must be reservable to have a campground availability endpoint
+  if (reservable === false) return false;
+  // Exclude by name pattern
+  return !NON_CAMPGROUND_PATTERNS.some((re) => re.test(name));
+}
+
 // Exported for tests
 export function parseSearchResults(results: RecGovSearchResult[]): ParkCatalogEntry[] {
   return results
-    .filter((r) => r.state_code === 'California' && r.entity_id)
+    .filter((r) => r.state_code === 'California' && r.entity_id && isLikelyCampground(r.name, r.reservable))
     .map((r): ParkCatalogEntry => {
       const lat = r.latitude ? Number(r.latitude) : 0;
       const lon = r.longitude ? Number(r.longitude) : 0;

@@ -11,6 +11,12 @@ export interface CacheWindow {
 export interface AvailabilityProvider {
   name: string;
 
+  /**
+   * Max simultaneous proactiveScanWindow calls the scanner should make for
+   * this provider. Defaults to 5 if not set. Rec.gov is strict — use 2.
+   */
+  proactiveConcurrency?: number;
+
   /** Alert-based scanning — check specific date candidates against a target. */
   scan(
     target: Target,

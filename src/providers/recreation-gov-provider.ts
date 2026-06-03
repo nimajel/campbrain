@@ -79,8 +79,12 @@ export function evaluateRecGovCandidate(
   return hits;
 }
 
+export const REC_GOV_RETRY_DELAYS_MS = [10_000, 30_000, 60_000]; // 10s, 30s, 60s backoff on 429
+
 export class RecreationGovProvider implements AvailabilityProvider {
   name = 'recreation-gov';
+  /** Keep concurrent requests low — recreation.gov rate-limits aggressively. */
+  proactiveConcurrency = 2;
 
   async scan(
     target: Target,
@@ -146,6 +150,33 @@ export class RecreationGovProvider implements AvailabilityProvider {
     };
   }
 
+  /** Fetch the monthly availability JSON, retrying on 429 with backoff.
+   *  retryDelaysMs is injectable for testing (pass [0,0,0] to skip real waits). */
+  async fetchWithRetry(
+    url: string,
+    parkName: string,
+    windowStart: string,
+    retryDelaysMs = REC_GOV_RETRY_DELAYS_MS
+  ): Promise<RecGovAvailabilityResponse> {
+    for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'campbrain/1.0 (personal-use camping assistant)' },
+      });
+
+      if (response.status === 429) {
+        const delayMs = retryDelaysMs[attempt];
+        if (delayMs === undefined) throw new Error('HTTP 429 — rate limited after all retries');
+        console.warn(`  ⏳ ${parkName} ${windowStart} — rate limited (429), retrying in ${delayMs / 1000}s`);
+        await new Promise((r) => setTimeout(r, delayMs));
+        continue;
+      }
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return (await response.json()) as RecGovAvailabilityResponse;
+    }
+    throw new Error('HTTP 429 — rate limited after all retries');
+  }
+
   generateCacheWindows(rangeStart: string, rangeEnd: string): CacheWindow[] {
     const windows: CacheWindow[] = [];
     // Step back to the 1st of the month containing rangeStart
@@ -171,11 +202,7 @@ export class RecreationGovProvider implements AvailabilityProvider {
 
     let data: RecGovAvailabilityResponse;
     try {
-      const response = await fetch(url, {
-        headers: { 'User-Agent': 'campbrain/1.0 (personal-use camping assistant)' },
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      data = (await response.json()) as RecGovAvailabilityResponse;
+      data = await this.fetchWithRetry(url, parkName, window.windowStart);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`  ✗ ${parkName} ${window.windowStart} — ${msg}`);
