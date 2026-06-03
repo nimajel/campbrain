@@ -51,6 +51,10 @@ export async function GET(
       ? (regionParam as CampRegion)
       : null;
 
+  if (regionParam && !regionFilter) {
+    return NextResponse.json({ error: `invalid region: ${regionParam}` }, { status: 400 });
+  }
+
   if (!from || !to || from >= to) {
     return NextResponse.json(
       { error: 'from and to are required and from must be before to' },
