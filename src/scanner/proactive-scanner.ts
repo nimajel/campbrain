@@ -168,16 +168,20 @@ export async function runProactiveScan(
   for (const [providerName, candidates] of byProvider) {
     const provider = getProvider(providerName);
     const concurrency = provider.proactiveConcurrency ?? FETCH_CONCURRENCY;
+    const delayMs = provider.batchDelayMs ?? BATCH_DELAY_MS;
+    // Use concurrency as batchSize (not concurrency*2) so the delay fires
+    // after every batch — critical for providers like Rec.gov where concurrency=1
+    // and each "batch" is a single request.
+    const batchSize = concurrency;
     const tasks = candidates.map(makeTask);
-    const batchSize = concurrency * 2;
 
-    log(`  Scanning ${candidates.length} windows for ${providerName} (concurrency: ${concurrency})…`);
+    log(`  Scanning ${candidates.length} windows for ${providerName} (concurrency: ${concurrency}, delay: ${delayMs}ms)…`);
 
     for (let i = 0; i < tasks.length; i += batchSize) {
       const batch = tasks.slice(i, i + batchSize);
       await runWithConcurrency(batch, concurrency);
       if (i + batch.length < tasks.length) {
-        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+        await new Promise((r) => setTimeout(r, delayMs));
       }
     }
   }

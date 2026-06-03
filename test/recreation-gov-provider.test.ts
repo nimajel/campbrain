@@ -294,7 +294,8 @@ describe('RecreationGovProvider.proactiveScanWindow', () => {
     );
 
     expect(callCount).toBe(2);
-    expect(result.count).toBeDefined();
+    expect(result).not.toBeNull();
+    expect(result!.count).toBeDefined();
     global.fetch = originalFetch;
   });
 

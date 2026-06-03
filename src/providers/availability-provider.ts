@@ -13,9 +13,15 @@ export interface AvailabilityProvider {
 
   /**
    * Max simultaneous proactiveScanWindow calls the scanner should make for
-   * this provider. Defaults to 5 if not set. Rec.gov is strict — use 2.
+   * this provider. Defaults to 5 if not set. Rec.gov is strict — use 1.
    */
   proactiveConcurrency?: number;
+
+  /**
+   * Milliseconds to wait between task batches. Rec.gov needs 2000ms
+   * (≈30 req/min) to stay under its rate limit. CA Parks default: 500ms.
+   */
+  batchDelayMs?: number;
 
   /** Alert-based scanning — check specific date candidates against a target. */
   scan(

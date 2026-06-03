@@ -83,8 +83,10 @@ export const REC_GOV_RETRY_DELAYS_MS = [10_000, 30_000, 60_000]; // 10s, 30s, 60
 
 export class RecreationGovProvider implements AvailabilityProvider {
   name = 'recreation-gov';
-  /** Keep concurrent requests low — recreation.gov rate-limits aggressively. */
-  proactiveConcurrency = 2;
+  /** Sequential requests only — recreation.gov rate-limits aggressively. */
+  proactiveConcurrency = 1;
+  /** 2 seconds between requests ≈ 30 req/min, well under recreation.gov limits. */
+  batchDelayMs = 2_000;
 
   async scan(
     target: Target,
@@ -157,7 +159,7 @@ export class RecreationGovProvider implements AvailabilityProvider {
     parkName: string,
     windowStart: string,
     retryDelaysMs = REC_GOV_RETRY_DELAYS_MS
-  ): Promise<RecGovAvailabilityResponse> {
+  ): Promise<RecGovAvailabilityResponse | null> {
     for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
       const response = await fetch(url, {
         headers: { 'User-Agent': 'campbrain/1.0 (personal-use camping assistant)' },
@@ -170,6 +172,11 @@ export class RecreationGovProvider implements AvailabilityProvider {
         await new Promise((r) => setTimeout(r, delayMs));
         continue;
       }
+
+      // 400 means this facility ID doesn't support the campground availability
+      // endpoint (e.g. permit-only or group sites using a different API).
+      // Return null silently so the scanner skips it without noisy errors.
+      if (response.status === 400) return null;
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return (await response.json()) as RecGovAvailabilityResponse;
@@ -202,7 +209,9 @@ export class RecreationGovProvider implements AvailabilityProvider {
 
     let data: RecGovAvailabilityResponse;
     try {
-      data = await this.fetchWithRetry(url, parkName, window.windowStart);
+      const result = await this.fetchWithRetry(url, parkName, window.windowStart);
+      if (result === null) return null; // 400 — facility doesn't support this endpoint
+      data = result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`  ✗ ${parkName} ${window.windowStart} — ${msg}`);
