@@ -99,7 +99,7 @@ export default async function SettingsPage() {
             {workerActive ? 'Active' : cacheStats?.lastScanAt ? 'Idle (last scan too old)' : 'Not running'}
           </span>
         </div>
-        <KvRow label="Cache refresh interval" value={`Every ${worker.proactiveIntervalMinutes} minutes — all 88 CA parks`} />
+        <KvRow label="Cache refresh interval" value={`Every ${worker.proactiveIntervalMinutes} minutes — CA state parks + Recreation.gov campgrounds`} />
         <KvRow label="Alert scan interval" value={`Every ${worker.alertIntervalMinutes} minutes — saved alert targets`} />
         <KvRow label="Scan on start" value={worker.scanOnStart ? 'Yes' : 'No (CAMPBRAIN_SCAN_ON_START=false)'} />
         <KvRow label="Start command" value="npm run worker" />

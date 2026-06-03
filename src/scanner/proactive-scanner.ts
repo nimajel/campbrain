@@ -58,9 +58,12 @@ export async function runProactiveScan(
   const rangeStart = today.add(2, 'day').format('YYYY-MM-DD');
   const rangeEnd = today.add(daysAhead, 'day').format('YYYY-MM-DD');
 
-  // Eligible parks: any provider, must have at least one site in catalog
+  // Eligible parks: any provider with a valid page ID.
+  // CA Parks requires pre-discovered campground/site data (populated by catalog:refresh).
+  // Rec.gov discovers sites live from the availability API — just needs a parkPageId.
   const parks = listCatalogParks().filter((p) => {
     if (verifiedOnly && !p.pageIdVerified) return false;
+    if (p.provider === 'recreation-gov') return !!p.parkPageId;
     return p.campgrounds.some((c) => c.sites.length > 0);
   });
 
