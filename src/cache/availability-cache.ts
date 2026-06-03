@@ -635,13 +635,14 @@ export async function searchAvailableStays(params: {
       AND p.park_page_id = s.park_page_id
     WHERE s.provider_id = $1
       AND s.site_id IN (
-        SELECT site_id
-        FROM availability
-        WHERE date >= $2::date
-          AND date < $3::date
-          AND status = 'available'
-        GROUP BY site_id
-        HAVING COUNT(DISTINCT date) = $4::int
+        SELECT a.site_id
+        FROM availability a
+        JOIN sites s2 ON s2.site_id = a.site_id AND s2.provider_id = $1
+        WHERE a.date >= $2::date
+          AND a.date < $3::date
+          AND a.status = 'available'
+        GROUP BY a.site_id
+        HAVING COUNT(DISTINCT a.date) = $4::int
       )
       ${filterWhere}
     ORDER BY p.park_name, cg.campground_name, s.site_name
@@ -708,6 +709,9 @@ export async function findNextAvailableDates(params: {
     `a.status = 'available'`,
     `a.date >= CURRENT_DATE`,
     `a.date <= $2::date`,
+    // Walk-up (hike/bike) sites are never reservable; exclude so the fallback
+    // panel only surfaces parks with actual bookable openings.
+    `NOT (s.site_name ~* 'hike\\s*[/&]?\\s*bike')`,
   ];
 
   if (parkPageIds && parkPageIds.length > 0) {
