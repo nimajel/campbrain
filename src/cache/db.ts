@@ -33,6 +33,7 @@ const MV_DEFINITION = `
   CREATE MATERIALIZED VIEW IF NOT EXISTS mv_available_stays AS
   WITH avail AS (
     SELECT
+      s.provider_id,
       s.park_page_id,
       s.campground_name,
       s.site_name,
@@ -40,23 +41,24 @@ const MV_DEFINITION = `
       a.date,
       s.site_name ~* 'hike\\s*[/&]?\\s*bike' AS is_walk_up
     FROM availability a
-    JOIN sites s ON s.site_id = a.site_id AND s.provider_id = 'california-parks'
+    JOIN sites s ON s.site_id = a.site_id
     WHERE a.status = 'available' AND a.date >= CURRENT_DATE
   ),
   stays AS (
     -- 1-night stays: all sites (bookable + walk-up)
-    SELECT a.park_page_id, a.campground_name, a.date AS arrival_date, 1 AS nights,
+    SELECT a.provider_id, a.park_page_id, a.campground_name, a.date AS arrival_date, 1 AS nights,
            a.site_name, a.is_walk_up
     FROM avail a
     UNION ALL
     -- 2-night stays: bookable sites only (walk-up cannot be reserved multi-night)
-    SELECT a1.park_page_id, a1.campground_name, a1.date AS arrival_date, 2 AS nights,
+    SELECT a1.provider_id, a1.park_page_id, a1.campground_name, a1.date AS arrival_date, 2 AS nights,
            a1.site_name, a1.is_walk_up
     FROM avail a1
     JOIN avail a2 ON a2.site_id = a1.site_id AND a2.date = a1.date + interval '1 day'
     WHERE NOT a1.is_walk_up
   )
   SELECT
+    s.provider_id,
     s.park_page_id,
     p.park_name,
     s.campground_name,
@@ -73,12 +75,12 @@ const MV_DEFINITION = `
       '{}'::text[]
     ) AS walk_up_sites
   FROM stays s
-  JOIN parks p ON p.provider_id = 'california-parks' AND p.park_page_id = s.park_page_id
+  JOIN parks p ON p.provider_id = s.provider_id AND p.park_page_id = s.park_page_id
   JOIN campgrounds cg
-    ON cg.provider_id = 'california-parks'
+    ON cg.provider_id = s.provider_id
     AND cg.park_page_id = s.park_page_id
     AND cg.campground_name = s.campground_name
-  GROUP BY s.park_page_id, p.park_name, s.campground_name,
+  GROUP BY s.provider_id, s.park_page_id, p.park_name, s.campground_name,
            cg.nightly_fee, cg.booking_url, s.arrival_date, s.nights
   WITH NO DATA
 `;
@@ -97,6 +99,12 @@ export async function initDb(): Promise<void> {
   await db`
     INSERT INTO providers (provider_id, display_name, base_url)
     VALUES ('california-parks', 'California State Parks', 'https://www.parks.ca.gov')
+    ON CONFLICT (provider_id) DO NOTHING
+  `;
+
+  await db`
+    INSERT INTO providers (provider_id, display_name, base_url)
+    VALUES ('recreation-gov', 'Recreation.gov', 'https://www.recreation.gov')
     ON CONFLICT (provider_id) DO NOTHING
   `;
 
@@ -166,7 +174,7 @@ export async function initDb(): Promise<void> {
 
   await db`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_available_stays_pk
-      ON mv_available_stays(park_page_id, campground_name, arrival_date, nights)
+      ON mv_available_stays(provider_id, park_page_id, campground_name, arrival_date, nights)
   `;
 
   await db`
@@ -186,7 +194,7 @@ export async function rebuildMaterializedView(): Promise<void> {
   await db.unsafe(MV_DEFINITION.replace('IF NOT EXISTS ', ''));
   await db`
     CREATE UNIQUE INDEX idx_mv_available_stays_pk
-      ON mv_available_stays(park_page_id, campground_name, arrival_date, nights)
+      ON mv_available_stays(provider_id, park_page_id, campground_name, arrival_date, nights)
   `;
   await db`
     CREATE INDEX idx_mv_available_stays_date

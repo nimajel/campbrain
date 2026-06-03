@@ -46,6 +46,7 @@ export function cacheKey(parkPageId: string, windowStart: string): string {
 export const WINDOW_DAYS = 8;
 
 export interface AvailableStay {
+  providerId: string;
   parkPageId: string;
   parkName: string;
   campgroundName: string;

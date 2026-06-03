@@ -426,6 +426,7 @@ export async function listAvailableStays(
   if (to)   { clauses.push(`arrival_date <= $${params.length + 1}`); params.push(to); }
 
   type MvRow = {
+    provider_id: string;
     park_page_id: string;
     park_name: string;
     campground_name: string;
@@ -438,7 +439,7 @@ export async function listAvailableStays(
   };
 
   const rows = await sql.unsafe<MvRow[]>(
-    `SELECT park_page_id, park_name, campground_name, nightly_fee, booking_url,
+    `SELECT provider_id, park_page_id, park_name, campground_name, nightly_fee, booking_url,
             arrival_date::text, nights, available_sites, walk_up_sites
      FROM mv_available_stays
      WHERE ${clauses.join(' AND ')}
@@ -447,6 +448,7 @@ export async function listAvailableStays(
   );
 
   return rows.map((r) => ({
+    providerId: r.provider_id,
     parkPageId: r.park_page_id,
     parkName: r.park_name,
     campgroundName: r.campground_name,
