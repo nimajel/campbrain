@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   buildAvailabilityUrl,
   buildBookingUrl,
   monthStartForDate,
   evaluateRecGovCandidate,
+  RecreationGovProvider,
   type RecGovAvailabilityResponse,
 } from '../src/providers/recreation-gov-provider.js';
 import type { ScanCandidate } from '../src/types/scanner.js';
@@ -181,5 +182,151 @@ describe('evaluateRecGovCandidate — matches available sites', () => {
 
     const hits = evaluateRecGovCandidate(monthData, candidate, ['001']);
     expect(hits[0]?.confidence).toBe('high');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateCacheWindows
+// ---------------------------------------------------------------------------
+
+describe('RecreationGovProvider.generateCacheWindows', () => {
+  const provider = new RecreationGovProvider();
+
+  it('returns one window per calendar month spanning the range', () => {
+    const windows = provider.generateCacheWindows('2026-07-01', '2026-09-15');
+    expect(windows.map((w) => w.windowStart)).toEqual(['2026-07-01', '2026-08-01', '2026-09-01']);
+  });
+
+  it('window starts on the 1st of each month', () => {
+    const windows = provider.generateCacheWindows('2026-08-15', '2026-09-05');
+    expect(windows.every((w) => w.windowStart.endsWith('-01'))).toBe(true);
+  });
+
+  it('window ends on the last day of each month', () => {
+    const windows = provider.generateCacheWindows('2026-06-10', '2026-07-20');
+    const juneWindow = windows.find((w) => w.windowStart === '2026-06-01');
+    expect(juneWindow?.windowEnd).toBe('2026-06-30');
+    const julyWindow = windows.find((w) => w.windowStart === '2026-07-01');
+    expect(julyWindow?.windowEnd).toBe('2026-07-31');
+  });
+
+  it('covers a 180-day lookahead without gaps', () => {
+    const windows = provider.generateCacheWindows('2026-06-04', '2026-12-01');
+    expect(windows.map((w) => w.windowStart)).toContain('2026-06-01');
+    expect(windows.map((w) => w.windowStart)).toContain('2026-12-01');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// proactiveScanWindow — mock fetch
+// ---------------------------------------------------------------------------
+
+function makeMockResponse(
+  siteData: Record<string, Record<string, 'Available' | 'Reserved'>>
+): RecGovAvailabilityResponse {
+  const campsites: RecGovAvailabilityResponse['campsites'] = {};
+  let id = 1;
+  for (const [siteName, avail] of Object.entries(siteData)) {
+    const campsite_id = String(id++);
+    const availabilities: Record<string, string> = {};
+    for (const [date, status] of Object.entries(avail)) {
+      availabilities[`${date}T00:00:00Z`] = status;
+    }
+    campsites[campsite_id] = {
+      availabilities,
+      campsite_id,
+      loop: 'MAIN',
+      site: siteName,
+      type_of_use: 'Overnight',
+      max_num_people: 6,
+      min_num_people: 1,
+    };
+  }
+  return { campsites, count: Object.keys(campsites).length };
+}
+
+describe('RecreationGovProvider.proactiveScanWindow', () => {
+  const provider = new RecreationGovProvider();
+
+  it('returns null when fetch fails', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error')) as typeof fetch;
+    const result = await provider.proactiveScanWindow(
+      '232447',
+      { windowStart: '2026-07-01', windowEnd: '2026-07-31' },
+      'Upper Pines',
+      []
+    );
+    expect(result).toBeNull();
+    global.fetch = originalFetch;
+  });
+
+  it('returns null on non-ok HTTP response', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 429 }) as typeof fetch;
+    const result = await provider.proactiveScanWindow(
+      '232447',
+      { windowStart: '2026-07-01', windowEnd: '2026-07-31' },
+      'Upper Pines',
+      []
+    );
+    expect(result).toBeNull();
+    global.fetch = originalFetch;
+  });
+
+  it('returns an AvailabilityWindowEntry with correct shape on success', async () => {
+    const mockResponse = makeMockResponse({
+      'A01': { '2026-07-04': 'Available', '2026-07-05': 'Reserved' },
+      'A02': { '2026-07-04': 'Available', '2026-07-05': 'Available' },
+    });
+
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockResponse,
+    }) as typeof fetch;
+
+    const result = await provider.proactiveScanWindow(
+      '232447',
+      { windowStart: '2026-07-01', windowEnd: '2026-07-31' },
+      'Upper Pines',
+      []
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.parkPageId).toBe('232447');
+    expect(result!.parkName).toBe('Upper Pines');
+    expect(result!.windowStart).toBe('2026-07-01');
+    expect(result!.windowEnd).toBe('2026-07-31');
+    expect(result!.campgrounds).toHaveLength(1);
+
+    const sites = result!.campgrounds[0]!.sites;
+    expect(sites.some((s) => s.name === 'A01')).toBe(true);
+    expect(sites.some((s) => s.name === 'A02')).toBe(true);
+
+    const a01 = sites.find((s) => s.name === 'A01')!;
+    expect(a01.dates['2026-07-04']).toBe('available');
+    expect(a01.dates['2026-07-05']).toBe('unavailable');
+
+    global.fetch = originalFetch;
+  });
+
+  it('returns empty campgrounds array when API response has no campsites', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ campsites: {}, count: 0 }),
+    }) as typeof fetch;
+
+    const result = await provider.proactiveScanWindow(
+      '232447',
+      { windowStart: '2026-07-01', windowEnd: '2026-07-31' },
+      'Upper Pines',
+      []
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.campgrounds).toHaveLength(0);
+    global.fetch = originalFetch;
   });
 });

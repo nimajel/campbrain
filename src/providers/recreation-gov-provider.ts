@@ -1,7 +1,9 @@
+import dayjs from 'dayjs';
 import type { Target } from '../config/schemas.js';
 import type { ScanCandidate, ScanResult, AvailabilityHit } from '../types/scanner.js';
-import type { AvailabilityProvider } from './availability-provider.js';
-import dayjs from 'dayjs';
+import type { AvailabilityProvider, CacheWindow } from './availability-provider.js';
+import type { AvailabilityWindowEntry, CampgroundWindow, SiteDailyAvailability } from '../cache/types.js';
+import type { CampgroundCatalogEntry } from '../catalog/types.js';
 
 interface RecGovCampsite {
   availabilities: Record<string, string>;
@@ -141,6 +143,85 @@ export class RecreationGovProvider implements AvailabilityProvider {
           : `No match — ${candidate.nights} night(s) checked`,
       scannedAt: new Date().toISOString(),
       bookingUrl: buildBookingUrl(target.parkPageId),
+    };
+  }
+
+  generateCacheWindows(rangeStart: string, rangeEnd: string): CacheWindow[] {
+    const windows: CacheWindow[] = [];
+    // Step back to the 1st of the month containing rangeStart
+    let current = dayjs(rangeStart).startOf('month');
+    const end = dayjs(rangeEnd);
+    while (current.isBefore(end) || current.isSame(end, 'month')) {
+      windows.push({
+        windowStart: current.format('YYYY-MM-DD'),
+        windowEnd: current.endOf('month').format('YYYY-MM-DD'),
+      });
+      current = current.add(1, 'month');
+    }
+    return windows;
+  }
+
+  async proactiveScanWindow(
+    parkPageId: string,
+    window: CacheWindow,
+    parkName: string,
+    campgrounds: CampgroundCatalogEntry[]
+  ): Promise<AvailabilityWindowEntry | null> {
+    const url = buildAvailabilityUrl(parkPageId, window.windowStart);
+
+    let data: RecGovAvailabilityResponse;
+    try {
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'campbrain/1.0 (personal-use camping assistant)' },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      data = (await response.json()) as RecGovAvailabilityResponse;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`  ✗ ${parkName} ${window.windowStart} — ${msg}`);
+      return null;
+    }
+
+    // Group all campsites under one campground entry for this facility.
+    // Catalog may supply richer campground info; fall back to the facility itself.
+    const catalogCg = campgrounds[0];
+    const cgId = catalogCg?.id ?? parkPageId;
+    const cgName = catalogCg?.name ?? parkName;
+    const bookingUrl = buildBookingUrl(parkPageId);
+
+    // Build per-site per-day availability from the monthly response.
+    // Campsite keys in the response are internal IDs; use `site` as the display name.
+    const siteMap = new Map<string, SiteDailyAvailability>();
+    for (const campsite of Object.values(data.campsites)) {
+      const siteName = campsite.site;
+      if (!siteMap.has(siteName)) {
+        siteMap.set(siteName, { name: siteName, dates: {} });
+      }
+      const siteEntry = siteMap.get(siteName)!;
+      for (const [isoDatetime, status] of Object.entries(campsite.availabilities)) {
+        const date = isoDatetime.slice(0, 10); // "2026-07-04T00:00:00Z" → "2026-07-04"
+        if (date >= window.windowStart && date <= window.windowEnd) {
+          siteEntry.dates[date] = status === 'Available' ? 'available' : 'unavailable';
+        }
+      }
+    }
+
+    const cgWindow: CampgroundWindow = {
+      id: cgId,
+      name: cgName,
+      bookingUrl,
+      sites: Array.from(siteMap.values()),
+    };
+    if (catalogCg?.nightlyFee !== undefined) cgWindow.nightlyFee = catalogCg.nightlyFee;
+
+    return {
+      parkPageId,
+      parkName,
+      windowStart: window.windowStart,
+      windowEnd: window.windowEnd,
+      scannedAt: new Date().toISOString(),
+      sourceUrl: url,
+      campgrounds: cgWindow.sites.length > 0 ? [cgWindow] : [],
     };
   }
 }
