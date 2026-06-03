@@ -31,7 +31,7 @@ describe('buildAvailabilityUrl', () => {
 
   it('sets the month start date in the query string', () => {
     const url = buildAvailabilityUrl('232447', '2026-08-01');
-    expect(url).toContain('start_date=2026-08-01T00:00:00.000Z');
+    expect(url).toContain('start_date=2026-08-01T00%3A00%3A00.000Z');
   });
 });
 

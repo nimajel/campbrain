@@ -21,7 +21,8 @@ export interface RecGovAvailabilityResponse {
 }
 
 export function buildAvailabilityUrl(campgroundId: string, monthStart: string): string {
-  return `https://www.recreation.gov/api/camps/availability/campground/${campgroundId}/month?start_date=${monthStart}T00:00:00.000Z`;
+  // Colons in the ISO datetime must be percent-encoded or the API returns 400 "query not encoded".
+  return `https://www.recreation.gov/api/camps/availability/campground/${campgroundId}/month?start_date=${monthStart}T00%3A00%3A00.000Z`;
 }
 
 export function buildBookingUrl(campgroundId: string): string {
