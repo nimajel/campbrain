@@ -470,14 +470,14 @@ export async function evictExpired(nowMs = Date.now()): Promise<number> {
 // Stats
 // ---------------------------------------------------------------------------
 
-export async function getCacheStats(): Promise<{ entryCount: number; lastScanAt: string | null }> {
+export async function getCacheStats(): Promise<{ entryCount: number; lastScanAt: string | null; maxWindowEnd: string | null }> {
   const sql = getSql();
-  const [row] = await sql<{ entry_count: number; last_scan_at: string | null }[]>`
-    SELECT COUNT(*)::int AS entry_count, MAX(scanned_at)::text AS last_scan_at
+  const [row] = await sql<{ entry_count: number; last_scan_at: string | null; max_window_end: string | null }[]>`
+    SELECT COUNT(*)::int AS entry_count, MAX(scanned_at)::text AS last_scan_at, MAX(window_end)::text AS max_window_end
     FROM scan_windows
     WHERE provider_id = ${PROVIDER} AND window_end >= CURRENT_DATE
   `;
-  return { entryCount: row?.entry_count ?? 0, lastScanAt: row?.last_scan_at ?? null };
+  return { entryCount: row?.entry_count ?? 0, lastScanAt: row?.last_scan_at ?? null, maxWindowEnd: row?.max_window_end ?? null };
 }
 
 // ---------------------------------------------------------------------------
@@ -556,4 +556,182 @@ export function getAvailableSitesForStay(
     results.push(result);
   }
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// Search: sites available for every night in [from, to) across all parks
+// ---------------------------------------------------------------------------
+
+export type SearchCampground = {
+  name: string;
+  nightlyFee: number | null;
+  bookingUrl: string | null;
+  availableSites: string[];   // bookable (non-walk-up) site names, sorted
+  walkUpSites: string[];      // hike/bike first-come sites, sorted
+};
+
+export type SearchParkResult = {
+  parkPageId: string;
+  parkName: string;
+  campgrounds: SearchCampground[];
+};
+
+/**
+ * Find all sites with status='available' on EVERY night from `from` (inclusive)
+ * to `to` (exclusive — last night is the night before `to`).
+ * Applies FILTER_SQL patterns for the given filterIds.
+ * Walk-up (hike/bike) sites are separated into walkUpSites; bookable sites go
+ * into availableSites. Parks with zero bookable sites still appear if they have
+ * walk-up sites.
+ */
+export async function searchAvailableStays(params: {
+  from: string;
+  to: string;
+  filterIds?: string[];
+}): Promise<SearchParkResult[]> {
+  const sql = getSql();
+  const { from, to, filterIds = [] } = params;
+  const nightCount = dayjs(to).diff(dayjs(from), 'day');
+  if (nightCount < 1) return [];
+
+  // Build dynamic filter clauses — patterns are hardcoded constants, not user input
+  const filterClauses: string[] = [];
+  for (const id of filterIds) {
+    const f = FILTER_SQL[id];
+    if (!f) continue; // unknown filter ids (e.g. exclude_walk_up) are silently skipped
+    const col = `(s.site_name || ' ' || s.campground_name) ~* '${f.pattern}'`;
+    filterClauses.push(f.exclude ? `NOT (${col})` : col);
+  }
+  const filterWhere = filterClauses.length > 0 ? `AND ${filterClauses.join(' AND ')}` : '';
+
+  type Row = {
+    park_page_id: string;
+    park_name: string;
+    campground_name: string;
+    nightly_fee: string | null;
+    booking_url: string | null;
+    site_name: string;
+    is_walk_up: boolean;
+  };
+
+  const rows = await sql.unsafe<Row[]>(`
+    SELECT
+      p.park_page_id,
+      p.park_name,
+      cg.campground_name,
+      cg.nightly_fee::text,
+      cg.booking_url,
+      s.site_name,
+      s.site_name ~* 'hike\\s*[/&]?\\s*bike' AS is_walk_up
+    FROM sites s
+    JOIN campgrounds cg
+      ON cg.provider_id = s.provider_id
+      AND cg.park_page_id = s.park_page_id
+      AND cg.campground_name = s.campground_name
+    JOIN parks p
+      ON p.provider_id = s.provider_id
+      AND p.park_page_id = s.park_page_id
+    WHERE s.provider_id = $1
+      AND s.site_id IN (
+        SELECT site_id
+        FROM availability
+        WHERE date >= $2::date
+          AND date < $3::date
+          AND status = 'available'
+        GROUP BY site_id
+        HAVING COUNT(DISTINCT date) = $4::int
+      )
+      ${filterWhere}
+    ORDER BY p.park_name, cg.campground_name, s.site_name
+  `, [PROVIDER, from, to, String(nightCount)]);
+
+  // Group rows into parks → campgrounds
+  const parkMap = new Map<string, SearchParkResult>();
+  for (const row of rows) {
+    if (!parkMap.has(row.park_page_id)) {
+      parkMap.set(row.park_page_id, {
+        parkPageId: row.park_page_id,
+        parkName: row.park_name,
+        campgrounds: [],
+      });
+    }
+    const park = parkMap.get(row.park_page_id)!;
+    let cg = park.campgrounds.find((c) => c.name === row.campground_name);
+    if (!cg) {
+      cg = {
+        name: row.campground_name,
+        nightlyFee: row.nightly_fee !== null ? Number(row.nightly_fee) : null,
+        bookingUrl: row.booking_url,
+        availableSites: [],
+        walkUpSites: [],
+      };
+      park.campgrounds.push(cg);
+    }
+    if (row.is_walk_up) {
+      cg.walkUpSites.push(row.site_name);
+    } else {
+      cg.availableSites.push(row.site_name);
+    }
+  }
+
+  return [...parkMap.values()];
+}
+
+// ---------------------------------------------------------------------------
+// Fallback: earliest available date per park within a look-ahead window
+// ---------------------------------------------------------------------------
+
+export type NextAvailableResult = {
+  parkPageId: string;
+  parkName: string;
+  earliestDate: string; // YYYY-MM-DD
+};
+
+/**
+ * For up to 5 parks (optionally restricted by parkPageIds), find the earliest
+ * date with any available site within the next `withinDays` days.
+ * Used for the "no results" fallback panel.
+ */
+export async function findNextAvailableDates(params: {
+  withinDays?: number;
+  parkPageIds?: string[];
+}): Promise<NextAvailableResult[]> {
+  const sql = getSql();
+  const { withinDays = 60, parkPageIds } = params;
+  const endDate = dayjs().add(withinDays, 'day').format('YYYY-MM-DD');
+
+  const paramValues: string[] = [PROVIDER, endDate];
+  const clauses: string[] = [
+    `s.provider_id = $1`,
+    `a.status = 'available'`,
+    `a.date >= CURRENT_DATE`,
+    `a.date <= $2::date`,
+  ];
+
+  if (parkPageIds && parkPageIds.length > 0) {
+    const placeholders = parkPageIds.map((_, i) => `$${paramValues.length + i + 1}`).join(', ');
+    clauses.push(`s.park_page_id IN (${placeholders})`);
+    paramValues.push(...parkPageIds);
+  }
+
+  type Row = { park_page_id: string; park_name: string; earliest_date: string };
+
+  const rows = await sql.unsafe<Row[]>(`
+    SELECT s.park_page_id, p.park_name, MIN(a.date)::text AS earliest_date
+    FROM availability a
+    JOIN sites s ON s.site_id = a.site_id
+    JOIN parks p
+      ON p.provider_id = s.provider_id
+      AND p.park_page_id = s.park_page_id
+    WHERE ${clauses.join('\n      AND ')}
+    GROUP BY s.park_page_id, p.park_name
+    ORDER BY earliest_date
+    LIMIT 5
+  `, paramValues);
+
+  return rows.map((r) => ({
+    parkPageId: r.park_page_id,
+    parkName: r.park_name,
+    earliestDate: r.earliest_date,
+  }));
 }
