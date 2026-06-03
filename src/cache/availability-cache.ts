@@ -4,7 +4,6 @@ export { rebuildMaterializedView };
 import type { AvailabilityWindowEntry, AvailableStay, CampgroundWindow } from './types.js';
 import { WINDOW_DAYS } from './types.js';
 
-const PROVIDER = 'california-parks';
 
 // ---------------------------------------------------------------------------
 // TTL — keyed on windowStart (most time-sensitive date in the window)
@@ -53,13 +52,13 @@ export function windowEnd(windowStart: string): string {
 // Upsert
 // ---------------------------------------------------------------------------
 
-export async function upsertEntry(entry: AvailabilityWindowEntry): Promise<void> {
+export async function upsertEntry(entry: AvailabilityWindowEntry, providerId: string): Promise<void> {
   const sql = getSql();
   await sql.begin(async (tx) => {
     // 1. Upsert park
     await tx`
       INSERT INTO parks (provider_id, park_page_id, park_name)
-      VALUES (${PROVIDER}, ${entry.parkPageId}, ${entry.parkName})
+      VALUES (${providerId}, ${entry.parkPageId}, ${entry.parkName})
       ON CONFLICT (provider_id, park_page_id) DO UPDATE SET park_name = EXCLUDED.park_name
     `;
 
@@ -67,7 +66,7 @@ export async function upsertEntry(entry: AvailabilityWindowEntry): Promise<void>
     await tx`
       INSERT INTO scan_windows (provider_id, park_page_id, window_start, window_end, scanned_at, source_url)
       VALUES (
-        ${PROVIDER}, ${entry.parkPageId},
+        ${providerId}, ${entry.parkPageId},
         ${entry.windowStart}::date, ${entry.windowEnd}::date,
         ${entry.scannedAt}::timestamptz, ${entry.sourceUrl}
       )
@@ -83,7 +82,7 @@ export async function upsertEntry(entry: AvailabilityWindowEntry): Promise<void>
       DELETE FROM availability
       WHERE site_id IN (
         SELECT site_id FROM sites
-        WHERE provider_id = ${PROVIDER} AND park_page_id = ${entry.parkPageId}
+        WHERE provider_id = ${providerId} AND park_page_id = ${entry.parkPageId}
       )
       AND date BETWEEN ${entry.windowStart}::date AND ${entry.windowEnd}::date
     `;
@@ -95,7 +94,7 @@ export async function upsertEntry(entry: AvailabilityWindowEntry): Promise<void>
     const cgRowMap = new Map<string, { provider_id: string; park_page_id: string; campground_name: string; campground_id: string; nightly_fee: number | null; booking_url: string | null }>();
     for (const cg of entry.campgrounds) {
       cgRowMap.set(cg.name, {
-        provider_id: PROVIDER,
+        provider_id: providerId,
         park_page_id: entry.parkPageId,
         campground_name: cg.name,
         campground_id: cg.id,
@@ -118,7 +117,7 @@ export async function upsertEntry(entry: AvailabilityWindowEntry): Promise<void>
     for (const cg of entry.campgrounds) {
       for (const site of cg.sites) {
         siteRowMap.set(`${cg.name}::${site.name}`, {
-          provider_id: PROVIDER,
+          provider_id: providerId,
           park_page_id: entry.parkPageId,
           campground_name: cg.name,
           site_name: site.name,
@@ -171,13 +170,14 @@ export async function upsertEntry(entry: AvailabilityWindowEntry): Promise<void>
 
 export async function findStaleWindows(
   candidates: Array<{ parkPageId: string; windowStart: string }>,
+  providerName: string,
   nowMs = Date.now()
 ): Promise<Array<{ parkPageId: string; windowStart: string }>> {
   const sql = getSql();
   const rows = await sql<{ park_page_id: string; window_start: string; scanned_at: string }[]>`
     SELECT park_page_id, window_start::text, scanned_at::text
     FROM scan_windows
-    WHERE provider_id = ${PROVIDER} AND window_end >= CURRENT_DATE
+    WHERE provider_id = ${providerName} AND window_end >= CURRENT_DATE
   `;
 
   const existingMap = new Map<string, string>();
@@ -304,16 +304,16 @@ async function queryEntries(freshOnly: boolean, nowMs = Date.now()): Promise<Ava
   const sql = getSql();
   const rows = await sql.unsafe<EntryRow[]>(
     `SELECT ${ENTRY_SELECT} FROM scan_windows sw ${ENTRY_JOINS}
-     WHERE sw.provider_id = $1 AND sw.window_end >= CURRENT_DATE
+     WHERE sw.window_end >= CURRENT_DATE
        AND EXISTS (
          SELECT 1 FROM availability a2
          JOIN sites s2 ON s2.site_id = a2.site_id
-         WHERE s2.provider_id = $1 AND s2.park_page_id = sw.park_page_id
+         WHERE s2.park_page_id = sw.park_page_id
            AND a2.date >= sw.window_start AND a2.date <= sw.window_end
            AND a2.status = 'available'
        )
      ORDER BY sw.park_page_id, sw.window_start, cg.campground_name, s.site_name, a.date`,
-    [PROVIDER]
+    []
   );
   let entries = buildEntriesFromRows(rows);
   if (freshOnly) entries = entries.filter((e) => !isEntryStale(e, nowMs));
@@ -329,13 +329,18 @@ export async function listAllEntries(): Promise<AvailabilityWindowEntry[]> {
 }
 
 /** Fetch all windows for a single park. Much faster than loading all parks. */
-export async function getEntriesForPark(parkPageId: string): Promise<AvailabilityWindowEntry[]> {
+export async function getEntriesForPark(
+  parkPageId: string,
+  providerName?: string
+): Promise<AvailabilityWindowEntry[]> {
   const sql = getSql();
+  const providerClause = providerName ? `AND sw.provider_id = $2` : '';
+  const params = providerName ? [parkPageId, providerName] : [parkPageId];
   const rows = await sql.unsafe<EntryRow[]>(
     `SELECT ${ENTRY_SELECT} FROM scan_windows sw ${ENTRY_JOINS}
-     WHERE sw.provider_id = $1 AND sw.park_page_id = $2 AND sw.window_end >= CURRENT_DATE
+     WHERE sw.park_page_id = $1 ${providerClause} AND sw.window_end >= CURRENT_DATE
      ORDER BY sw.window_start, cg.campground_name, s.site_name, a.date`,
-    [PROVIDER, parkPageId]
+    params
   );
   return buildEntriesFromRows(rows);
 }
@@ -360,7 +365,7 @@ export async function getParksWithAvailability(
   const sql = getSql();
 
   // Build dynamic clauses for site name filters (patterns are hardcoded, not user input)
-  const params: string[] = [PROVIDER];
+  const params: string[] = [];
   const clauses: string[] = [
     'a.status = \'available\'',
     'a.date >= CURRENT_DATE',
@@ -386,7 +391,7 @@ export async function getParksWithAvailability(
   const rows = await sql.unsafe<{ park_page_id: string }[]>(`
     SELECT DISTINCT s.park_page_id
     FROM availability a
-    JOIN sites s ON s.site_id = a.site_id AND s.provider_id = $1
+    JOIN sites s ON s.site_id = a.site_id
     WHERE ${clauses.join('\n      AND ')}
   `, params);
 
@@ -461,7 +466,7 @@ export async function listAvailableStays(
 export async function evictExpired(nowMs = Date.now()): Promise<number> {
   const sql = getSql();
   const today = dayjs(nowMs).format('YYYY-MM-DD');
-  const result = await sql`DELETE FROM scan_windows WHERE provider_id = ${PROVIDER} AND window_end < ${today}`;
+  const result = await sql`DELETE FROM scan_windows WHERE window_end < ${today}`;
   await sql`DELETE FROM availability WHERE date < ${today}`;
   return Number(result.count);
 }
@@ -475,7 +480,7 @@ export async function getCacheStats(): Promise<{ entryCount: number; lastScanAt:
   const [row] = await sql<{ entry_count: number; last_scan_at: string | null; max_window_end: string | null }[]>`
     SELECT COUNT(*)::int AS entry_count, MAX(scanned_at)::text AS last_scan_at, MAX(window_end)::text AS max_window_end
     FROM scan_windows
-    WHERE provider_id = ${PROVIDER} AND window_end >= CURRENT_DATE
+    WHERE window_end >= CURRENT_DATE
   `;
   return { entryCount: row?.entry_count ?? 0, lastScanAt: row?.last_scan_at ?? null, maxWindowEnd: row?.max_window_end ?? null };
 }
@@ -633,20 +638,18 @@ export async function searchAvailableStays(params: {
     JOIN parks p
       ON p.provider_id = s.provider_id
       AND p.park_page_id = s.park_page_id
-    WHERE s.provider_id = $1
-      AND s.site_id IN (
-        SELECT a.site_id
-        FROM availability a
-        JOIN sites s2 ON s2.site_id = a.site_id AND s2.provider_id = $1
-        WHERE a.date >= $2::date
-          AND a.date < $3::date
-          AND a.status = 'available'
-        GROUP BY a.site_id
-        HAVING COUNT(DISTINCT a.date) = $4::int
-      )
+    WHERE s.site_id IN (
+      SELECT a.site_id
+      FROM availability a
+      WHERE a.date >= $1::date
+        AND a.date < $2::date
+        AND a.status = 'available'
+      GROUP BY a.site_id
+      HAVING COUNT(DISTINCT a.date) = $3::int
+    )
       ${filterWhere}
     ORDER BY p.park_name, cg.campground_name, s.site_name
-  `, [PROVIDER, from, to, String(nightCount)]);
+  `, [from, to, String(nightCount)]);
 
   // Group rows into parks → campgrounds
   const parkMap = new Map<string, SearchParkResult>();
@@ -703,12 +706,11 @@ export async function findNextAvailableDates(params: {
   const { withinDays = 60, parkPageIds } = params;
   const endDate = dayjs().add(withinDays, 'day').format('YYYY-MM-DD');
 
-  const paramValues: string[] = [PROVIDER, endDate];
+  const paramValues: string[] = [endDate];
   const clauses: string[] = [
-    `s.provider_id = $1`,
     `a.status = 'available'`,
     `a.date >= CURRENT_DATE`,
-    `a.date <= $2::date`,
+    `a.date <= $1::date`,
     // Walk-up (hike/bike) sites are never reservable; exclude so the fallback
     // panel only surfaces parks with actual bookable openings.
     `NOT (s.site_name ~* 'hike\\s*[/&]?\\s*bike')`,

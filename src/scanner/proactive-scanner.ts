@@ -90,7 +90,7 @@ export async function runProactiveScan(
   // 3. Filter to stale/missing
   const toScan = opts.force
     ? allCandidates
-    : await findStaleWindows(allCandidates);
+    : await findStaleWindows(allCandidates, 'california-parks');
   const staleCount = toScan.length;
 
   log(`Proactive scan: ${parks.length} parks, ${windowStarts.length} windows (${daysAhead}d ahead)`);
@@ -161,7 +161,7 @@ export async function runProactiveScan(
         scannedAt: new Date().toISOString(),
         sourceUrl: buildAvailabilityUrl(parkPageId, { arrivalDate: windowStart, nights: 1, endDate: wEnd }),
         campgrounds: [],
-      });
+      }, 'california-parks');
       cacheWrites++;
       return;
     }
@@ -189,7 +189,7 @@ export async function runProactiveScan(
       campgrounds,
     };
 
-    await upsertEntry(entry);
+    await upsertEntry(entry, 'california-parks');
     cacheWrites++;
 
     const windowsWithAvail = campgrounds.filter((c) =>

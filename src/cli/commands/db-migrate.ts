@@ -27,7 +27,7 @@ export async function dbMigrateCommand(): Promise<void> {
 
   let done = 0;
   for (const entry of entries) {
-    await upsertEntry(entry);
+    await upsertEntry(entry, 'california-parks');
     done++;
     if (done % 100 === 0) console.log(`  ${done}/${entries.length}`);
   }
