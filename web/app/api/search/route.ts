@@ -17,6 +17,7 @@ export type SearchCampgroundResponse = SearchCampground;
 export type SearchParkResponse = {
   parkPageId: string;
   parkName: string;
+  provider: string;
   region: CampRegion;
   campgrounds: SearchCampgroundResponse[];
   totalAvailable: number; // bookable sites only
@@ -69,7 +70,7 @@ export async function GET(
   }
 
   try {
-    // lat/lon lookup from catalog (parks table has no coords — they live in the JSON)
+    // lat/lon and provider lookup from catalog (parks table has no coords — they live in the JSON)
     const catalogParks = listParksWeb();
     const coordsByPageId = new Map(
       catalogParks
@@ -77,6 +78,9 @@ export async function GET(
           p.lat !== undefined && p.lon !== undefined
         )
         .map((p) => [p.parkPageId, { lat: p.lat, lon: p.lon }])
+    );
+    const providerByPageId = new Map(
+      catalogParks.map((p) => [p.parkPageId, p.provider])
     );
 
     const results: SearchParkResult[] = await searchAvailableStays({ from, to, filterIds });
@@ -91,7 +95,8 @@ export async function GET(
           (n, cg) => n + cg.availableSites.length,
           0
         );
-        return { ...park, region, totalAvailable };
+        const provider = providerByPageId.get(park.parkPageId) ?? 'california-parks';
+        return { ...park, region, totalAvailable, provider };
       })
       .filter((park) => !regionFilter || park.region === regionFilter)
       .sort((a, b) => b.totalAvailable - a.totalAvailable);

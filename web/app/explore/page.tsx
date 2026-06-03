@@ -8,7 +8,7 @@ export default function FindCampsitesPage() {
       <div className="page-header">
         <h1>Find Campsites</h1>
         <p className="page-subtitle">
-          Search available campsites across California state parks
+          Search available campsites across California
         </p>
       </div>
       <FindCampsitesClient />

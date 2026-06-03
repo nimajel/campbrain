@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
 import SiteFilterPanel from '../components/SiteFilterPanel';
+import ProviderBadge from '../../components/ProviderBadge';
 import { injectBookingDates } from '../../lib/booking-url';
 import { ALL_REGIONS, REGION_LABELS } from '../../lib/regions';
 import type { CampRegion } from '../../lib/regions';
@@ -73,6 +74,7 @@ function ParkCard({
         <span className="badge badge-gray" style={{ fontSize: 10 }}>
           {REGION_LABELS[park.region]}
         </span>
+        <ProviderBadge providerId={park.provider} />
         {hasBookable ? (
           <span className="badge badge-green">
             {park.totalAvailable} site{park.totalAvailable !== 1 ? 's' : ''}
