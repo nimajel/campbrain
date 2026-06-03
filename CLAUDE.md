@@ -229,7 +229,8 @@ npm run worker                # Start proactive scanner (runs immediately + ever
 npm run dev                   # Start Next.js dev server (port 3001)
 npm run scan                  # One-off availability scan
 npm run cache:refresh         # Refresh materialized view
-npm run catalog:refresh       # Discover / update park + campground catalog
+npm run catalog:refresh       # Discover / update CA state park catalog
+npm run catalog:refresh -- --provider=recreation-gov  # Seed Rec.gov catalog (requires RIDB_API_KEY in .env)
 npm run catalog:list          # List catalog entries
 npm run upcoming              # Print upcoming booking windows for configured targets
 npm run sync-calendar         # Sync booking windows to Google Calendar
@@ -317,9 +318,9 @@ Before committing:
 - [x] Map Book-link date injection (correct arrival date + nights on ReserveCalifornia)
 - [~] Alert scanner for saved targets (email via Resend wired up; saved-target matching WIP)
 - [~] Google Calendar sync for booking-window reminders (`sync-calendar` exists)
+- [x] Recreation.gov provider adapter (proactive scan + ProviderBadge UI; catalog populated via `npm run catalog:refresh -- --provider=recreation-gov` once RIDB_API_KEY is set)
 - [ ] User-defined saved searches
 - [ ] Lottery window calculator (Yosemite, Death Valley, etc.)
-- [ ] Recreation.gov and other provider adapters
 - [ ] SMS / Slack notifications
 
 ---
