@@ -84,13 +84,13 @@ export const REC_GOV_RETRY_DELAYS_MS = [10_000, 30_000, 60_000]; // 10s, 30s, 60
 export class RecreationGovProvider implements AvailabilityProvider {
   name = 'recreation-gov';
   /**
-   * 3 concurrent requests works reliably. The API uses CloudFront burst
-   * protection (not a sustained rate limit) — sequential requests need no delay,
-   * but a small buffer helps avoid accidental burst blocks.
+   * 3 concurrent requests. The API uses CloudFront burst protection rather
+   * than a sustained rate limit — but a 500ms inter-batch delay keeps us
+   * well clear of the burst threshold that triggers IP blocks.
    */
   proactiveConcurrency = 3;
-  /** 100ms between batches as a light politeness buffer. */
-  batchDelayMs = 100;
+  /** 500ms between batches of 3 ≈ 6 req/sec sustained — safe but fast. */
+  batchDelayMs = 500;
 
   async scan(
     target: Target,
