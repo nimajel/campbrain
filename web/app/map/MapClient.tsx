@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import type { MapPark } from '../api/map/catalog/route';
 import type { ParkAvailabilityResponse, AvailableDateEntry, WeekendEntry } from '../api/map/availability/route';
 import SiteFilterPanel from '../components/SiteFilterPanel';
+import ProviderBadge from '../../components/ProviderBadge';
 import { passesSiteFilters } from '../../lib/site-filters';
 import { injectBookingDates } from '../../lib/booking-url';
 
@@ -110,7 +111,12 @@ type FetchState =
   | { status: 'done'; data: ParkAvailabilityResponse }
   | { status: 'error'; message: string };
 
-function useParkAvailability(parkPageId: string | null, from: string, to: string): FetchState {
+function useParkAvailability(
+  parkPageId: string | null,
+  from: string,
+  to: string,
+  provider?: string
+): FetchState {
   const [cache, setCache] = useState<Record<string, FetchState>>({});
 
   // Cache per (park, dateRange) so switching dates refetches the constrained view.
@@ -126,6 +132,7 @@ function useParkAvailability(parkPageId: string | null, from: string, to: string
     const params = new URLSearchParams({ parkPageId });
     if (from) params.set('from', from);
     if (to) params.set('to', to);
+    if (provider) params.set('provider', provider);
 
     fetch(`/api/map/availability?${params.toString()}`)
       .then((r) => r.json() as Promise<ParkAvailabilityResponse>)
@@ -138,7 +145,7 @@ function useParkAvailability(parkPageId: string | null, from: string, to: string
           [key]: { status: 'error', message: String(err) },
         }));
       });
-  }, [parkPageId, key, from, to, cache]);
+  }, [parkPageId, key, from, to, provider, cache]);
 
   if (!key) return { status: 'idle' };
   return cache[key] ?? { status: 'loading' };
@@ -319,7 +326,7 @@ function DetailPanel({
   availFrom: string;
   availTo: string;
 }) {
-  const fetchState = useParkAvailability(park.parkPageId, availFrom, availTo);
+  const fetchState = useParkAvailability(park.parkPageId, availFrom, availTo, park.provider);
 
   const data = fetchState.status === 'done' ? fetchState.data : null;
 
@@ -409,6 +416,7 @@ function DetailPanel({
             <span className={`badge ${statusBadge(park.discoveryStatus)}`}>
               {park.discoveryStatus ?? 'unknown'}
             </span>
+            <ProviderBadge providerId={park.provider} />
             <span style={{ color: 'var(--muted)', fontSize: 12 }}>
               {park.campgroundCount} campground{park.campgroundCount !== 1 ? 's' : ''} · {park.siteCount} sites
             </span>

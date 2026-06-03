@@ -191,13 +191,16 @@ export async function GET(
     return NextResponse.json({ error: 'parkPageId is required' }, { status: 400 });
   }
 
+  // Optional provider scoping — prevents cross-provider park_page_id collisions
+  const providerName = req.nextUrl.searchParams.get('provider') ?? undefined;
+
   // Optional date-range filter — constrains the dates/weekends shown so the panel
   // matches the user's search. earliestAvailableDate stays global so the empty-state
   // can still surface the next opening outside the requested range.
   const from = req.nextUrl.searchParams.get('from');
   const to = req.nextUrl.searchParams.get('to');
 
-  const parkEntries = await getEntriesForPark(parkPageId);
+  const parkEntries = await getEntriesForPark(parkPageId, providerName);
 
   if (parkEntries.length === 0) {
     return NextResponse.json({
