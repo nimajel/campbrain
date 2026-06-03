@@ -51,7 +51,8 @@ calendar:
 - hasSavedToken: boolean
 
 worker:
-- defaultIntervalMinutes
+- alertIntervalMinutes
+- proactiveIntervalMinutes
 - scanOnStart
 - minimumIntervalMinutes
 - recommendedCommand

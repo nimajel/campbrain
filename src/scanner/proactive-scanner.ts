@@ -115,9 +115,8 @@ export async function runProactiveScan(
 
     // The API only returns a grid when the arrival_date itself has ≥1 available site.
     // Probe each day in the window until we get data or exhaust the probe limit.
-    // Far-out windows use fewer probes — cancellations 90+ days out are rare.
-    const daysUntilWindow = dayjs(windowStart).diff(dayjs(), 'day');
-    const maxProbes = daysUntilWindow < 30 ? WINDOW_DAYS : 3;
+    // Must probe all WINDOW_DAYS: days 1-3 might be fully booked while days 4-8 are open.
+    const maxProbes = WINDOW_DAYS;
 
     let parsed: ReturnType<typeof parseAllAvailability> = [];
     let successUrl = '';

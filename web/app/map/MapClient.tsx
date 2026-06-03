@@ -148,7 +148,7 @@ function useParkAvailability(parkPageId: string | null, from: string, to: string
 // Date section
 // ---------------------------------------------------------------------------
 
-function DateRow({ entry }: { entry: AvailableDateEntry }) {
+function DateRow({ entry, nights }: { entry: AvailableDateEntry; nights: number }) {
   const totalSites = entry.campgrounds.reduce((s, cg) => s + cg.availableSiteCount, 0);
   return (
     <div style={{
@@ -180,7 +180,7 @@ function DateRow({ entry }: { entry: AvailableDateEntry }) {
             <>
               {' — '}
               {siteListText(cg.sites, 6)}
-              <BookLink url={cg.bookingUrl} arrival={entry.date} nights={1} />
+              <BookLink url={cg.bookingUrl} arrival={entry.date} nights={nights} />
             </>
           )}
           <WalkUpLine sites={cg.walkUpSites} />
@@ -201,6 +201,19 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
   const hasFull3Night = show3Night && entry.campgrounds.some((cg) => cg.sites3Night.length > 0);
   const has2NightFri = show2Night && entry.campgrounds.some((cg) => cg.sites2NightFri.length > 0);
   const has2NightSat = show2Night && entry.campgrounds.some((cg) => cg.sites2NightSat.length > 0);
+  const has1NightFri = entry.campgrounds.some((cg) => cg.sites1NightFri.length > 0);
+  const has1NightSat = entry.campgrounds.some((cg) => cg.sites1NightSat.length > 0);
+
+  const hasMultiNight = hasFull3Night || has2NightFri || has2NightSat;
+  const label = hasMultiNight
+    ? (has2NightSat && !hasFull3Night && !has2NightFri)
+      ? `${formatDate(entry.saturdayDate)}–${formatDate(addDaysIso(entry.saturdayDate, 2))}`
+      : `${formatDate(entry.fridayDate)}–${formatDate(entry.sundayDate)}`
+    : has1NightFri
+      ? formatDate(entry.fridayDate)
+      : has1NightSat
+        ? formatDate(entry.saturdayDate)
+        : entry.label;
 
   return (
     <div style={{
@@ -212,7 +225,7 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--green)' }}>
-          {entry.label}
+          {label}
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           {hasFull3Night && (
@@ -312,7 +325,7 @@ function DetailPanel({
 
   const filteredDates = useMemo(() => {
     if (!data) return [];
-    return data.nextAvailableDates
+    let dates = data.nextAvailableDates
       .map((entry) => ({
         ...entry,
         campgrounds: entry.campgrounds
@@ -324,7 +337,26 @@ function DetailPanel({
           .filter((cg) => cg.sites.length > 0 || cg.walkUpSites.length > 0),
       }))
       .filter((entry) => entry.campgrounds.length > 0);
-  }, [data, activeFilters]);
+
+    if (nightCount === 2) {
+      const byDate = new Map(dates.map((d) => [d.date, d]));
+      dates = dates.flatMap((entry) => {
+        const nextEntry = byDate.get(addDaysIso(entry.date, 1));
+        if (!nextEntry) return [];
+        const campgrounds = entry.campgrounds.flatMap((cg) => {
+          const nextCg = nextEntry.campgrounds.find((c) => c.name === cg.name);
+          if (!nextCg) return [];
+          const sites2N = cg.sites.filter((s) => nextCg.sites.includes(s));
+          if (sites2N.length === 0) return [];
+          return [{ ...cg, sites: sites2N, walkUpSites: [], availableSiteCount: sites2N.length }];
+        });
+        if (campgrounds.length === 0) return [];
+        return [{ ...entry, campgrounds }];
+      });
+    }
+
+    return dates;
+  }, [data, activeFilters, nightCount]);
 
   const filteredWeekends = useMemo(() => {
     if (!data) return [];
@@ -353,7 +385,12 @@ function DetailPanel({
           })
           .filter((cg) => {
             if (nightCount === 2) return cg.sites2NightFri.length > 0 || cg.sites2NightSat.length > 0;
+            if (nightCount === 1) return cg.sites1NightFri.length > 0 || cg.sites1NightSat.length > 0 || cg.walkUpSites.length > 0;
+            // null = All nights: include if any availability at any tier
             return (
+              cg.sites3Night.length > 0 ||
+              cg.sites2NightFri.length > 0 ||
+              cg.sites2NightSat.length > 0 ||
               cg.sites1NightFri.length > 0 ||
               cg.sites1NightSat.length > 0 ||
               cg.walkUpSites.length > 0
@@ -473,7 +510,7 @@ function DetailPanel({
               ) : (
                 <div>
                   {filteredDates.map((d) => (
-                    <DateRow key={d.date} entry={d} />
+                    <DateRow key={d.date} entry={d} nights={nightCount ?? 1} />
                   ))}
                 </div>
               )}
@@ -781,7 +818,18 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
                   key={String(d)}
                   type="button"
                   className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setDistanceMiles(d)}
+                  onClick={() => {
+                    if (d === null) {
+                      setDistanceMiles(null);
+                      setGeocodeError(null);
+                      return;
+                    }
+                    if (!resolvedLocation) {
+                      setGeocodeError('Enter a city first to filter by distance');
+                      return;
+                    }
+                    setDistanceMiles(d);
+                  }}
                   style={active ? { fontWeight: 700 } : {}}
                 >
                   {active ? `✓ ${label}` : label}

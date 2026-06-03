@@ -249,28 +249,46 @@ describe('getStateStatus', () => {
 
 describe('getWorkerStatus', () => {
   const savedInterval = process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'];
+  const savedProactiveInterval = process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'];
   const savedScanOnStart = process.env['CAMPBRAIN_SCAN_ON_START'];
 
   afterEach(() => {
     if (savedInterval !== undefined) process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'] = savedInterval;
     else delete process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'];
+    if (savedProactiveInterval !== undefined) process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'] = savedProactiveInterval;
+    else delete process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'];
     if (savedScanOnStart !== undefined) process.env['CAMPBRAIN_SCAN_ON_START'] = savedScanOnStart;
     else delete process.env['CAMPBRAIN_SCAN_ON_START'];
   });
 
   it('returns default 60 when CAMPBRAIN_SCAN_INTERVAL_MINUTES is not set', () => {
     delete process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'];
-    expect(getWorkerStatus().defaultIntervalMinutes).toBe(60);
+    expect(getWorkerStatus().alertIntervalMinutes).toBe(60);
   });
 
   it('returns configured interval from env var', () => {
     process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'] = '30';
-    expect(getWorkerStatus().defaultIntervalMinutes).toBe(30);
+    expect(getWorkerStatus().alertIntervalMinutes).toBe(30);
   });
 
   it('falls back to 60 when env var interval is below minimum', () => {
     process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'] = '5';
-    expect(getWorkerStatus().defaultIntervalMinutes).toBe(60);
+    expect(getWorkerStatus().alertIntervalMinutes).toBe(60);
+  });
+
+  it('returns default 120 when CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES is not set', () => {
+    delete process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'];
+    expect(getWorkerStatus().proactiveIntervalMinutes).toBe(120);
+  });
+
+  it('returns configured proactive interval from env var', () => {
+    process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'] = '240';
+    expect(getWorkerStatus().proactiveIntervalMinutes).toBe(240);
+  });
+
+  it('falls back to 120 when proactive env var interval is below minimum', () => {
+    process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'] = '5';
+    expect(getWorkerStatus().proactiveIntervalMinutes).toBe(120);
   });
 
   it('minimumIntervalMinutes is always 15', () => {

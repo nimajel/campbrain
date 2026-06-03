@@ -1,5 +1,6 @@
 import path from 'path';
 import { getSetupStatus } from '../../../src/status/setup-status';
+import { getCacheStats } from '../../lib/availability-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,39 @@ function StatusRow({ label, ok, detail }: { label: string; ok: boolean; detail?:
   );
 }
 
-export default function SettingsPage() {
+function KvRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="kv-row">
+      <span className="kv-key">{label}</span>
+      <span className="kv-val" style={{ color: muted ? 'var(--muted)' : undefined }}>{value}</span>
+    </div>
+  );
+}
+
+function formatTimestamp(iso: string | null): string {
+  if (!iso) return 'Never';
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    hour12: true, timeZoneName: 'short',
+  });
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return 'Unknown';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const date = new Date(y!, m! - 1, d!);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function workerIsActive(lastScanAt: string | null, proactiveIntervalMinutes: number): boolean {
+  if (!lastScanAt) return false;
+  const elapsed = Date.now() - new Date(lastScanAt).getTime();
+  // Consider active if last scan is within 1.5× the proactive interval
+  return elapsed < proactiveIntervalMinutes * 1.5 * 60 * 1000;
+}
+
+export default async function SettingsPage() {
   const projectRoot = path.join(process.cwd(), '..');
   const status = getSetupStatus({
     stateDir: path.join(projectRoot, '.campbrain', 'state'),
@@ -25,7 +58,15 @@ export default function SettingsPage() {
     dataDir: path.join(projectRoot, 'data'),
   });
 
-  const { email, calendar, worker, state, targetsOrAlerts } = status;
+  let cacheStats: { entryCount: number; lastScanAt: string | null; maxWindowEnd: string | null } | null = null;
+  try {
+    cacheStats = await getCacheStats();
+  } catch {
+    // DB not available
+  }
+
+  const { email, calendar, worker, targetsOrAlerts } = status;
+  const workerActive = workerIsActive(cacheStats?.lastScanAt ?? null, worker.proactiveIntervalMinutes);
 
   return (
     <>
@@ -45,6 +86,48 @@ export default function SettingsPage() {
             {targetsOrAlerts.enabledCount}
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <h2>Background Worker</h2>
+        <div className="kv-row">
+          <span className="kv-key">
+            <span className={`dot ${workerActive ? 'dot-green' : 'dot-gray'}`} />
+            Status
+          </span>
+          <span className="kv-val" style={{ color: workerActive ? 'var(--text)' : 'var(--muted)' }}>
+            {workerActive ? 'Active' : cacheStats?.lastScanAt ? 'Idle (last scan too old)' : 'Not running'}
+          </span>
+        </div>
+        <KvRow label="Cache refresh interval" value={`Every ${worker.proactiveIntervalMinutes} minutes — all 88 CA parks`} />
+        <KvRow label="Alert scan interval" value={`Every ${worker.alertIntervalMinutes} minutes — saved alert targets`} />
+        <KvRow label="Scan on start" value={worker.scanOnStart ? 'Yes' : 'No (CAMPBRAIN_SCAN_ON_START=false)'} />
+        <KvRow label="Start command" value="npm run worker" />
+        <div style={{ marginTop: 12, fontSize: 12, color: 'var(--muted)' }}>
+          Set <code>CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES</code> to change cache refresh (default 120).
+          Set <code>CAMPBRAIN_SCAN_INTERVAL_MINUTES</code> to change alert scan (default 60). Minimum 15 for both.
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Cache Health</h2>
+        {cacheStats === null ? (
+          <div style={{ color: 'var(--muted)', fontSize: 13 }}>Database unavailable — is the worker running?</div>
+        ) : cacheStats.entryCount === 0 ? (
+          <div style={{ color: 'var(--muted)', fontSize: 13 }}>No cache data yet — run <code>npm run worker</code> to populate.</div>
+        ) : (
+          <>
+            <div className="kv-row">
+              <span className="kv-key">
+                <span className={`dot ${workerActive ? 'dot-green' : 'dot-gray'}`} />
+                Last cache update
+              </span>
+              <span className="kv-val">{formatTimestamp(cacheStats.lastScanAt)}</span>
+            </div>
+            <KvRow label="Coverage through" value={formatDate(cacheStats.maxWindowEnd)} />
+            <KvRow label="Windows cached" value={`${cacheStats.entryCount.toLocaleString()}`} muted />
+          </>
+        )}
       </div>
 
       <div className="card">
@@ -70,69 +153,9 @@ export default function SettingsPage() {
       </div>
 
       <div className="card">
-        <h2>Background Worker</h2>
-        <div className="kv-row">
-          <span className="kv-key">Scan interval</span>
-          <span className="kv-val">{worker.defaultIntervalMinutes} minutes</span>
-        </div>
-        <div className="kv-row">
-          <span className="kv-key">Minimum interval</span>
-          <span className="kv-val">{worker.minimumIntervalMinutes} minutes</span>
-        </div>
-        <div className="kv-row">
-          <span className="kv-key">Scan on start</span>
-          <span className="kv-val">{worker.scanOnStart ? 'Yes' : 'No (CAMPBRAIN_SCAN_ON_START=false)'}</span>
-        </div>
-        <div className="kv-row">
-          <span className="kv-key">Start command</span>
-          <span className="kv-val"><code style={{ fontSize: 12, background: 'var(--bg)', padding: '1px 6px', borderRadius: 3 }}>{worker.recommendedCommand}</code></span>
-        </div>
-        <div style={{ marginTop: 12, fontSize: 12, color: 'var(--muted)' }}>
-          Set <code>CAMPBRAIN_SCAN_INTERVAL_MINUTES</code> in <code>.env</code> to change the default interval (minimum 15 minutes).
-        </div>
-      </div>
-
-      <div className="card">
-        <h2>State Files</h2>
-        <div className="kv-row">
-          <span className="kv-key">
-            <span className={`dot ${state.latestScanResultsExists ? 'dot-green' : 'dot-gray'}`} />
-            Latest scan results
-          </span>
-          <span className="kv-val" style={{ color: state.latestScanResultsExists ? 'var(--text)' : 'var(--muted)' }}>
-            {state.latestScanResultsExists ? 'Present' : 'Not yet written'}
-          </span>
-        </div>
-        <div className="kv-row">
-          <span className="kv-key">
-            <span className={`dot ${state.availabilityHitsExists ? 'dot-green' : 'dot-gray'}`} />
-            Availability hits
-          </span>
-          <span className="kv-val" style={{ color: state.availabilityHitsExists ? 'var(--text)' : 'var(--muted)' }}>
-            {state.availabilityHitsExists ? 'Present' : 'Not yet written'}
-          </span>
-        </div>
-        <div className="kv-row">
-          <span className="kv-key">
-            <span className={`dot ${state.calendarEventsExists ? 'dot-green' : 'dot-gray'}`} />
-            Calendar events
-          </span>
-          <span className="kv-val" style={{ color: state.calendarEventsExists ? 'var(--text)' : 'var(--muted)' }}>
-            {state.calendarEventsExists ? 'Present' : 'Not yet written'}
-          </span>
-        </div>
-      </div>
-
-      <div className="card">
         <h2>Environment</h2>
-        <div className="kv-row">
-          <span className="kv-key">Node env</span>
-          <span className="kv-val">{process.env.NODE_ENV ?? 'development'}</span>
-        </div>
-        <div className="kv-row">
-          <span className="kv-key">Project root</span>
-          <span className="kv-val" style={{ fontSize: 12, color: 'var(--muted)', wordBreak: 'break-all' }}>{projectRoot}</span>
-        </div>
+        <KvRow label="Node env" value={process.env.NODE_ENV ?? 'development'} />
+        <KvRow label="Project root" value={projectRoot} muted />
       </div>
     </>
   );

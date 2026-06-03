@@ -19,7 +19,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=412",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -948,7 +948,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=416",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -1151,7 +1151,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=418",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -1171,7 +1171,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=419",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -1191,7 +1191,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=420",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -1748,7 +1748,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=424",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -2318,7 +2318,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=429",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -2393,7 +2393,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=431",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -2639,7 +2639,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=435",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -2842,7 +2842,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=437",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3081,7 +3081,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=440",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3101,7 +3101,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=441",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3121,7 +3121,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=442",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3141,7 +3141,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=443",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3161,7 +3161,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=444",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3181,7 +3181,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=445",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3201,7 +3201,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=449",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3221,7 +3221,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=450",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -3700,7 +3700,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=452",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -4633,7 +4633,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=460",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -4653,7 +4653,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=461",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -5320,7 +5320,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=463",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -5340,7 +5340,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=464",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -5360,7 +5360,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=465",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -5977,7 +5977,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=470",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -6399,7 +6399,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=475",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -6419,7 +6419,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=476",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -6718,7 +6718,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=478",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -6738,7 +6738,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=480",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -6993,7 +6993,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=482",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -7013,7 +7013,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=483",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -7033,7 +7033,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=484",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -7600,7 +7600,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=490",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -7779,7 +7779,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=496",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -10479,7 +10479,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=509",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -10488,7 +10488,7 @@
       "campgrounds": [
         {
           "id": "dukm-em-w-a-group-camping",
-          "name": "dukMéʔem wáťa Group Camping",
+          "name": "dukM\u00e9\u0294em w\u00e1\u0165a Group Camping",
           "sites": [
             {
               "id": "group-campsite-g001",
@@ -10528,7 +10528,7 @@
         },
         {
           "id": "dukm-em-w-a-western-loop-sites-126-175",
-          "name": "dukMéʔem wáťa Western Loop (sites 126-175)",
+          "name": "dukM\u00e9\u0294em w\u00e1\u0165a Western Loop (sites 126-175)",
           "sites": [
             {
               "id": "campsite-126",
@@ -10700,7 +10700,7 @@
         },
         {
           "id": "dukm-em-w-a-eastern-loop-sites-33-59",
-          "name": "dukMéʔem wáťa Eastern Loop (sites 33-59)",
+          "name": "dukM\u00e9\u0294em w\u00e1\u0165a Eastern Loop (sites 33-59)",
           "sites": [
             {
               "id": "campsite-33",
@@ -10768,7 +10768,7 @@
         },
         {
           "id": "dukm-em-w-a-middle-loop-sites-76-125",
-          "name": "dukMéʔem wáťa Middle Loop (sites 76-125)",
+          "name": "dukM\u00e9\u0294em w\u00e1\u0165a Middle Loop (sites 76-125)",
           "sites": [
             {
               "id": "campsite-76",
@@ -10974,7 +10974,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=511",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -10994,7 +10994,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=512",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11014,7 +11014,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=515",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11034,7 +11034,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=516",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11301,7 +11301,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=518",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11321,7 +11321,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=519",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11341,11 +11341,11 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=522",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
-      "parkName": "Año Nuevo SP",
+      "parkName": "A\u00f1o Nuevo SP",
       "parkPageId": "523",
       "campgrounds": [],
       "defaultBookingRule": {
@@ -11361,7 +11361,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=523",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11381,7 +11381,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=525",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11401,7 +11401,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=527",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11421,7 +11421,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=528",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11441,7 +11441,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=529",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11680,7 +11680,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=532",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11696,11 +11696,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:03:41.151Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=535",
+      "lastUpdatedAt": "2026-06-01T00:58:04.919Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=535",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11716,11 +11716,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:03:57.577Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=536",
+      "lastUpdatedAt": "2026-06-01T00:58:21.809Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=536",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11736,11 +11736,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:04:14.868Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=537",
+      "lastUpdatedAt": "2026-06-01T00:58:39.230Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=537",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -11756,11 +11756,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:04:32.485Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=538",
+      "lastUpdatedAt": "2026-06-01T00:58:57.911Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=538",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -12051,11 +12051,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:04:54.908Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=540",
+      "lastUpdatedAt": "2026-06-01T00:59:15.494Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=540",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -12071,11 +12071,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:05:11.982Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=541",
+      "lastUpdatedAt": "2026-06-01T00:59:34.432Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=541",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -12366,11 +12366,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:05:29.103Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=543",
+      "lastUpdatedAt": "2026-06-01T00:59:51.499Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=543",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -13075,11 +13075,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:05:50.954Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=547",
+      "lastUpdatedAt": "2026-06-01T01:00:09.102Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=547",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -13095,11 +13095,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:06:08.460Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=549",
+      "lastUpdatedAt": "2026-06-01T01:00:26.232Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=549",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -13662,11 +13662,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:06:21.513Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=552",
+      "lastUpdatedAt": "2026-06-01T01:00:36.358Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=552",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -13908,11 +13908,11 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:06:31.989Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=555",
+      "lastUpdatedAt": "2026-06-01T01:00:46.681Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-23&length=1&page_id=555",
       "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastDiscoveryAttemptAt": "2026-06-01T00:47:09.300Z",
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -14593,11 +14593,9 @@
         "confidence": "high",
         "lastVerifiedAt": "2026-05-28"
       },
-      "lastUpdatedAt": "2026-05-31T18:06:42.365Z",
-      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=559",
-      "discoveryStatus": "failed",
-      "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "lastUpdatedAt": "2026-06-01T01:00:52.212Z",
+      "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-07-31&length=1&page_id=559",
+      "discoveryStatus": "not_started"
     },
     {
       "provider": "california-parks",
@@ -14617,7 +14615,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=560",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -14784,7 +14782,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=562",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -14923,7 +14921,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=566",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -14943,7 +14941,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=567",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -14963,7 +14961,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=569",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15642,7 +15640,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=572",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15662,7 +15660,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=573",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15682,7 +15680,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=574",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15702,7 +15700,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=576",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15833,7 +15831,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=578",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15853,7 +15851,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=579",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15873,7 +15871,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=580",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -15893,7 +15891,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=581",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -17164,7 +17162,7 @@
     },
     {
       "provider": "california-parks",
-      "parkName": "Montaña de Oro SP",
+      "parkName": "Monta\u00f1a de Oro SP",
       "parkPageId": "592",
       "campgrounds": [
         {
@@ -18920,11 +18918,11 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=596",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
-      "parkName": "La Purísima Mission SHP",
+      "parkName": "La Pur\u00edsima Mission SHP",
       "parkPageId": "598",
       "campgrounds": [],
       "defaultBookingRule": {
@@ -18940,7 +18938,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=598",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -19755,11 +19753,11 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=600",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
-      "parkName": "El Capitán SB",
+      "parkName": "El Capit\u00e1n SB",
       "parkPageId": "601",
       "campgrounds": [],
       "defaultBookingRule": {
@@ -19775,7 +19773,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=601",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -20640,7 +20638,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=607",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -20660,7 +20658,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=609",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -20680,7 +20678,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=612",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -20959,7 +20957,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=615",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -21490,7 +21488,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=617",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -21545,7 +21543,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=623",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -21565,7 +21563,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=625",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -21585,7 +21583,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=627",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -21605,7 +21603,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=628",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -21625,7 +21623,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=629",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -22028,7 +22026,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=631",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -22048,7 +22046,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=632",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -22068,7 +22066,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=633",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -22088,7 +22086,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=634",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -23484,7 +23482,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=641",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -23751,7 +23749,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=643",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -23771,7 +23769,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=644",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -26263,7 +26261,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=649",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -28409,7 +28407,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=652",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -28429,7 +28427,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=653",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -28449,7 +28447,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=656",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -28469,7 +28467,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=658",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -29352,7 +29350,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=661",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -30015,7 +30013,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=664",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -30035,7 +30033,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=666",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -30690,7 +30688,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=835",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -30710,7 +30708,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=1172",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -32863,7 +32861,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=1217",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -32883,7 +32881,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=1221",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -32903,7 +32901,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=22263",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -32923,7 +32921,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=22880",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -32943,7 +32941,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=25642",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -32963,7 +32961,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=27201",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     },
     {
       "provider": "california-parks",
@@ -33001,7 +32999,7 @@
       "sourceUrl": "https://www.parks.ca.gov/AvailabilityInfo?arrival_date=2026-11-22&length=1&page_id=31363",
       "discoveryStatus": "failed",
       "lastDiscoveryAttemptAt": "2026-05-31T17:51:58.268Z",
-      "discoveryError": "No campgrounds found — the page ID may be incorrect."
+      "discoveryError": "No campgrounds found \u2014 the page ID may be incorrect."
     }
   ]
 }

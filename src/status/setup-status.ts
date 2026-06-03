@@ -22,7 +22,8 @@ export interface CalendarStatus {
 }
 
 export interface WorkerStatus {
-  defaultIntervalMinutes: number;
+  alertIntervalMinutes: number;
+  proactiveIntervalMinutes: number;
   minimumIntervalMinutes: number;
   scanOnStart: boolean;
   recommendedCommand: string;
@@ -120,16 +121,19 @@ export function getCalendarStatus(tokenPath?: string): CalendarStatus {
 }
 
 export function getWorkerStatus(): WorkerStatus {
-  const envInterval = process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'];
-  const parsedInterval = envInterval ? parseInt(envInterval, 10) : NaN;
-  const defaultIntervalMinutes = !isNaN(parsedInterval) && parsedInterval >= 15
-    ? parsedInterval
-    : 60;
+  const envAlert = process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES'];
+  const parsedAlert = envAlert ? parseInt(envAlert, 10) : NaN;
+  const alertIntervalMinutes = !isNaN(parsedAlert) && parsedAlert >= 15 ? parsedAlert : 60;
+
+  const envProactive = process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'];
+  const parsedProactive = envProactive ? parseInt(envProactive, 10) : NaN;
+  const proactiveIntervalMinutes = !isNaN(parsedProactive) && parsedProactive >= 15 ? parsedProactive : 120;
 
   const scanOnStart = process.env['CAMPBRAIN_SCAN_ON_START'] !== 'false';
 
   return {
-    defaultIntervalMinutes,
+    alertIntervalMinutes,
+    proactiveIntervalMinutes,
     minimumIntervalMinutes: 15,
     scanOnStart,
     recommendedCommand: 'npm run worker',

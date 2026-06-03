@@ -9,6 +9,7 @@ build/
 .campbrain/debug/
 .campbrain/logs/
 .campbrain/state/
+.campbrain/google-token.json
 web/.next/
 web/node_modules/
 web/*.tsbuildinfo

@@ -129,6 +129,20 @@ data/
 
 ---
 
+## Agent Team
+
+CampBrain has a defined team of Claude Code subagents. The roster lives in
+[AGENTS.md](AGENTS.md); each agent's loadable definition is in `.claude/agents/<name>.md`.
+
+- **architect** (opus) → **planner** (opus) → **backend-developer** / **frontend-developer**
+  (sonnet) → **tester** (sonnet) → **reviewer** (sonnet, opus for risky diffs) →
+  **debugger** (sonnet, on hard bugs) → **doc-steward** (sonnet).
+- Spawn the right agent for the layer: `src/` + API routes → backend-developer; `web/`
+  UI → frontend-developer; design → architect; ordered steps → planner.
+- The **Documentation Steward** owns doc/spec freshness — see Conventions.
+
+---
+
 ## Core Architecture
 
 ### Three Engines
@@ -257,6 +271,9 @@ Defined in `web/lib/site-filters.ts`. Applied client-side on `/available` and in
 - async/await consistently
 - Early returns over nested conditionals
 - Provider adapters must be modular and independently testable
+- Documentation freshness (this file, `AGENTS.md`, specs in `docs/superpowers/specs/`,
+  goal docs) is owned by the **doc-steward** agent — defer doc updates to it rather than
+  editing CLAUDE.md ad-hoc
 - Save raw HTML snapshots when parser confidence is low
 - Do not hardcode park-specific values (Angel Island, page_id 468, sites #4–#6) outside seed data and tests
 

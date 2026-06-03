@@ -4,8 +4,7 @@ import { loadTargets } from '../../config/targets.js';
 
 const MIN_INTERVAL_MINUTES = 15;
 const DEFAULT_INTERVAL_MINUTES = 60;
-// Proactive scan runs less frequently — no need to hit every park every hour
-const PROACTIVE_INTERVAL_MINUTES = 120;
+const DEFAULT_PROACTIVE_INTERVAL_MINUTES = 120;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -39,6 +38,7 @@ function timestamp(): string {
 
 export interface WorkerOptions {
   intervalMinutes?: number;
+  proactiveIntervalMinutes?: number;
   scanOnStart?: boolean;
   targetId?: string;
   debug?: boolean;
@@ -51,6 +51,14 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
     process.env['CAMPBRAIN_SCAN_INTERVAL_MINUTES']
   );
 
+  const rawProactive = options.proactiveIntervalMinutes
+    ?? (process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'] !== undefined
+      ? parseInt(process.env['CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES'], 10)
+      : undefined);
+  const proactiveIntervalMinutes = typeof rawProactive === 'number' && !isNaN(rawProactive) && rawProactive >= MIN_INTERVAL_MINUTES
+    ? rawProactive
+    : DEFAULT_PROACTIVE_INTERVAL_MINUTES;
+
   const scanOnStart =
     options.scanOnStart !== false &&
     process.env['CAMPBRAIN_SCAN_ON_START'] !== 'false';
@@ -60,10 +68,12 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
   );
 
   console.log('\n🏕️  CampBrain Worker\n');
-  console.log(`  Started:  ${timestamp()}`);
-  console.log(`  Interval: every ${intervalMinutes} minute${intervalMinutes !== 1 ? 's' : ''}`);
-  console.log(`  Targets:  ${targets.length}`);
-  for (const t of targets) console.log(`    • ${t.name}`);
+  console.log(`  Started:        ${timestamp()}`);
+  console.log(`  Alert scan:     every ${intervalMinutes} minute${intervalMinutes !== 1 ? 's' : ''} (${targets.length} target${targets.length !== 1 ? 's' : ''})`);
+  console.log(`  Cache refresh:  every ${proactiveIntervalMinutes} minute${proactiveIntervalMinutes !== 1 ? 's' : ''} (all 88 CA parks)`);
+  if (targets.length > 0) {
+    for (const t of targets) console.log(`    • ${t.name}`);
+  }
   console.log('');
 
   let scanCount = 0;
@@ -76,7 +86,7 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
     }
     running = true;
     scanCount++;
-    console.log(`[${timestamp()}] Scan #${scanCount} starting…`);
+    console.log(`[${timestamp()}] Alert scan #${scanCount} starting…`);
 
     try {
       const summary = await runScan({
@@ -87,14 +97,14 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
 
       const { totalCandidates, totalMatches, totalNewHits } = summary;
       console.log(
-        `[${timestamp()}] Scan #${scanCount} done — ` +
+        `[${timestamp()}] Alert scan #${scanCount} done — ` +
           `${totalCandidates} candidates, ` +
           `${totalMatches} match${totalMatches !== 1 ? 'es' : ''}, ` +
           `${totalNewHits} new hit${totalNewHits !== 1 ? 's' : ''}`
       );
     } catch (err) {
       console.error(
-        `[${timestamp()}] Scan #${scanCount} error:`,
+        `[${timestamp()}] Alert scan #${scanCount} error:`,
         err instanceof Error ? err.message : err
       );
     } finally {
@@ -110,7 +120,7 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
 
   // Schedule proactive availability cache scans (independent interval)
   let proactiveRunning = false;
-  const proactiveIntervalMs = PROACTIVE_INTERVAL_MINUTES * 60 * 1_000;
+  const proactiveIntervalMs = proactiveIntervalMinutes * 60 * 1_000;
 
   function runProactiveNow() {
     if (proactiveRunning) return;

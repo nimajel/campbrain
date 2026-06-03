@@ -79,14 +79,14 @@ function dowLabel(iso: string): string {
   });
 }
 
-function monthLabel(iso: string): string {
-  return parseDateLocal(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 /** Friday = 5, Saturday = 6 */
 function isWeekendArrival(iso: string): boolean {
   const dow = parseDateLocal(iso).getDay();
   return dow === 5 || dow === 6;
+}
+
+function isInRange(iso: string, from: string, to: string | null): boolean {
+  return iso >= from && (!to || iso <= to);
 }
 
 /**
@@ -243,7 +243,7 @@ export async function GET(
   // -------------------------------------------------------------------------
   const nextAvailableDates: AvailableDateEntry[] = [];
 
-  for (const date of sortedAvailableDates.slice(0, 60)) {
+  for (const date of sortedAvailableDates) {
     const cgMap = dateMap.get(date)!;
     const campgrounds = [...cgMap.entries()]
       .map(([name, { sites, bookingUrl }]) => {
@@ -268,8 +268,6 @@ export async function GET(
         campgrounds,
       });
     }
-
-    if (nextAvailableDates.length >= 14) break;
   }
 
   // -------------------------------------------------------------------------
@@ -277,24 +275,36 @@ export async function GET(
   //    so we find real openings regardless of how far out they are
   // -------------------------------------------------------------------------
   const nextAvailableWeekends: WeekendEntry[] = [];
-  const fridays = weekendFridaysFromAvailableDates(sortedAvailableDates, today, 13);
+  const fridays = weekendFridaysFromAvailableDates(sortedAvailableDates, today, Infinity);
 
   for (const fri of fridays) {
     const sat = addDays(fri, 1);
     const sun = addDays(fri, 2);
+    const allowFridayArrival = isInRange(fri, rangeStart, to);
+    const allowSaturdayArrival = isInRange(sat, rangeStart, to);
 
     const weekendCampgrounds: WeekendEntry['campgrounds'] = [];
 
     for (const cgName of allCgNames) {
       // Each tier is split so walk-up (non-reservable) sites never appear as bookable.
-      const sites3Night = splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat, sun])).bookable;
-      const sites2NightFri = splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat])).bookable;
-      const sites2NightSat = splitWalkUp(sitesAvailableForDates(dateMap, cgName, [sat, sun])).bookable;
+      const sites3Night = allowFridayArrival
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat, sun])).bookable
+        : [];
+      const sites2NightFri = allowFridayArrival
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat])).bookable
+        : [];
+      const sites2NightSat = allowSaturdayArrival
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [sat, sun])).bookable
+        : [];
 
       // Single-night Fri / Sat options. Sunday-only availability is omitted —
       // arriving Sunday means a Mon check-out, not a useful "weekend" trip.
-      const friSplit = splitWalkUp([...(dateMap.get(fri)?.get(cgName)?.sites ?? [])]);
-      const satSplit = splitWalkUp([...(dateMap.get(sat)?.get(cgName)?.sites ?? [])]);
+      const friSplit = allowFridayArrival
+        ? splitWalkUp([...(dateMap.get(fri)?.get(cgName)?.sites ?? [])])
+        : { bookable: [], walkUp: [] };
+      const satSplit = allowSaturdayArrival
+        ? splitWalkUp([...(dateMap.get(sat)?.get(cgName)?.sites ?? [])])
+        : { bookable: [], walkUp: [] };
       const sites1NightFri = friSplit.bookable;
       const sites1NightSat = satSplit.bookable;
       const walkUpSites = [...new Set([...friSplit.walkUp, ...satSplit.walkUp])].sort();
@@ -321,7 +331,7 @@ export async function GET(
 
     if (weekendCampgrounds.length > 0) {
       nextAvailableWeekends.push({
-        label: `${monthLabel(fri)}–${monthLabel(sun)}`,
+        label: `${dowLabel(fri)}–${dowLabel(sun)}`,
         fridayDate: fri,
         saturdayDate: sat,
         sundayDate: sun,
