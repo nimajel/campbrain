@@ -1,22 +1,9 @@
-// ---------------------------------------------------------------------------
-// Proactive scanner — populates the availability cache with 8-day windows.
-//
-// Architecture (v2):
-//   - One cache entry per (parkPageId × windowStart).
-//   - The parks.ca.gov API only returns a grid when arrival_date has ≥1 open site,
-//     so we probe each day in the window (up to WINDOW_DAYS attempts) until we
-//     get a hit or confirm the entire window is fully booked.
-//   - parseAllAvailability extracts every campground/site/date from the page.
-//   - The full daily grid is stored; 1N/2N/3N queries are answered at read time.
-// ---------------------------------------------------------------------------
-
 import dayjs from 'dayjs';
 import { listCatalogParks } from '../catalog/catalog-store.js';
-import { buildAvailabilityUrl } from '../providers/california-parks-provider.js';
-import { parseAllAvailability, isNoAvailabilityPage } from '../providers/california-parks-parser.js';
+import { CaliforniaParksProvider } from '../providers/california-parks-provider.js';
+import { RecreationGovProvider } from '../providers/recreation-gov-provider.js';
+import type { AvailabilityProvider } from '../providers/availability-provider.js';
 import {
-  generateWindowStarts,
-  windowEnd,
   findStaleWindows,
   upsertEntry,
   evictExpired,
@@ -24,22 +11,16 @@ import {
 } from '../cache/availability-cache.js';
 import { initDb } from '../cache/db.js';
 import { runWithConcurrency } from '../utils/concurrency.js';
-import type { AvailabilityWindowEntry, CampgroundWindow } from '../cache/types.js';
-import { WINDOW_DAYS } from '../cache/types.js';
 
 const FETCH_CONCURRENCY = 5;
 const BATCH_DELAY_MS = 500;
 
-// ---------------------------------------------------------------------------
-// Options + result types
-// ---------------------------------------------------------------------------
-
 export interface ProactiveScanOptions {
-  /** Days ahead to cover. Default: 180 (full CA Parks booking window). */
+  /** Days ahead to cover. Default: 180. */
   daysAhead?: number;
-  /** Scan all parks with site data, not just pageIdVerified ones. Default: false. */
+  /** Scan only pageIdVerified parks. Default: false. */
   verifiedOnly?: boolean;
-  /** Force re-scan even when cache is still fresh. Default: false. */
+  /** Force re-scan even when cache is fresh. Default: false. */
   force?: boolean;
   todayOverride?: string;
   logger?: (msg: string) => void;
@@ -54,9 +35,14 @@ export interface ProactiveScanSummary {
   durationMs: number;
 }
 
-// ---------------------------------------------------------------------------
-// Main scanner
-// ---------------------------------------------------------------------------
+function getProvider(providerName: string): AvailabilityProvider {
+  switch (providerName) {
+    case 'recreation-gov':
+      return new RecreationGovProvider();
+    default:
+      return new CaliforniaParksProvider();
+  }
+}
 
 export async function runProactiveScan(
   opts: ProactiveScanOptions = {}
@@ -68,9 +54,12 @@ export async function runProactiveScan(
 
   await initDb();
 
-  // 1. Eligible parks
+  const today = opts.todayOverride ? dayjs(opts.todayOverride) : dayjs();
+  const rangeStart = today.add(2, 'day').format('YYYY-MM-DD');
+  const rangeEnd = today.add(daysAhead, 'day').format('YYYY-MM-DD');
+
+  // Eligible parks: any provider, must have at least one site in catalog
   const parks = listCatalogParks().filter((p) => {
-    if (p.provider !== 'california-parks') return false;
     if (verifiedOnly && !p.pageIdVerified) return false;
     return p.campgrounds.some((c) => c.sites.length > 0);
   });
@@ -80,20 +69,47 @@ export async function runProactiveScan(
     return { totalWindows: 0, staleCount: 0, fetchCount: 0, fetchErrors: 0, cacheWrites: 0, durationMs: Date.now() - startMs };
   }
 
-  // 2. Generate (park, windowStart) candidates
-  const windowStarts = generateWindowStarts(daysAhead, opts.todayOverride);
-  const allCandidates = parks.flatMap((p) =>
-    windowStarts.map((ws) => ({ parkPageId: p.parkPageId, windowStart: ws }))
-  );
+  // Generate (park × window) candidates per provider
+  type Candidate = { parkPageId: string; windowStart: string; windowEnd: string; providerName: string };
+  const allCandidates: Candidate[] = parks.flatMap((park) => {
+    const provider = getProvider(park.provider);
+    return provider.generateCacheWindows(rangeStart, rangeEnd).map((w) => ({
+      parkPageId: park.parkPageId,
+      windowStart: w.windowStart,
+      windowEnd: w.windowEnd,
+      providerName: park.provider,
+    }));
+  });
+
   const totalWindows = allCandidates.length;
 
-  // 3. Filter to stale/missing
-  const toScan = opts.force
-    ? allCandidates
-    : await findStaleWindows(allCandidates, 'california-parks');
-  const staleCount = toScan.length;
+  // Filter to stale/missing — group by provider so we batch the DB queries
+  let toScan: Candidate[];
+  if (opts.force) {
+    toScan = allCandidates;
+  } else {
+    const byProvider = new Map<string, Candidate[]>();
+    for (const c of allCandidates) {
+      const list = byProvider.get(c.providerName) ?? [];
+      list.push(c);
+      byProvider.set(c.providerName, list);
+    }
+    const staleLists = await Promise.all(
+      Array.from(byProvider.entries()).map(async ([providerName, candidates]) => {
+        const staleKeys = new Set(
+          (await findStaleWindows(
+            candidates.map((c) => ({ parkPageId: c.parkPageId, windowStart: c.windowStart })),
+            providerName
+          )).map((s) => `${s.parkPageId}::${s.windowStart}`)
+        );
+        return candidates.filter((c) => staleKeys.has(`${c.parkPageId}::${c.windowStart}`));
+      })
+    );
+    toScan = staleLists.flat();
+  }
 
-  log(`Proactive scan: ${parks.length} parks, ${windowStarts.length} windows (${daysAhead}d ahead)`);
+  const staleCount = toScan.length;
+  log(`Proactive scan: ${parks.length} parks, ${allCandidates.length} windows (${daysAhead}d ahead)`);
   log(`  ${totalWindows} total — ${staleCount} stale / missing`);
 
   if (staleCount === 0) {
@@ -106,97 +122,33 @@ export async function runProactiveScan(
   let fetchErrors = 0;
   let cacheWrites = 0;
 
-  const fetchTasks = toScan.map(({ parkPageId, windowStart }) => async () => {
-    const park = parkByPageId.get(parkPageId);
+  const fetchTasks = toScan.map((candidate) => async () => {
+    const park = parkByPageId.get(candidate.parkPageId);
     if (!park) return;
+    const provider = getProvider(park.provider);
+    fetchCount++;
 
-    const wEnd = windowEnd(windowStart);
-    const catalogCgByName = new Map(park.campgrounds.map((c) => [c.name, c]));
+    const entry = await provider.proactiveScanWindow(
+      candidate.parkPageId,
+      { windowStart: candidate.windowStart, windowEnd: candidate.windowEnd },
+      park.parkName,
+      park.campgrounds
+    );
 
-    // The API only returns a grid when the arrival_date itself has ≥1 available site.
-    // Probe each day in the window until we get data or exhaust the probe limit.
-    // Must probe all WINDOW_DAYS: days 1-3 might be fully booked while days 4-8 are open.
-    const maxProbes = WINDOW_DAYS;
-
-    let parsed: ReturnType<typeof parseAllAvailability> = [];
-    let successUrl = '';
-
-    for (let offset = 0; offset < maxProbes; offset++) {
-      const arrivalDate = dayjs(windowStart).add(offset, 'day').format('YYYY-MM-DD');
-      const url = buildAvailabilityUrl(parkPageId, { arrivalDate, nights: 1, endDate: wEnd });
-      fetchCount++;
-
-      let html: string;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        html = await res.text();
-      } catch (err) {
-        fetchErrors++;
-        log(`  ✗ ${park.parkName} ${windowStart}+${offset} — ${err instanceof Error ? err.message : String(err)}`);
-        return;
-      }
-
-      parsed = parseAllAvailability(html);
-      if (parsed.length > 0) {
-        successUrl = url;
-        break;
-      }
-
-      if (!isNoAvailabilityPage(html)) {
-        // Unexpected response (landing page / error) — stop probing this window
-        log(`  ⚠ ${park.parkName} ${windowStart}+${offset} — unexpected empty parse, skipping`);
-        return;
-      }
-      // isNoAvailabilityPage: this day is fully booked, try next
-    }
-
-    if (parsed.length === 0) {
-      // All days in the window confirmed fully booked
-      await upsertEntry({
-        parkPageId,
-        parkName: park.parkName,
-        windowStart,
-        windowEnd: wEnd,
-        scannedAt: new Date().toISOString(),
-        sourceUrl: buildAvailabilityUrl(parkPageId, { arrivalDate: windowStart, nights: 1, endDate: wEnd }),
-        campgrounds: [],
-      }, 'california-parks');
-      cacheWrites++;
+    if (entry === null) {
+      fetchErrors++;
+      log(`  ✗ ${park.parkName} ${candidate.windowStart} — fetch failed, will retry next cycle`);
       return;
     }
 
-    const campgrounds: CampgroundWindow[] = parsed.map((pc) => {
-      const catalogCg = catalogCgByName.get(pc.name);
-      const result: CampgroundWindow = {
-        id: catalogCg?.id ?? pc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        name: pc.name,
-        sites: pc.sites,
-      };
-      const bookingUrl = pc.bookingUrl || catalogCg?.bookingUrl;
-      if (bookingUrl) result.bookingUrl = bookingUrl;
-      if (catalogCg?.nightlyFee !== undefined) result.nightlyFee = catalogCg.nightlyFee;
-      return result;
-    });
-
-    const entry: AvailabilityWindowEntry = {
-      parkPageId,
-      parkName: park.parkName,
-      windowStart,
-      windowEnd: wEnd,
-      scannedAt: new Date().toISOString(),
-      sourceUrl: successUrl,
-      campgrounds,
-    };
-
-    await upsertEntry(entry, 'california-parks');
+    await upsertEntry(entry, park.provider);
     cacheWrites++;
 
-    const windowsWithAvail = campgrounds.filter((c) =>
+    const windowsWithAvail = entry.campgrounds.filter((c) =>
       c.sites.some((s) => Object.values(s.dates).includes('available'))
     ).length;
     if (windowsWithAvail > 0) {
-      log(`  ✓ ${park.parkName} ${windowStart} — ${windowsWithAvail} campground(s) with some availability`);
+      log(`  ✓ ${park.parkName} ${candidate.windowStart} — ${windowsWithAvail} campground(s) with availability`);
     }
   });
 
