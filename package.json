@@ -11,6 +11,8 @@
     "upcoming": "tsx src/cli/index.ts upcoming",
     "sync-calendar": "tsx src/cli/index.ts sync-calendar",
     "cache:refresh": "tsx src/cli/index.ts cache-refresh",
+    "cache:refresh:recgov": "tsx src/cli/index.ts cache-refresh --provider=recreation-gov",
+    "cache:refresh:ca": "tsx src/cli/index.ts cache-refresh --provider=california-parks",
     "catalog:refresh": "tsx src/cli/index.ts catalog refresh",
     "catalog:list": "tsx src/cli/index.ts catalog list",
     "db:init": "tsx src/cli/index.ts db init",

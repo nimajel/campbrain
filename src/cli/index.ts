@@ -147,9 +147,10 @@ program
   .description('Refresh the availability cache for all parks across the 180-day window')
   .option('--force', 'Re-fetch all windows, even if cache is still fresh')
   .option('--days-ahead <n>', 'Days to cover (default 180)', parseInt)
+  .option('--provider <name>', 'Limit scan to a single provider (e.g. recreation-gov, california-parks)')
   .action(async (options) => {
     try {
-      await cacheRefreshCommand({ force: options.force, daysAhead: options.daysAhead });
+      await cacheRefreshCommand({ force: options.force, daysAhead: options.daysAhead, provider: options.provider });
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : error);
       process.exit(1);

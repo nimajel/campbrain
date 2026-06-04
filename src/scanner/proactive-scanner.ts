@@ -22,6 +22,8 @@ export interface ProactiveScanOptions {
   verifiedOnly?: boolean;
   /** Force re-scan even when cache is fresh. Default: false. */
   force?: boolean;
+  /** Restrict scan to a single provider, e.g. 'recreation-gov'. Default: all providers. */
+  provider?: string;
   todayOverride?: string;
   logger?: (msg: string) => void;
 }
@@ -62,6 +64,7 @@ export async function runProactiveScan(
   // CA Parks requires pre-discovered campground/site data (populated by catalog:refresh).
   // Rec.gov discovers sites live from the availability API — just needs a parkPageId.
   const parks = listCatalogParks().filter((p) => {
+    if (opts.provider && p.provider !== opts.provider) return false;
     if (verifiedOnly && !p.pageIdVerified) return false;
     if (p.provider === 'recreation-gov') return !!p.parkPageId;
     return p.campgrounds.some((c) => c.sites.length > 0);

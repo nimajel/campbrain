@@ -3,15 +3,18 @@ import { runProactiveScan } from '../../scanner/proactive-scanner.js';
 export interface CacheRefreshOptions {
   force?: boolean;
   daysAhead?: number;
+  provider?: string;
 }
 
 export async function cacheRefreshCommand(options: CacheRefreshOptions = {}): Promise<void> {
   const daysAhead = options.daysAhead ?? 180;
-  console.log(`\nRefreshing availability cache (${daysAhead}-day window)…\n`);
+  const scope = options.provider ? ` (${options.provider} only)` : '';
+  console.log(`\nRefreshing availability cache (${daysAhead}-day window${scope})…\n`);
 
   const summary = await runProactiveScan({
     daysAhead,
     ...(options.force && { force: true }),
+    ...(options.provider && { provider: options.provider }),
     logger: (msg) => console.log(msg),
   });
 
