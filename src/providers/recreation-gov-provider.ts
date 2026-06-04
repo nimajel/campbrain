@@ -92,7 +92,7 @@ export class RecreationGovProvider implements AvailabilityProvider {
    * Incremental 2-hour cycles: ~2–5 min (only stale windows).
    */
   proactiveConcurrency = 1;
-  batchDelayMs = 500;
+  batchDelayMs = 1_500;
 
   async scan(
     target: Target,
