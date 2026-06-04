@@ -80,18 +80,17 @@ export function evaluateRecGovCandidate(
   return hits;
 }
 
-export const REC_GOV_RETRY_DELAYS_MS = [10_000, 30_000, 60_000]; // 10s, 30s, 60s backoff on 429
+export const REC_GOV_RETRY_DELAYS_MS = [15_000, 45_000, 90_000]; // 15s, 45s, 90s backoff on 429
 
 export class RecreationGovProvider implements AvailabilityProvider {
   name = 'recreation-gov';
   /**
-   * 3 concurrent requests. The API uses CloudFront burst protection rather
-   * than a sustained rate limit — but a 500ms inter-batch delay keeps us
-   * well clear of the burst threshold that triggers IP blocks.
+   * 2 concurrent requests with a 1s inter-batch delay ≈ 1.5 req/sec sustained.
+   * CloudFront burst-blocks at higher rates; this keeps us well clear.
+   * Cold scan (648 parks × 7 months): ~60 min. Incremental: ~2 min.
    */
-  proactiveConcurrency = 3;
-  /** 500ms between batches of 3 ≈ 6 req/sec sustained — safe but fast. */
-  batchDelayMs = 500;
+  proactiveConcurrency = 2;
+  batchDelayMs = 1_000;
 
   async scan(
     target: Target,
