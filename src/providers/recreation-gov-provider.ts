@@ -177,10 +177,9 @@ export class RecreationGovProvider implements AvailabilityProvider {
         continue;
       }
 
-      // 400 means this facility ID doesn't support the campground availability
-      // endpoint (e.g. permit-only or group sites using a different API).
-      // Return null silently so the scanner skips it without noisy errors.
-      if (response.status === 400) return null;
+      // 400/404 means this facility doesn't have a campground availability endpoint
+      // (e.g. wilderness areas, permit-only sites). Skip silently.
+      if (response.status === 400 || response.status === 404) return null;
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return (await response.json()) as RecGovAvailabilityResponse;
