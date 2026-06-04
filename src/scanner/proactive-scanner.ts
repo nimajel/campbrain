@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { listCatalogParks } from '../catalog/catalog-store.js';
+import { listCatalogParks, updateParkMetadata } from '../catalog/catalog-store.js';
 import { CaliforniaParksProvider } from '../providers/california-parks-provider.js';
 import { RecreationGovProvider } from '../providers/recreation-gov-provider.js';
 import type { AvailabilityProvider } from '../providers/availability-provider.js';
@@ -66,6 +66,8 @@ export async function runProactiveScan(
   const parks = listCatalogParks().filter((p) => {
     if (opts.provider && p.provider !== opts.provider) return false;
     if (verifiedOnly && !p.pageIdVerified) return false;
+    // Skip parks permanently marked as not having a usable availability endpoint
+    if (p.discoveryStatus === 'failed') return false;
     if (p.provider === 'recreation-gov') return !!p.parkPageId;
     return p.campgrounds.some((c) => c.sites.length > 0);
   });
@@ -128,10 +130,18 @@ export async function runProactiveScan(
   let fetchErrors = 0;
   let cacheWrites = 0;
 
+  // Track parks permanently marked unsupported within this run so we skip
+  // their remaining windows immediately without making further API calls.
+  const unsupportedParkIds = new Set<string>();
+
   // Build task function for a single candidate
   const makeTask = (candidate: Candidate) => async () => {
     const park = parkByPageId.get(candidate.parkPageId);
     if (!park) return;
+
+    // Skip parks already flagged as unsupported in this run
+    if (unsupportedParkIds.has(candidate.parkPageId)) return;
+
     const provider = getProvider(park.provider);
     fetchCount++;
 
@@ -141,6 +151,17 @@ export async function runProactiveScan(
       park.parkName,
       park.campgrounds
     );
+
+    if (entry === 'unsupported') {
+      // Permanent: this park has no campground availability endpoint.
+      // Mark in catalog so it's excluded from all future scans.
+      unsupportedParkIds.add(candidate.parkPageId);
+      updateParkMetadata(candidate.parkPageId, {
+        discoveryStatus: 'failed',
+        discoveryError: 'No campground availability endpoint (HTTP 400/404)',
+      });
+      return;
+    }
 
     if (entry === null) {
       fetchErrors++;

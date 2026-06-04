@@ -295,7 +295,8 @@ describe('RecreationGovProvider.proactiveScanWindow', () => {
 
     expect(callCount).toBe(2);
     expect(result).not.toBeNull();
-    expect(result!.count).toBeDefined();
+    expect(result).not.toBe('unsupported');
+    if (result && result !== 'unsupported') expect(result.count).toBeDefined();
     global.fetch = originalFetch;
   });
 
@@ -318,18 +319,18 @@ describe('RecreationGovProvider.proactiveScanWindow', () => {
       []
     );
 
-    expect(result).not.toBeNull();
-    expect(result!.parkPageId).toBe('232447');
-    expect(result!.parkName).toBe('Upper Pines');
-    expect(result!.windowStart).toBe('2026-07-01');
-    expect(result!.windowEnd).toBe('2026-07-31');
-    expect(result!.campgrounds).toHaveLength(1);
+    if (!result || result === 'unsupported') throw new Error('Expected entry');
+    expect(result.parkPageId).toBe('232447');
+    expect(result.parkName).toBe('Upper Pines');
+    expect(result.windowStart).toBe('2026-07-01');
+    expect(result.windowEnd).toBe('2026-07-31');
+    expect(result.campgrounds).toHaveLength(1);
 
-    const sites = result!.campgrounds[0]!.sites;
-    expect(sites.some((s) => s.name === 'A01')).toBe(true);
-    expect(sites.some((s) => s.name === 'A02')).toBe(true);
+    const sites = result.campgrounds[0]!.sites;
+    expect(sites.some((s: { name: string }) => s.name === 'A01')).toBe(true);
+    expect(sites.some((s: { name: string }) => s.name === 'A02')).toBe(true);
 
-    const a01 = sites.find((s) => s.name === 'A01')!;
+    const a01 = sites.find((s: { name: string }) => s.name === 'A01')!;
     expect(a01.dates['2026-07-04']).toBe('available');
     expect(a01.dates['2026-07-05']).toBe('unavailable');
 
@@ -351,7 +352,9 @@ describe('RecreationGovProvider.proactiveScanWindow', () => {
     );
 
     expect(result).not.toBeNull();
-    expect(result!.campgrounds).toHaveLength(0);
+    expect(result).not.toBe('unsupported');
+    if (!result || result === 'unsupported') throw new Error('Expected entry');
+    expect(result.campgrounds).toHaveLength(0);
     global.fetch = originalFetch;
   });
 });

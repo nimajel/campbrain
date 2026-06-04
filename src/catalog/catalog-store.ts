@@ -55,6 +55,7 @@ export function describeScanCoverage(dataDir?: string): string {
 
   const counts: Record<string, number> = {};
   for (const p of all) {
+    if (p.discoveryStatus === 'failed') continue; // no usable availability endpoint
     const eligible =
       p.provider === 'recreation-gov'
         ? !!p.parkPageId

@@ -40,10 +40,17 @@ export interface AvailabilityProvider {
    * Fetch a single cache window and return a populated AvailabilityWindowEntry,
    * or null if the fetch failed (caller will retry on next scan cycle).
    */
+  /**
+   * Returns:
+   *   AvailabilityWindowEntry  — success, data written to cache
+   *   'unsupported'            — permanent: this park has no availability endpoint (400/404);
+   *                             the scanner will mark it in the catalog and skip it forever
+   *   null                     — temporary failure; retry next cycle
+   */
   proactiveScanWindow(
     parkPageId: string,
     window: CacheWindow,
     parkName: string,
     campgrounds: CampgroundCatalogEntry[]
-  ): Promise<AvailabilityWindowEntry | null>;
+  ): Promise<AvailabilityWindowEntry | 'unsupported' | null>;
 }

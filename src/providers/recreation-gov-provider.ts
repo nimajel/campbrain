@@ -163,7 +163,7 @@ export class RecreationGovProvider implements AvailabilityProvider {
     parkName: string,
     windowStart: string,
     retryDelaysMs = REC_GOV_RETRY_DELAYS_MS
-  ): Promise<RecGovAvailabilityResponse | null> {
+  ): Promise<RecGovAvailabilityResponse | 'unsupported' | null> {
     for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
       const response = await fetch(url, {
         headers: { 'User-Agent': 'campbrain/1.0 (personal-use camping assistant)' },
@@ -177,9 +177,9 @@ export class RecreationGovProvider implements AvailabilityProvider {
         continue;
       }
 
-      // 400/404 means this facility doesn't have a campground availability endpoint
-      // (e.g. wilderness areas, permit-only sites). Skip silently.
-      if (response.status === 400 || response.status === 404) return null;
+      // 400/404 means this facility has no campground availability endpoint
+      // (wilderness areas, permit-only sites, etc.). Signal permanently unsupported.
+      if (response.status === 400 || response.status === 404) return 'unsupported';
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return (await response.json()) as RecGovAvailabilityResponse;
@@ -207,13 +207,14 @@ export class RecreationGovProvider implements AvailabilityProvider {
     window: CacheWindow,
     parkName: string,
     campgrounds: CampgroundCatalogEntry[]
-  ): Promise<AvailabilityWindowEntry | null> {
+  ): Promise<AvailabilityWindowEntry | 'unsupported' | null> {
     const url = buildAvailabilityUrl(parkPageId, window.windowStart);
 
     let data: RecGovAvailabilityResponse;
     try {
       const result = await this.fetchWithRetry(url, parkName, window.windowStart);
-      if (result === null) return null; // 400 — facility doesn't support this endpoint
+      if (result === 'unsupported') return 'unsupported'; // 400/404 — no availability endpoint
+      if (result === null) return null;
       data = result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
