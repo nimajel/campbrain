@@ -85,12 +85,14 @@ export const REC_GOV_RETRY_DELAYS_MS = [15_000, 45_000, 90_000]; // 15s, 45s, 90
 export class RecreationGovProvider implements AvailabilityProvider {
   name = 'recreation-gov';
   /**
-   * 2 concurrent requests with a 1s inter-batch delay ≈ 1.5 req/sec sustained.
-   * CloudFront burst-blocks at higher rates; this keeps us well clear.
-   * Cold scan (648 parks × 7 months): ~60 min. Incremental: ~2 min.
+   * Fully sequential — only 1 request at a time. recreation.gov CloudFront
+   * burst-blocks any concurrent requests. Sequential with a small delay is the
+   * only setting confirmed to work reliably.
+   * Cold scan (~648 parks × 6 months after pruning): ~60–90 min.
+   * Incremental 2-hour cycles: ~2–5 min (only stale windows).
    */
-  proactiveConcurrency = 2;
-  batchDelayMs = 1_000;
+  proactiveConcurrency = 1;
+  batchDelayMs = 500;
 
   async scan(
     target: Target,
