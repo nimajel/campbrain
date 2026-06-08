@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEntriesForPark } from '../../../../lib/availability-cache';
+import { getEntriesForParks } from '../../../../lib/availability-cache';
 import type { AvailabilityWindowEntry } from '../../../../lib/availability-cache';
 import { isWalkUpSite } from '../../../../lib/site-filters';
 
@@ -122,16 +122,14 @@ function weekendFridaysFromAvailableDates(
   return [...fridaySet].sort().slice(0, maxCount);
 }
 
-// For a given parkPageId, get a Map<date → Map<campgroundName → availableSiteNames[]>>
+// Build a Map<date → Map<campgroundName → {sites, bookingUrl}>> from all entries.
+// Caller is responsible for pre-filtering entries to the relevant facilities.
 function buildDateSiteMap(
   entries: AvailabilityWindowEntry[],
-  parkPageId: string
 ): Map<string, Map<string, { sites: string[]; bookingUrl?: string }>> {
   const dateMap = new Map<string, Map<string, { sites: string[]; bookingUrl?: string }>>();
 
   for (const entry of entries) {
-    if (entry.parkPageId !== parkPageId) continue;
-
     for (const cg of entry.campgrounds) {
       for (const site of cg.sites) {
         for (const [date, status] of Object.entries(site.dates)) {
@@ -186,10 +184,22 @@ function splitWalkUp(names: string[]): { bookable: string[]; walkUp: string[] } 
 export async function GET(
   req: NextRequest
 ): Promise<NextResponse<ParkAvailabilityResponse | { error: string }>> {
+  // Accept either a single parkPageId OR a comma-separated facilityIds list.
+  // facilityIds supports parent-grouped rec-gov parks (multiple facilities per pin).
   const parkPageId = req.nextUrl.searchParams.get('parkPageId');
-  if (!parkPageId) {
-    return NextResponse.json({ error: 'parkPageId is required' }, { status: 400 });
+  const facilityIdsParam = req.nextUrl.searchParams.get('facilityIds');
+  const facilityIds = facilityIdsParam
+    ? facilityIdsParam.split(',').filter(Boolean)
+    : parkPageId
+      ? [parkPageId]
+      : null;
+
+  if (!facilityIds || facilityIds.length === 0) {
+    return NextResponse.json({ error: 'parkPageId or facilityIds is required' }, { status: 400 });
   }
+
+  // The canonical ID for this response — the caller's park identifier (parentId or facilityId)
+  const responseId = parkPageId ?? facilityIds[0]!;
 
   // Optional provider scoping — prevents cross-provider park_page_id collisions
   const providerName = req.nextUrl.searchParams.get('provider') ?? undefined;
@@ -200,11 +210,11 @@ export async function GET(
   const from = req.nextUrl.searchParams.get('from');
   const to = req.nextUrl.searchParams.get('to');
 
-  const parkEntries = await getEntriesForPark(parkPageId, providerName);
+  const parkEntries = await getEntriesForParks(facilityIds, providerName);
 
   if (parkEntries.length === 0) {
     return NextResponse.json({
-      parkPageId,
+      parkPageId: responseId,
       parkName: '',
       asOf: null,
       nextAvailableDates: [],
@@ -219,7 +229,7 @@ export async function GET(
     parkEntries[0]!.scannedAt
   );
 
-  const dateMap = buildDateSiteMap(parkEntries, parkPageId);
+  const dateMap = buildDateSiteMap(parkEntries);
   const today = todayIso();
   const allAvailableDates = [...dateMap.keys()].filter((d) => d >= today).sort();
   const earliestAvailableDate = allAvailableDates[0] ?? null;
@@ -344,7 +354,7 @@ export async function GET(
   }
 
   return NextResponse.json({
-    parkPageId,
+    parkPageId: responseId,
     parkName,
     asOf,
     nextAvailableDates,

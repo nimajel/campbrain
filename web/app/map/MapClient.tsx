@@ -113,6 +113,7 @@ type FetchState =
 
 function useParkAvailability(
   parkPageId: string | null,
+  facilityPageIds: string[],
   from: string,
   to: string,
   provider?: string
@@ -129,7 +130,15 @@ function useParkAvailability(
 
     setCache((prev) => ({ ...prev, [key]: { status: 'loading' } }));
 
-    const params = new URLSearchParams({ parkPageId });
+    const params = new URLSearchParams();
+    // Always query by the real facility IDs. For rec-gov parent groups parkPageId
+    // is a synthetic "recgov-<parentId>" key that matches no DB row, so relying on
+    // it (even for single-facility groups) returns zero availability. parkPageId is
+    // still sent so the response keeps the group's identity.
+    if (facilityPageIds.length > 0) {
+      params.set('facilityIds', facilityPageIds.join(','));
+    }
+    params.set('parkPageId', parkPageId);
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     if (provider) params.set('provider', provider);
@@ -145,7 +154,7 @@ function useParkAvailability(
           [key]: { status: 'error', message: String(err) },
         }));
       });
-  }, [parkPageId, key, from, to, provider, cache]);
+  }, [parkPageId, key, from, to, provider, cache]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!key) return { status: 'idle' };
   return cache[key] ?? { status: 'loading' };
@@ -326,7 +335,7 @@ function DetailPanel({
   availFrom: string;
   availTo: string;
 }) {
-  const fetchState = useParkAvailability(park.parkPageId, availFrom, availTo, park.provider);
+  const fetchState = useParkAvailability(park.parkPageId, park.facilityPageIds, availFrom, availTo, park.provider);
 
   const data = fetchState.status === 'done' ? fetchState.data : null;
 
@@ -600,7 +609,11 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     }
 
     if (parksInDateRange !== null) {
-      result = result.filter((p) => parksInDateRange.has(p.parkPageId));
+      // parksInDateRange contains facility-level IDs; a parent-grouped park matches
+      // if any of its underlying facilities has availability.
+      result = result.filter((p) =>
+        p.facilityPageIds.some((fid) => parksInDateRange.has(fid))
+      );
     }
 
     return result;

@@ -41,6 +41,10 @@ export interface RecGovSearchResult {
   latitude?: string | number | null;
   longitude?: string | number | null;
   reservable?: boolean;
+  parent_id?: string;
+  parent_name?: string;
+  parent_type?: string;
+  org_name?: string;
 }
 
 function titleCase(name: string): string {
@@ -95,6 +99,9 @@ export function parseSearchResults(results: RecGovSearchResult[]): ParkCatalogEn
       };
       if (lat) entry.lat = lat;
       if (lon) entry.lon = lon;
+      if (r.parent_id) entry.parentId = r.parent_id;
+      if (r.parent_name) entry.parentName = titleCase(r.parent_name);
+      if (r.org_name) entry.orgName = r.org_name;
       return entry;
     });
 }

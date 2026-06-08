@@ -44,6 +44,14 @@ export interface ParkCatalogEntry {
   // Auto-refresh only attempts verified parks; unverified parks populate the
   // dropdown but are skipped unless explicitly targeted or forced.
   pageIdVerified?: boolean;
+  // For recreation-gov: the parent rec-area ID and name (e.g. "Death Valley National Park").
+  // parkPageId remains the facility ID used for availability API calls so Option A
+  // (one pin per facility) is a one-line change — just ignore these fields.
+  parentId?: string;
+  parentName?: string;
+  // Managing agency, e.g. "National Park Service", "USDA Forest Service", "Bureau of Land Management".
+  // Used for map pin color categorisation.
+  orgName?: string;
   // Geographic coordinates — populated by catalog refresh via Nominatim geocoding.
   // Once set they are preserved across refreshes (never overwritten with undefined).
   lat?: number;

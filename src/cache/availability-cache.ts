@@ -329,20 +329,28 @@ export async function listAllEntries(): Promise<AvailabilityWindowEntry[]> {
 }
 
 /** Fetch all windows for a single park. Much faster than loading all parks. */
-export async function getEntriesForPark(
-  parkPageId: string,
+export async function getEntriesForParks(
+  parkPageIds: string[],
   providerName?: string
 ): Promise<AvailabilityWindowEntry[]> {
+  if (parkPageIds.length === 0) return [];
   const sql = getSql();
   const providerClause = providerName ? `AND sw.provider_id = $2` : '';
-  const params = providerName ? [parkPageId, providerName] : [parkPageId];
+  const params = providerName ? [parkPageIds, providerName] : [parkPageIds];
   const rows = await sql.unsafe<EntryRow[]>(
     `SELECT ${ENTRY_SELECT} FROM scan_windows sw ${ENTRY_JOINS}
-     WHERE sw.park_page_id = $1 ${providerClause} AND sw.window_end >= CURRENT_DATE
+     WHERE sw.park_page_id = ANY($1) ${providerClause} AND sw.window_end >= CURRENT_DATE
      ORDER BY sw.window_start, cg.campground_name, s.site_name, a.date`,
     params
   );
   return buildEntriesFromRows(rows);
+}
+
+export async function getEntriesForPark(
+  parkPageId: string,
+  providerName?: string
+): Promise<AvailabilityWindowEntry[]> {
+  return getEntriesForParks([parkPageId], providerName);
 }
 
 /** Returns park_page_ids that have at least one available site in the given date range. */
@@ -485,6 +493,48 @@ export async function getCacheStats(): Promise<{ entryCount: number; lastScanAt:
     WHERE window_end >= CURRENT_DATE
   `;
   return { entryCount: row?.entry_count ?? 0, lastScanAt: row?.last_scan_at ?? null, maxWindowEnd: row?.max_window_end ?? null };
+}
+
+// ---------------------------------------------------------------------------
+// Map catalog: parks + campground counts from DB
+// ---------------------------------------------------------------------------
+
+export interface DbParkSummary {
+  providerId: string;
+  parkPageId: string;
+  parkName: string;
+  campgrounds: { name: string; siteCount: number }[];
+}
+
+export async function listParksFromDb(): Promise<DbParkSummary[]> {
+  const sql = getSql();
+  const rows = await sql<{ provider_id: string; park_page_id: string; park_name: string; campground_name: string; site_count: number }[]>`
+    SELECT
+      p.provider_id,
+      p.park_page_id,
+      p.park_name,
+      s.campground_name,
+      COUNT(s.site_id)::int AS site_count
+    FROM parks p
+    JOIN sites s ON s.provider_id = p.provider_id AND s.park_page_id = p.park_page_id
+    GROUP BY p.provider_id, p.park_page_id, p.park_name, s.campground_name
+    ORDER BY p.park_name, s.campground_name
+  `;
+
+  const byPark = new Map<string, DbParkSummary>();
+  for (const row of rows) {
+    const key = `${row.provider_id}:${row.park_page_id}`;
+    if (!byPark.has(key)) {
+      byPark.set(key, {
+        providerId: row.provider_id,
+        parkPageId: row.park_page_id,
+        parkName: row.park_name,
+        campgrounds: [],
+      });
+    }
+    byPark.get(key)!.campgrounds.push({ name: row.campground_name, siteCount: row.site_count });
+  }
+  return Array.from(byPark.values());
 }
 
 // ---------------------------------------------------------------------------

@@ -24,6 +24,13 @@ export type MapPark = {
   provider: string;
   parkName: string;
   parkPageId: string;
+  // All facility page IDs for this park. CA parks: [parkPageId].
+  // Rec-gov parent-grouped parks: one entry per facility under the parent.
+  // Keeping this separate preserves Option A (one pin per facility) as a future toggle.
+  facilityPageIds: string[];
+  // Managing agency — "National Park Service", "USDA Forest Service", "Bureau of Land Management", etc.
+  // Undefined for CA State Parks (provider alone identifies them).
+  orgName?: string;
   latitude?: number;
   longitude?: number;
   discoveryStatus?: string;

@@ -14,32 +14,49 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const selectedIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const BASE = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img';
+const SHADOW = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png';
 
-const availableIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+function makeIcon(color: string): L.Icon {
+  return new L.Icon({
+    iconUrl: `${BASE}/marker-icon-2x-${color}.png`,
+    shadowUrl: SHADOW,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+}
 
-const greyIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const icons = {
+  'state-parks': makeIcon('green'),
+  'nps':          makeIcon('blue'),
+  'usfs':         makeIcon('orange'),
+  'other-federal':makeIcon('violet'),
+  selected:       makeIcon('gold'),
+  unavailable:    makeIcon('grey'),
+};
+
+// Legend entries — kept in sync with icons above
+const LEGEND = [
+  { color: '#2AAD27', label: 'CA State Parks' },
+  { color: '#2A81CB', label: 'National Parks (NPS)' },
+  { color: '#CB8427', label: 'National Forests (USFS)' },
+  { color: '#9C2BCB', label: 'BLM / Army Corps / Other' },
+  { color: '#FFD326', label: 'Selected' },
+  { color: '#7B7B7B', label: 'No availability (filtered)' },
+];
+
+type ParkCategory = 'state-parks' | 'nps' | 'usfs' | 'other-federal';
+
+function getParkCategory(park: MapPark): ParkCategory {
+  if (park.provider === 'california-parks') return 'state-parks';
+  switch (park.orgName) {
+    case 'National Park Service': return 'nps';
+    case 'USDA Forest Service':   return 'usfs';
+    default:                       return 'other-federal';
+  }
+}
 
 function FlyTo({ park }: { park: MapPark | null }) {
   const map = useMap();
@@ -84,58 +101,89 @@ interface Props {
 
 export default function LeafletMap({ parks, selectedPark, onSelectPark, focusLocation, distanceMiles, matchingParkIds }: Props) {
   const withCoords = parks.filter((p) => p.latitude && p.longitude);
+  const isFiltered = matchingParkIds !== null;
 
   return (
-    <MapContainer
-      center={[37.5, -119.5]}
-      zoom={6}
-      style={{ height: '100%', width: '100%', borderRadius: '8px' }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <FlyTo park={selectedPark} />
-      <FocusOnLocation focusLocation={focusLocation ?? null} distanceMiles={distanceMiles ?? null} />
-      {focusLocation && (
-        <CircleMarker
-          center={[focusLocation.lat, focusLocation.lon]}
-          radius={8}
-          color="#e74c3c"
-          fillColor="#e74c3c"
-          fillOpacity={0.8}
-        >
-          <Popup>Search location</Popup>
-        </CircleMarker>
-      )}
-      {withCoords.map((park) => {
-        const isSelected = selectedPark?.parkPageId === park.parkPageId;
-        const isMatching = matchingParkIds == null || matchingParkIds.has(park.parkPageId);
-
-        let icon: L.Icon;
-        if (isSelected) {
-          icon = selectedIcon;
-        } else if (isMatching) {
-          icon = availableIcon;
-        } else {
-          icon = greyIcon;
-        }
-
-        return (
-          <Marker
-            key={park.parkPageId}
-            position={[park.latitude!, park.longitude!]}
-            icon={icon}
-            eventHandlers={{ click: () => onSelectPark(park) }}
+    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      <MapContainer
+        center={[37.5, -119.5]}
+        zoom={6}
+        style={{ height: '100%', width: '100%', borderRadius: '8px' }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <FlyTo park={selectedPark} />
+        <FocusOnLocation focusLocation={focusLocation ?? null} distanceMiles={distanceMiles ?? null} />
+        {focusLocation && (
+          <CircleMarker
+            center={[focusLocation.lat, focusLocation.lon]}
+            radius={8}
+            color="#e74c3c"
+            fillColor="#e74c3c"
+            fillOpacity={0.8}
           >
-            <Popup>
-              <strong>{park.parkName}</strong>
-              <br />
-              {park.campgroundCount} campground{park.campgroundCount !== 1 ? 's' : ''} · {park.siteCount} sites
-            </Popup>
-          </Marker>
-        );
-      })}
-    </MapContainer>
+            <Popup>Search location</Popup>
+          </CircleMarker>
+        )}
+        {withCoords.map((park) => {
+          const isSelected  = selectedPark?.parkPageId === park.parkPageId;
+          const isMatching  = !isFiltered || matchingParkIds!.has(park.parkPageId);
+          const icon = isSelected
+            ? icons.selected
+            : isMatching
+              ? icons[getParkCategory(park)]
+              : icons.unavailable;
+
+          return (
+            <Marker
+              key={park.parkPageId}
+              position={[park.latitude!, park.longitude!]}
+              icon={icon}
+              eventHandlers={{ click: () => onSelectPark(park) }}
+            >
+              <Popup>
+                <strong>{park.parkName}</strong>
+                <br />
+                {park.campgroundCount} campground{park.campgroundCount !== 1 ? 's' : ''} · {park.siteCount} sites
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+
+      {/* Map legend */}
+      <div style={{
+        position: 'absolute',
+        bottom: 24,
+        left: 8,
+        zIndex: 1000,
+        background: 'rgba(15, 15, 15, 0.82)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 6,
+        padding: '7px 10px',
+        pointerEvents: 'none',
+        backdropFilter: 'blur(4px)',
+      }}>
+        {LEGEND.map(({ color, label }, i) => {
+          // Only show the "no availability" row when a date filter is active
+          if (i === LEGEND.length - 1 && !isFiltered) return null;
+          return (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: i < LEGEND.length - 1 ? 4 : 0 }}>
+              <span style={{
+                display: 'inline-block',
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: color,
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap' }}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
