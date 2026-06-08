@@ -362,6 +362,7 @@ const FILTER_SQL: Record<string, { exclude: boolean; pattern: string }> = {
   exclude_day_use:    { exclude: true,  pattern: '\\y(day.use|dailyuse|picnic)\\y' },
   hike_in_only:       { exclude: false, pattern: '\\y(hike.in|walk.in)\\y' },
   exclude_equestrian: { exclude: true,  pattern: '\\y(equestrian|horse)\\y' },
+  exclude_boat_in:    { exclude: true,  pattern: '\\yboat[ -]?(in|to|access)\\y' },
 };
 
 export async function getParksWithAvailability(

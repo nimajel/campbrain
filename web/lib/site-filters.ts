@@ -53,6 +53,12 @@ export const AVAILABLE_FILTERS: SiteFilter[] = [
     description: 'Hide sites intended for equestrian use',
     test: (site, cg) => !/\b(equestrian|horse)\b/i.test(`${site} ${cg}`),
   },
+  {
+    id: 'exclude_boat_in',
+    label: 'Exclude boat-in sites',
+    description: 'Hide boat-in / boat-access sites reachable only by watercraft',
+    test: (site, cg) => !/\bboat[\s-]?(in|to|access)\b/i.test(`${site} ${cg}`),
+  },
 ];
 
 export function getFilter(id: string): SiteFilter | undefined {
