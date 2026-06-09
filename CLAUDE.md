@@ -50,18 +50,15 @@ Fully operational two-tier system:
 
 **2. Web UI** (`npm run dev` → `http://localhost:3001`)
 
-*`/explore` — "Find Campsites"*
-- Real-time multi-park availability search with filters
-- Date range picker (from / to)
-- Multi-site filter panel (e.g., "Exclude group", "Exclude walk-up", "Hike-in only")
-- Night count selector (1N, 2N, All)
-- Weekend-only toggle
+*`/explore` — "Find Campsites"* — see [docs/reference/surfaces/explore.md](docs/reference/surfaces/explore.md)
+- API-driven date-range search: each change to check-in, check-out, region, or filters triggers a GET /api/search fetch
+- Check-in / check-out date pickers (native `<input type="date">`)
+- Region chip bar (All + per-`CampRegion` slugs from `web/lib/regions.ts`)
+- Site filter panel (six filters; `exclude_walk_up` applied client-side only; all others sent to server)
 - Campground pricing display (nightly + total cost)
-- Park cards collapsed by default
-- Pagination: 10 date groups initially, "Show more" for additional weeks
-- Filter response: <200ms
-- Manual "Refresh now" to trigger on-demand scan
-- Book buttons pre-populate arrival date and nights on ReserveCalifornia
+- Park cards collapsed by default (primary performance strategy — server fetch replaces client-side filter memo)
+- Fallback panel with alternate-date suggestions when no bookable sites found in the requested window
+- Book buttons inject exact check-in date + nights into ReserveCalifornia URL
 - Walk-up / first-come sites (e.g. hike/bike) shown with a **walk-up** badge, no Book button, excluded from available-site counts
 
 *`/map` — interactive park map (Leaflet / OpenStreetMap)*
@@ -125,7 +122,7 @@ web/
     explore/        "Find Campsites" page + FindCampsitesClient
     map/            Interactive map page (MapClient, LeafletMap)
     api/            API routes
-      search/       GET stays + POST refresh
+      search/       GET available stays (filters, region, date range)
       map/          catalog, availability, summary
     components/     Shared React components (SiteFilterPanel, ParkMapPopover)
   lib/              Client-safe utilities (available-display, site-filters, booking-url, catalog, availability-cache re-exports)
@@ -136,7 +133,7 @@ data/
 .campbrain/
   logs/             Debug logs
   debug/            HTML snapshots saved on parsing uncertainty
-  state/            Legacy — availability-cache.json is dead (data lives in Postgres)
+  state/            Alert scan state files (latest-scan-results.json, availability-hits.json); availability-cache.json is dead (availability data lives in Postgres)
 ```
 
 ---
@@ -207,21 +204,17 @@ Provider-specific logic stays isolated behind adapters. Do not mix parsing logic
 
 Staleness drives re-scan selection via `findStaleWindows`; expired windows are pruned by `evictExpired`.
 
+**What is NOT in Postgres**: Alert definitions live in `data/targets.json`; alert scan results and availability hits live in `.campbrain/state/latest-scan-results.json` and `.campbrain/state/availability-hits.json` (read by the dashboard via `web/lib/state.ts` and `web/lib/alerts.ts`). See [docs/reference/surfaces/dashboard.md](docs/reference/surfaces/dashboard.md).
+
 ---
 
 ## Web Performance
 
-**Problem**: 88 parks × 180 dates × filter checks was slow (~800ms per toggle).
+**`/explore`** is API-driven. Filter changes trigger a `GET /api/search` fetch — there is no client-side flat lookup, `useMemo` filter pass, or `React.memo` layer on this surface. Performance is gated by server response time, not client-side computation. The primary client-side strategy is **park cards collapsed by default** (only the header row renders until the user expands a card).
 
-**Solution** (in order of impact):
-1. **Park cards collapsed by default** — Only header row renders; biggest single win
-2. **Early-exit pagination** — `groupFromLookup` stops after PAGE_SIZE (10) date groups; skips ~170 dates
-3. **Pre-computed flat lookup** — Built once on entries change: `parkId → campground → site → date → status`
-4. **Synchronous useMemo** — Replaces `useEffect + startTransition`; early-exit computation is fast enough that async scheduling only added latency
-5. **Campground filter cache** — Regex results memoized per (name, filterSet) within each call
-6. **React.memo** on `DateSection`, `ParkCard`, `CampgroundRow`
+**`/map`** uses server-rendered availability summaries from `/api/map/availability/summary`; per-park detail panels fetch on pin click. Filter toggles that change which pins light up trigger a client-side re-filter of the already-loaded summary data.
 
-**Result**: 102–173ms per filter toggle (target: <200ms).
+The original <200ms filter-toggle budget was measured against the pre-API client-side architecture (now retired). See [docs/reference/surfaces/explore.md](docs/reference/surfaces/explore.md) for the current architecture.
 
 ---
 
@@ -317,7 +310,6 @@ After every meaningful change, run:
 Before committing:
 - TypeScript must pass
 - Web page loads and renders without console errors
-- Filters respond in <200ms
 - No hydration warnings or React errors
 - No duplicate alert notifications
 
