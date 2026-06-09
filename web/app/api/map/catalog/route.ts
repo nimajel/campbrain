@@ -80,6 +80,7 @@ export async function GET(): Promise<NextResponse<MapCatalogResponse | { error: 
         provider: park.provider,
         parkName: park.parkName,
         parkPageId: park.parkPageId,
+        facilityPageIds: [park.parkPageId],
         latitude: park.lat,
         longitude: park.lon,
         discoveryStatus: park.discoveryStatus,

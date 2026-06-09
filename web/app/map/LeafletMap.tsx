@@ -108,11 +108,13 @@ export default function LeafletMap({ parks, selectedPark, onSelectPark, focusLoc
       <MapContainer
         center={[37.5, -119.5]}
         zoom={6}
-        style={{ height: '100%', width: '100%', borderRadius: '8px' }}
+        style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={20}
         />
         <FlyTo park={selectedPark} />
         <FocusOnLocation focusLocation={focusLocation ?? null} distanceMiles={distanceMiles ?? null} />
@@ -157,14 +159,16 @@ export default function LeafletMap({ parks, selectedPark, onSelectPark, focusLoc
       <div style={{
         position: 'absolute',
         bottom: 24,
-        left: 8,
+        left: 16,
         zIndex: 1000,
-        background: 'rgba(15, 15, 15, 0.82)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: 6,
-        padding: '7px 10px',
+        background: 'rgba(255,255,255,0.85)',
+        border: '1px solid var(--border)',
+        borderRadius: 10,
+        padding: '8px 11px',
         pointerEvents: 'none',
-        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        backdropFilter: 'blur(6px)',
+        boxShadow: 'var(--shadow-sm)',
       }}>
         {LEGEND.map(({ color, label }, i) => {
           // Only show the "no availability" row when a date filter is active
@@ -179,7 +183,7 @@ export default function LeafletMap({ parks, selectedPark, onSelectPark, focusLoc
                 background: color,
                 flexShrink: 0,
               }} />
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap' }}>{label}</span>
+              <span style={{ fontSize: 11, color: 'var(--text)', whiteSpace: 'nowrap' }}>{label}</span>
             </div>
           );
         })}
