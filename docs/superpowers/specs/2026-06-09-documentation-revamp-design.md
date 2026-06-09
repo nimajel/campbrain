@@ -42,6 +42,17 @@ the shipped reality and are not organized for reproduction.
 - Documenting unbuilt/planned features as if shipped. The set describes current reality;
   planned work stays in `CLAUDE.md`'s Next Steps.
 
+## Reality check (discovered during planning)
+
+CLAUDE.md is stale on surfaces. It documents a flagship `/available` page that **does not
+exist**; the availability-search page is actually `/explore` ("Find Campsites",
+`web/app/explore/FindCampsitesClient.tsx`). The live app has 11 page routes, not 2. Per
+user decision, the doc set gives **full surface docs to the three confirmed keepers**
+(`/` dashboard, `/explore`, `/map`) and a one-line **inventory** entry to the other eight
+(`/alerts`, `/scan-history`, `/calendar`, `/settings`, `/catalog`, `/scan`, `/targets`,
+`/windows`), each flagged *possibly-legacy / under review* since the user plans to prune.
+The CLAUDE.md `/available` naming is corrected as part of the Documentation-Map migration.
+
 ## File structure
 
 ```
@@ -54,8 +65,12 @@ docs/
     design-system.md          shared aesthetic: tokens, components, layout patterns
     deployment.md             runtime topology: Current (local) + Path to hosted
     surfaces/
-      available.md            /available page (Behavior + Presentation)
-      map.md                  /map page (Behavior + Presentation)
+      dashboard.md            / (home) — alerts + latest-scan summary
+      explore.md              /explore "Find Campsites" — availability search
+      map.md                  /map — interactive park map
+      inventory.md            one-line entry per other live page (alerts,
+                              scan-history, calendar, settings, catalog, scan,
+                              targets, windows), each flagged possibly-legacy
     engines/
       scanner.md              proactive availability scanner
       cache.md                Postgres cache + materialized view logic
@@ -217,12 +232,12 @@ rather than ad-hoc edits:
 ## Reproduction-checklist convention
 
 The element that makes the set rebuildable. In each surface/engine doc it is an ordered,
-imperative list a future agent executes top-to-bottom — e.g. for `/available`:
+imperative list a future agent executes top-to-bottom — e.g. for `/explore`:
 
 ```
-1. Add a Next.js route at web/app/available/page.tsx (server component).
-2. Create AvailableClient (client component) holding filter state.
-3. Wire GET /api/available (see api.md) to read mv_available_stays (see data-model.md).
+1. Add a Next.js route at web/app/explore/page.tsx (server component).
+2. Create FindCampsitesClient (client component) holding filter state.
+3. Wire the search API (see api.md) to read mv_available_stays (see data-model.md).
 4. Implement the flat lookup: parkId → campground → site → date → status.
 5. Apply site filters client-side (see SiteFilterPanel in design-system.md).
 6. Implement early-exit pagination (10 date groups, "Show more").
@@ -238,7 +253,8 @@ Build shared references first (they are linked by everything), then surfaces, th
 then wiring docs, then migration:
 
 1. `00-overview.md`, `data-model.md`, `api.md`, `design-system.md`, `deployment.md`
-2. `surfaces/available.md`, `surfaces/map.md`
+2. `surfaces/dashboard.md`, `surfaces/explore.md`, `surfaces/map.md`,
+   `surfaces/inventory.md`
 3. `engines/scanner.md`, `engines/cache.md`, `engines/providers.md`,
    `engines/reservation-windows.md`
 4. `reference/README.md` (the map, written once targets exist)
