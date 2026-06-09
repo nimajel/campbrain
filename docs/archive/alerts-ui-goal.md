@@ -1,3 +1,5 @@
+> ARCHIVED — historical intent, superseded by docs/reference/. Not current truth.
+
 # Goal: Alerts UI
 
 ## Objective
