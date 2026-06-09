@@ -108,7 +108,7 @@ export default function LeafletMap({ parks, selectedPark, onSelectPark, focusLoc
       <MapContainer
         center={[37.5, -119.5]}
         zoom={6}
-        style={{ height: '100%', width: '100%', borderRadius: '8px' }}
+        style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
