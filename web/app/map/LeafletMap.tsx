@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
+import { useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { MapPark } from '../api/map/catalog/route';
@@ -47,6 +47,9 @@ const LEGEND = [
   { color: '#7B7B7B', label: 'No availability (filtered)' },
 ];
 
+// Initial view: frame the whole state instead of half the western US.
+const CA_BOUNDS: L.LatLngBoundsExpression = [[32.3, -124.6], [42.1, -114.0]];
+
 type ParkCategory = 'state-parks' | 'nps' | 'usfs' | 'other-federal';
 
 function getParkCategory(park: MapPark): ParkCategory {
@@ -60,9 +63,17 @@ function getParkCategory(park: MapPark): ParkCategory {
 
 function FlyTo({ park }: { park: MapPark | null }) {
   const map = useMap();
+  const savedView = useRef<{ center: L.LatLng; zoom: number } | null>(null);
   useEffect(() => {
     if (park?.latitude && park?.longitude) {
+      // Remember the view from before the first selection so closing the panel returns to it.
+      if (!savedView.current) {
+        savedView.current = { center: map.getCenter(), zoom: map.getZoom() };
+      }
       map.flyTo([park.latitude, park.longitude], 12, { duration: 0.8 });
+    } else if (savedView.current) {
+      map.flyTo(savedView.current.center, savedView.current.zoom, { duration: 0.8 });
+      savedView.current = null;
     }
   }, [map, park]);
   return null;
@@ -106,10 +117,11 @@ export default function LeafletMap({ parks, selectedPark, onSelectPark, focusLoc
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       <MapContainer
-        center={[37.5, -119.5]}
-        zoom={6}
+        bounds={CA_BOUNDS}
+        zoomControl={false}
         style={{ height: '100%', width: '100%' }}
       >
+        <ZoomControl position="bottomright" />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -143,6 +155,8 @@ export default function LeafletMap({ parks, selectedPark, onSelectPark, focusLoc
               key={park.parkPageId}
               position={[park.latitude!, park.longitude!]}
               icon={icon}
+              title={park.parkName}
+              alt={park.parkName}
               eventHandlers={{ click: () => onSelectPark(park) }}
             >
               <Popup>

@@ -15,6 +15,8 @@ if (existsSync(rootEnvPath)) {
 }
 
 const nextConfig: NextConfig = {
+  // The floating dev-tools indicator covers the map legend (bottom-left).
+  devIndicators: false,
   // Allow webpack to resolve .js imports as .ts files
   // This is needed because src/ uses ESM-style .js extensions pointing to .ts sources
   webpack(config) {

@@ -1,0 +1,110 @@
+# Map View Improvements — Critique & Prioritized Backlog
+
+**Date:** 2026-06-09
+**Status:** backlog — items are tackled one at a time, top to bottom
+**Source:** Live walkthrough of `/map` at desktop (1440×900) and mobile (375×812) widths, as a California-camper persona: fresh landing → 2-week date range → pin click (Point Reyes) → dropdown select (Anza-Borrego, fully booked) → mobile resize.
+
+This document is the umbrella backlog. Each item below gets its own short design
+(discussed and approved before implementation), then ships independently. Check items
+off as they land.
+
+---
+
+## What already works — do not regress
+
+- Muted CARTO basemap + naturalist palette; calm, outdoorsy first impression
+- Grey-out (not remove) for pins that fail date/site filters
+- Weekend stay tiers (Fri–Mon 3N, Fri–Sun 2N, Sat–Mon 2N, Fri 1N, Sat 1N) — answers "can I get a weekend?" directly
+- "Fully booked through X. Next opening: Y" empty state
+- "Cache as of Nm ago" freshness line
+- "2 weeks" / "1 month" quick date buttons
+- No console errors; data layer is solid
+
+---
+
+## Findings (condensed)
+
+1. **Mobile unusable** — filter chips crush into a ~40px column of truncated text, map becomes a sliver, legend collides with chips, controls spill into dead-space scroll below the map.
+2. **Initial view wastes the screen** — map opens on half the western US; California occupies the left third.
+3. **Pin wall** — 139 anonymous overlapping teardrops on the NorCal coast; no clustering, no hover names, every marker is `alt="Marker"`.
+4. **Pin color channel overloaded** — color means agency (green/blue/orange/purple) *and* availability (grey) *and* selection (yellow); seven legend entries. Availability — the camper's #1 question — doesn't own the dominant channel.
+5. **No comparison affordance** — answering "where are the good weekends this month?" requires clicking 15 pins serially; no synced list, no per-pin availability density.
+6. **Detail panel content is raw** — internal `discoveryStatus` "SUCCESS" badge leaks into UI; site lists are all-caps comma-runs with the Book link drowned at the end; weekend row header dates disagree with the tier label (header "Fri, Jun 12–Sun, Jun 14" vs tier "Fri–Mon (3 nights)"); no prices despite `/explore` having nightly fees.
+7. **Selection disorients** — pin click zooms in hard with no way back; dropdown select hard-removes all other pins and the count reads "0 / 141 parks · 0 match", which reads as "nothing available".
+8. **Overlaps & small polish** — zoom control overlaps filter bar; dark circle button covers the legend's last row; default-white Leaflet popup duplicates the panel; geocode controls ("Near city…" + → + 📍) are cryptic; native `mm/dd/yyyy` inputs clash with the theme.
+
+---
+
+## Prioritized backlog
+
+### P1 — Quick-wins bundle (orientation + trust fixes)
+
+Small, independent fixes; biggest polish-per-effort. One pass, one PR.
+**Design approved 2026-06-09.** Scope: `LeafletMap.tsx`, `MapClient.tsx`, `next.config.ts`.
+No API or schema changes.
+
+- [x] Fit initial map bounds to California — replace `center`/`zoom` with `bounds={[[32.3, -124.6], [42.1, -114.0]]}`
+- [x] Restore previous map view when the detail panel closes — save center/zoom on first select, fly back when `selectedPark` → null
+- [x] Default date range to the upcoming weekend (next Fri→Mon; Sat → today→Mon; Sun → next Fri→Mon) + add a "Weekend" quick button beside "2 weeks" / "1 month" (`web/lib/upcoming-weekend.ts`, 6 unit tests)
+- [x] Remove the "SUCCESS" `discoveryStatus` badge and the unused `statusBadge()` helper
+- [x] Marker `title` + `alt` = park name (hover tooltip + a11y in one change)
+- [x] **Selection ≠ filter:** dropdown park selection no longer affects `filteredParks` counts or pin grey-out — it only opens the panel, flies to the park, and golds the pin. Counts/grey always mean "matches filters (dates, distance, site types)."
+- [x] Zoom control → bottom-right (`zoomControl={false}` + `<ZoomControl position="bottomright">`); disable Next.js dev-tools indicator (`devIndicators: false`) which was covering the legend (no legend nudge needed once the indicator was gone)
+- [x] Weekend row header becomes **"Weekend of {Fri date}"** — neutral header, exact nights live in the tier lines; deletes the fragile conditional label block
+- [x] "Book" becomes a real `btn btn-sm` pill, right-aligned per tier line (flex row), replacing the trailing "Book →" text link
+
+**Problem solved:** first-impression emptiness, trust-damaging jargon, disorienting counts.
+
+### P2 — Pin/marker redesign: availability-first
+
+Color encodes availability (the #1 question); agency demoted to a secondary cue.
+
+- Proposed direction: green = has matching availability, grey = no match, amber = walk-up only (maybe), gold = selected. Provider shown as a small glyph on the pin or only in the detail panel. Count badge on each pin showing matching-site count. Marker clustering below a zoom threshold so the NorCal coast is legible.
+- Legend shrinks from 7 entries to ~3.
+- Touches: `LeafletMap.tsx`, summary API already returns the needed data.
+
+**Problem solved:** findings 3 + 4 — the map starts answering the camper's question at a glance.
+
+### P3 — Detail panel content redesign
+
+- Title-case site names; render sites as chips or "N sites" + expandable list instead of comma-runs
+- Surface nightly fee per campground (data exists — `/explore` shows it)
+- Clarify weekend tier rows: arrival date, nights, and sites per tier, visually separated
+- Themed (or removed) map popup so the panel is the single source of detail
+- Touches: `MapClient.tsx` (DetailPanel/WeekendRow/DateRow), CSS.
+
+**Problem solved:** finding 6 — the panel becomes bookable-decision quality.
+
+### P4 — Synced results list (split view)
+
+A collapsible list pane synced with the map: parks with matching availability, sorted
+by soonest opening / nearest / most sites. Click list row ↔ highlight pin. Turns the
+map from a lookup tool into a planning tool ("15 parks have weekend openings — compare").
+
+**Problem solved:** finding 5. Largest functional bet; design needs care (layout, sort
+options, interaction with distance filter).
+
+### P5 — Mobile layout: bottom sheets
+
+Full-bleed map; filters and detail panel become bottom sheets; legend collapses to a
+button. *Note: CampBrain runs on localhost — phone use means dev server on LAN. Ranked
+below P4 for that reason; bump it up if phone-on-LAN is a real usage pattern.*
+
+**Problem solved:** finding 1.
+
+### P6 — Input & chrome polish
+
+- Styled date-range picker matching the naturalist theme (replaces native `mm/dd/yyyy`)
+- Clearer geocode controls (labeled "Search" button, "Use my location" text button)
+- Any remaining theming passes (popup, focus states)
+
+**Problem solved:** finding 8 leftovers.
+
+---
+
+## Process
+
+Each item: short design → user approval → implementation plan → implement → verify
+(`npm run typecheck`, page loads clean, no hydration warnings) → check off here.
+Reference docs (`docs/reference/surfaces/map.md`, `design-system.md`) are updated by
+doc-steward after each item ships.

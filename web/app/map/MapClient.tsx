@@ -8,6 +8,7 @@ import SiteFilterPanel from '../components/SiteFilterPanel';
 import ProviderBadge from '../../components/ProviderBadge';
 import { passesSiteFilters } from '../../lib/site-filters';
 import { injectBookingDates } from '../../lib/booking-url';
+import { upcomingWeekendRange } from '../../lib/upcoming-weekend';
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), { ssr: false });
 
@@ -16,21 +17,19 @@ function siteListText(sites: string[], max = 5): string {
   return sites.slice(0, max).join(', ') + (sites.length > max ? ` +${sites.length - max} more` : '');
 }
 
-/** "Book →" link that injects the actual arrival date + nights into the ReserveCalifornia URL. */
+/** "Book" button that injects the actual arrival date + nights into the ReserveCalifornia URL. */
 function BookLink({ url, arrival, nights }: { url?: string; arrival: string; nights: number }) {
   if (!url) return null;
   return (
-    <>
-      {' '}
-      <a
-        href={injectBookingDates(url, arrival, nights)}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ fontSize: 11, fontWeight: 400 }}
-      >
-        Book →
-      </a>
-    </>
+    <a
+      href={injectBookingDates(url, arrival, nights)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="btn btn-sm"
+      style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 11, padding: '2px 10px', textDecoration: 'none' }}
+    >
+      Book
+    </a>
   );
 }
 
@@ -67,13 +66,6 @@ function addDaysIso(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00');
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
-}
-
-function statusBadge(status?: string): string {
-  if (status === 'success') return 'badge-green';
-  if (status === 'failed') return 'badge-red';
-  if (status === 'pending') return 'badge-blue';
-  return 'badge-gray';
 }
 
 function formatDate(iso: string): string {
@@ -193,11 +185,10 @@ function DateRow({ entry, nights }: { entry: AvailableDateEntry; nights: number 
         <div key={cg.name} style={{ fontSize: 12, color: 'var(--muted)', paddingLeft: 8 }}>
           <span style={{ color: 'var(--text)' }}>{cg.name}</span>
           {cg.sites.length > 0 && (
-            <>
-              {' — '}
-              {siteListText(cg.sites, 6)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{siteListText(cg.sites, 6)}</span>
               <BookLink url={cg.bookingUrl} arrival={entry.date} nights={nights} />
-            </>
+            </div>
           )}
           <WalkUpLine sites={cg.walkUpSites} />
         </div>
@@ -217,19 +208,9 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
   const hasFull3Night = show3Night && entry.campgrounds.some((cg) => cg.sites3Night.length > 0);
   const has2NightFri = show2Night && entry.campgrounds.some((cg) => cg.sites2NightFri.length > 0);
   const has2NightSat = show2Night && entry.campgrounds.some((cg) => cg.sites2NightSat.length > 0);
-  const has1NightFri = entry.campgrounds.some((cg) => cg.sites1NightFri.length > 0);
-  const has1NightSat = entry.campgrounds.some((cg) => cg.sites1NightSat.length > 0);
 
-  const hasMultiNight = hasFull3Night || has2NightFri || has2NightSat;
-  const label = hasMultiNight
-    ? (has2NightSat && !hasFull3Night && !has2NightFri)
-      ? `${formatDate(entry.saturdayDate)}–${formatDate(addDaysIso(entry.saturdayDate, 2))}`
-      : `${formatDate(entry.fridayDate)}–${formatDate(entry.sundayDate)}`
-    : has1NightFri
-      ? formatDate(entry.fridayDate)
-      : has1NightSat
-        ? formatDate(entry.saturdayDate)
-        : entry.label;
+  // Neutral header — the tier lines below carry the exact arrival dates and nights.
+  const label = `Weekend of ${formatDate(entry.fridayDate)}`;
 
   return (
     <div style={{
@@ -277,32 +258,32 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
           <div key={cg.name} style={{ marginBottom: 6 }}>
             <div style={{ fontSize: 12, fontWeight: 600 }}>{cg.name}</div>
             {line3 && (
-              <div style={{ fontSize: 11, color: 'var(--green)', paddingLeft: 8 }}>
-                Fri–Mon (3 nights): {siteListText(cg.sites3Night)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--green)', paddingLeft: 8 }}>
+                <span>Fri–Mon (3 nights): {siteListText(cg.sites3Night)}</span>
                 <BookLink url={cg.bookingUrl} arrival={fri} nights={3} />
               </div>
             )}
             {line2Fri && (
-              <div style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                Fri–Sun (2 nights): {siteListText(cg.sites2NightFri)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
+                <span>Fri–Sun (2 nights): {siteListText(cg.sites2NightFri)}</span>
                 <BookLink url={cg.bookingUrl} arrival={fri} nights={2} />
               </div>
             )}
             {line2Sat && (
-              <div style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                Sat–Mon (2 nights): {siteListText(cg.sites2NightSat)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
+                <span>Sat–Mon (2 nights): {siteListText(cg.sites2NightSat)}</span>
                 <BookLink url={cg.bookingUrl} arrival={sat} nights={2} />
               </div>
             )}
             {line1Fri && (
-              <div style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                Fri (1 night): {siteListText(cg.sites1NightFri)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
+                <span>Fri (1 night): {siteListText(cg.sites1NightFri)}</span>
                 <BookLink url={cg.bookingUrl} arrival={fri} nights={1} />
               </div>
             )}
             {line1Sat && (
-              <div style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                Sat (1 night): {siteListText(cg.sites1NightSat)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
+                <span>Sat (1 night): {siteListText(cg.sites1NightSat)}</span>
                 <BookLink url={cg.bookingUrl} arrival={sat} nights={1} />
               </div>
             )}
@@ -422,9 +403,6 @@ function DetailPanel({
         <div>
           <h2 style={{ margin: 0 }}>{park.parkName}</h2>
           <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
-            <span className={`badge ${statusBadge(park.discoveryStatus)}`}>
-              {park.discoveryStatus ?? 'unknown'}
-            </span>
             <ProviderBadge providerId={park.provider} />
             <span style={{ color: 'var(--muted)', fontSize: 12 }}>
               {park.campgroundCount} campground{park.campgroundCount !== 1 ? 's' : ''} · {park.siteCount} sites
@@ -564,6 +542,14 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
   const [parksInDateRange, setParksInDateRange] = useState<Set<string> | null>(null);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
+  // Default to the upcoming weekend so pins show weekend availability on first load.
+  // Set on mount (not in the initializer) so SSR and client markup match.
+  useEffect(() => {
+    const { from, to } = upcomingWeekendRange(new Date());
+    setAvailFrom(from);
+    setAvailTo(to);
+  }, []);
+
   useEffect(() => {
     if (!availFrom && !availTo) {
       setParksInDateRange(null);
@@ -595,11 +581,10 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     [parks],
   );
 
-  // Parks matching ALL filters — used for count display.
+  // Parks matching ALL filters — used for count display. Dropdown selection is
+  // not a filter: it only opens the panel and flies to the park.
   const filteredParks = useMemo(() => {
-    let result = selectedParkId
-      ? parks.filter((p) => p.parkPageId === selectedParkId)
-      : parks;
+    let result = parks;
 
     if (resolvedLocation && distanceMiles !== null) {
       result = result.filter((p) => {
@@ -617,7 +602,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     }
 
     return result;
-  }, [parks, selectedParkId, resolvedLocation, distanceMiles, parksInDateRange]);
+  }, [parks, resolvedLocation, distanceMiles, parksInDateRange]);
 
   // Parks visible on map: distance filter hard-removes pins; other filters only grey them.
   const displayedParks = useMemo(() => {
@@ -634,7 +619,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
 
   // Which displayed parks get a blue pin (match non-distance filters).
   // null = no non-distance filter active → all displayed parks are blue.
-  const hasOtherFilters = !!selectedParkId || parksInDateRange !== null;
+  const hasOtherFilters = parksInDateRange !== null;
   const matchingParkIds = useMemo(
     () => hasOtherFilters
       ? new Set(filteredParks.filter((p) => p.latitude && p.longitude).map((p) => p.parkPageId))
@@ -879,6 +864,20 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
               onChange={(e) => setAvailTo(e.target.value)}
               style={{ fontSize: 12, padding: '4px 8px', width: 135, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'var(--font)', colorScheme: 'dark' }}
             />
+            {(() => {
+              const wk = upcomingWeekendRange(new Date());
+              const active = availFrom === wk.from && availTo === wk.to;
+              return (
+                <button
+                  type="button"
+                  className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
+                  style={active ? { fontWeight: 700 } : {}}
+                  onClick={() => { setAvailFrom(wk.from); setAvailTo(wk.to); }}
+                >
+                  {active ? '✓ Weekend' : 'Weekend'}
+                </button>
+              );
+            })()}
             <button
               type="button"
               className={`btn btn-sm ${availFrom === todayIso() && availTo === addDaysIso(todayIso(), 14) ? 'btn-primary' : 'btn-ghost'}`}
