@@ -154,7 +154,7 @@ WITH NO DATA
 
 ---
 
-## Shared TypeScript types (`src/cache/types.ts`)
+## Shared TypeScript types
 
 ```typescript
 export interface SiteDailyAvailability {
