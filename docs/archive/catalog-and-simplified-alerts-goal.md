@@ -1,3 +1,5 @@
+> ARCHIVED — historical intent, superseded by docs/reference/. Not current truth.
+
 # Goal: Campground Catalog and Simplified Alert Creation
 
 ## Objective
