@@ -16,11 +16,11 @@ export default function NavBar() {
   return (
     <header className="topnav">
       <a href="/" className="topnav-brand">Camp<span>Brain</span></a>
-      <nav className="navpill">
+      <nav className="navpill" aria-label="Main">
         {LINKS.map(({ href, label }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
           return (
-            <a key={href} href={href} className={active ? 'active' : ''}>{label}</a>
+            <a key={href} href={href} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>{label}</a>
           );
         })}
       </nav>
