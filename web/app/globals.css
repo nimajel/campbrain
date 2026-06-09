@@ -12,8 +12,8 @@
   --accent-soft: #e3efe6;
   --green: #3a6b4f;         /* available/match unified with accent */
   --red: #b3402f;           /* muted brick */
-  --yellow: #c4582a;        /* sunset accent (kept name for back-compat) */
-  --warn: #c4582a;
+  --yellow: #a8481f;        /* sunset accent (kept name for back-compat) */
+  --warn: #a8481f;
   --warn-soft: #f6e7d6;
   --radius: 10px;
   --radius-lg: 16px;
