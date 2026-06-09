@@ -182,10 +182,10 @@ export default function ParkMapPopover({ parkName, lat, lon, children }: Props) 
               return `${Math.max(8, left)}px`;
             })(),
             width: 320,
-            background: 'var(--card)',
+            background: 'var(--surface)',
             border: '1px solid var(--border)',
             borderRadius: 10,
-            boxShadow: '0 8px 32px rgba(0,0,0,.45)',
+            boxShadow: 'var(--shadow-float)',
             overflow: 'hidden',
           }}
         >
