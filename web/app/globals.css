@@ -255,8 +255,3 @@ legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
 }
 .form-input { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 7px 10px; font-size: 13px; font-family: var(--font); }
 .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-
-/* Segmented control (used by nav + map filters) */
-.segmented { display: inline-flex; gap: 2px; background: var(--surface-sunken); border-radius: var(--radius); padding: 3px; }
-.segmented button, .segmented a { font-size: 12px; color: var(--muted); padding: 6px 12px; border-radius: 7px; border: none; background: none; cursor: pointer; }
-.segmented .active, .segmented button.active, .segmented a.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow-sm); }
