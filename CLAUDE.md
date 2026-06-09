@@ -129,6 +129,7 @@ web/
 
 data/
   catalog/          CA parks seed data (california-parks.json) — 200 parks total, 88 with campground data
+  targets.json      Alert / saved-target definitions (read by web/lib/alerts.ts)
 
 .campbrain/
   logs/             Debug logs
