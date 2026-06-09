@@ -25,6 +25,18 @@ The system assists in finding and preparing for reservations, while the user com
 
 ---
 
+## Documentation Map
+
+Canonical current-state docs live in [docs/reference/](docs/reference/README.md):
+surface docs (`/explore`, `/map`, dashboard), engine docs (scanner, cache, providers,
+reservation-windows), and shared references (data-model, api, design-system, deployment).
+
+**Precedence:** `docs/reference/` is the source of truth for *what is built*. This file
+owns conventions, guardrails, and Next Steps. `AGENTS.md` owns the build team.
+`docs/archive/` is historical only. The build team is in [AGENTS.md](AGENTS.md).
+
+---
+
 ## Current State
 
 Fully operational two-tier system:
@@ -38,7 +50,7 @@ Fully operational two-tier system:
 
 **2. Web UI** (`npm run dev` → `http://localhost:3001`)
 
-*`/available` — "What's Available"*
+*`/explore` — "Find Campsites"*
 - Real-time multi-park availability search with filters
 - Date range picker (from / to)
 - Multi-site filter panel (e.g., "Exclude group", "Exclude walk-up", "Hike-in only")
@@ -110,10 +122,10 @@ src/
 
 web/
   app/
-    available/      "What's Available" page + AvailableClient
+    explore/        "Find Campsites" page + FindCampsitesClient
     map/            Interactive map page (MapClient, LeafletMap)
     api/            API routes
-      available/    GET stays + POST refresh
+      search/       GET stays + POST refresh
       map/          catalog, availability, summary
     components/     Shared React components (SiteFilterPanel, ParkMapPopover)
   lib/              Client-safe utilities (available-display, site-filters, booking-url, catalog, availability-cache re-exports)
@@ -175,7 +187,7 @@ Provider-specific logic stays isolated behind adapters. Do not mix parsing logic
 - `availability` — `(site_id, date, status)` where status ∈ available | unavailable | unknown
 
 **Materialized view** — `mv_available_stays`:
-- Precomputes 1N/2N stays for the `/available` page
+- Precomputes 1N/2N stays for the `/explore` page
 - Two columns: `available_sites text[]` (bookable/reservable) and `walk_up_sites text[]` (first-come hike/bike sites)
 - Walk-up sites are never in `available_sites`; they appear only in `walk_up_sites`
 - Refresh with `refreshMaterializedView()` (CONCURRENTLY when populated)
@@ -247,7 +259,7 @@ Planned:
 
 ## Site Filters
 
-Defined in `web/lib/site-filters.ts`. Applied client-side on `/available` and in the `/map` detail panel. Corresponding SQL patterns in `src/cache/availability-cache.ts` (`FILTER_SQL`) applied server-side for pin-lighting.
+Defined in `web/lib/site-filters.ts`. Applied client-side on `/explore` and in the `/map` detail panel. Corresponding SQL patterns in `src/cache/availability-cache.ts` (`FILTER_SQL`) applied server-side for pin-lighting.
 
 | Filter ID | Behavior |
 |---|---|
@@ -256,6 +268,7 @@ Defined in `web/lib/site-filters.ts`. Applied client-side on `/available` and in
 | `exclude_day_use` | Hides day-use, picnic areas |
 | `hike_in_only` | Shows only hike-in / walk-in sites |
 | `exclude_equestrian` | Hides equestrian / horse sites |
+| `exclude_boat_in` | Hides boat-in / boat-access sites reachable only by watercraft |
 
 `isWalkUpSite(siteName)` — exported helper for detecting hike/bike sites by name pattern.
 
