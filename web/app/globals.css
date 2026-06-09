@@ -31,18 +31,18 @@ a:hover { text-decoration: underline; }
 .layout { display: flex; flex-direction: column; min-height: 100vh; }
 
 .topnav {
-  position: relative; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   height: 64px; padding: 0 20px; background: var(--bg);
 }
 .topnav-brand {
-  position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+  justify-self: start; white-space: nowrap;
   font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--text);
 }
 .topnav-brand span { color: var(--accent); }
 .topnav-brand:hover { text-decoration: none; }
 .topnav-avatar {
-  position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+  justify-self: end;
   width: 30px; height: 30px; border-radius: 50%; background: var(--accent);
 }
 .navpill {
