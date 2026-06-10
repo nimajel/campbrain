@@ -1,9 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConsoleNotificationService } from '../src/notifications/console-notification-service.js';
 import { EmailNotificationService, buildEmailBody, buildEmailSubject } from '../src/notifications/email-notification-service.js';
-import { findNewHits } from '../src/state/scan-state.js';
 import type { AvailabilityAlert } from '../src/notifications/notification-service.js';
-import type { AvailabilityHitRecord, HitsState } from '../src/state/scan-state.js';
+import type { AvailabilityHitRecord } from '../src/state/scan-state.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -35,78 +34,25 @@ function makeAlert(overrides: Partial<AvailabilityAlert> = {}): AvailabilityAler
 }
 
 // ---------------------------------------------------------------------------
-// 1. New hit triggers notification
+// 1. Delivery contract
 // ---------------------------------------------------------------------------
 
-describe('findNewHits', () => {
-  it('returns incoming hits when existing state is empty', () => {
-    const hit = makeHit();
-    const result = findNewHits({ hits: [] }, [hit]);
-    expect(result).toHaveLength(1);
-    expect(result[0]?.siteName).toBe('Site 4');
-  });
-
-  it('returns empty array when incoming hit already exists', () => {
-    const hit = makeHit();
-    const existing: HitsState = { hits: [hit] };
-    const result = findNewHits(existing, [hit]);
-    expect(result).toHaveLength(0);
-  });
-
-  it('returns only genuinely new hits when some already exist', () => {
-    const existingHit = makeHit({ siteName: 'Site 4' });
-    const newHit = makeHit({ siteName: 'Site 5' });
-    const existing: HitsState = { hits: [existingHit] };
-
-    const result = findNewHits(existing, [existingHit, newHit]);
-    expect(result).toHaveLength(1);
-    expect(result[0]?.siteName).toBe('Site 5');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 2. Duplicate hit does not trigger notification
-// ---------------------------------------------------------------------------
-
-describe('findNewHits — deduplication', () => {
-  it('deduplicates on targetId + siteName + arrivalDate + departureDate', () => {
-    const hit = makeHit({ firstSeenAt: '2026-05-01T00:00:00.000Z' });
-    const updated = makeHit({ firstSeenAt: '2026-05-28T00:00:00.000Z' });
-    const existing: HitsState = { hits: [hit] };
-
-    // Same key even if firstSeenAt differs
-    const result = findNewHits(existing, [updated]);
-    expect(result).toHaveLength(0);
-  });
-
-  it('treats hits with different departureDate as distinct', () => {
-    const existing = makeHit({ departureDate: '2026-08-16' });
-    const incoming = makeHit({ departureDate: '2026-08-17' });
-    const result = findNewHits({ hits: [existing] }, [incoming]);
-    expect(result).toHaveLength(1);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 3. Missing email env vars does not crash
-// ---------------------------------------------------------------------------
-
-describe('EmailNotificationService — missing env vars', () => {
+describe('EmailNotificationService — delivery results', () => {
   beforeEach(() => {
     delete process.env['RESEND_API_KEY'];
     delete process.env['ALERT_EMAIL_TO'];
     delete process.env['ALERT_EMAIL_FROM'];
   });
 
-  it('resolves without throwing when env vars are absent', async () => {
+  it('returns skipped-unconfigured when env vars are absent', async () => {
     const service = new EmailNotificationService();
     const alert = makeAlert();
-    await expect(service.notify([alert])).resolves.toBeUndefined();
+    await expect(service.notify([alert])).resolves.toBe('skipped-unconfigured');
   });
 
-  it('does nothing (no throw) with empty alerts list', async () => {
+  it('returns delivered (nothing to send) with empty alerts list', async () => {
     const service = new EmailNotificationService();
-    await expect(service.notify([])).resolves.toBeUndefined();
+    await expect(service.notify([])).resolves.toBe('delivered');
   });
 });
 
@@ -154,6 +100,18 @@ describe('buildEmailBody', () => {
     const body = buildEmailBody([makeAlert()]);
     expect(body).toContain('Angel Island Ridge');
     expect(body).toContain('Angel Island State Park');
+  });
+
+  it('includes the As-of freshness line when availabilityAsOf is set', () => {
+    const alert = makeAlert({ availabilityAsOf: '2026-05-28T21:45:00.000Z' });
+    const body = buildEmailBody([alert]);
+    expect(body).toContain('As of:');
+    expect(body).toContain('verify on the booking site before booking');
+  });
+
+  it('omits the As-of line when availabilityAsOf is absent', () => {
+    const body = buildEmailBody([makeAlert()]);
+    expect(body).not.toContain('As of:');
   });
 });
 
@@ -206,8 +164,8 @@ describe('ConsoleNotificationService', () => {
     }
   });
 
-  it('does not throw on empty alerts list', async () => {
+  it('returns delivered on empty alerts list', async () => {
     const service = new ConsoleNotificationService();
-    await expect(service.notify([])).resolves.toBeUndefined();
+    await expect(service.notify([])).resolves.toBe('delivered');
   });
 });

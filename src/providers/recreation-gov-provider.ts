@@ -1,6 +1,5 @@
 import dayjs from 'dayjs';
-import type { Target } from '../config/schemas.js';
-import type { ScanCandidate, ScanResult, AvailabilityHit } from '../types/scanner.js';
+import type { ScanCandidate, AvailabilityHit } from '../types/scanner.js';
 import type { AvailabilityProvider, CacheWindow } from './availability-provider.js';
 import type { AvailabilityWindowEntry, CampgroundWindow, SiteDailyAvailability } from '../cache/types.js';
 import type { CampgroundCatalogEntry } from '../catalog/types.js';
@@ -94,70 +93,6 @@ export class RecreationGovProvider implements AvailabilityProvider {
    */
   proactiveConcurrency = 1;
   batchDelayMs = 1_500;
-
-  async scan(
-    target: Target,
-    candidates: ScanCandidate[],
-    _debugMode = false
-  ): Promise<ScanResult[]> {
-    const results: ScanResult[] = [];
-    for (const candidate of candidates) {
-      results.push(await this.scanCandidate(target, candidate));
-    }
-    return results;
-  }
-
-  private async scanCandidate(
-    target: Target,
-    candidate: ScanCandidate
-  ): Promise<ScanResult> {
-    const dates = requiredDates(candidate.arrivalDate, candidate.nights);
-    const months = [...new Set(dates.map(monthStartForDate))];
-    const monthData = new Map<string, RecGovAvailabilityResponse>();
-
-    for (const month of months) {
-      const url = buildAvailabilityUrl(target.parkPageId, month);
-      console.log(`  Fetching: ${url}`);
-      try {
-        const response = await fetch(url, {
-          headers: { 'User-Agent': 'campbrain/1.0 (personal-use camping assistant)' },
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        monthData.set(month, (await response.json()) as RecGovAvailabilityResponse);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`    Fetch error: ${msg}`);
-        return {
-          targetId: target.id,
-          targetName: target.name,
-          candidate,
-          sourceUrl: buildAvailabilityUrl(target.parkPageId, months[0]!),
-          debugHtmlPath: '',
-          hits: [],
-          parsingNotes: `Fetch failed: ${msg}`,
-          scannedAt: new Date().toISOString(),
-        };
-      }
-    }
-
-    const hits = evaluateRecGovCandidate(monthData, candidate, target.acceptableSites);
-    const sourceUrl = buildAvailabilityUrl(target.parkPageId, months[0]!);
-
-    return {
-      targetId: target.id,
-      targetName: target.name,
-      candidate,
-      sourceUrl,
-      debugHtmlPath: '',
-      hits,
-      parsingNotes:
-        hits.length > 0
-          ? `🎯 MATCH — ${hits.map((h) => h.siteName).join(', ')}`
-          : `No match — ${candidate.nights} night(s) checked`,
-      scannedAt: new Date().toISOString(),
-      bookingUrl: buildBookingUrl(target.parkPageId),
-    };
-  }
 
   /** Fetch the monthly availability JSON, retrying on 429 with backoff.
    *  retryDelaysMs is injectable for testing (pass [0,0,0] to skip real waits). */

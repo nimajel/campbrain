@@ -9,6 +9,7 @@
     "scan": "tsx src/cli/index.ts scan",
     "worker": "tsx src/cli/index.ts worker",
     "upcoming": "tsx src/cli/index.ts upcoming",
+    "notify-test": "tsx src/cli/index.ts notify-test",
     "sync-calendar": "tsx src/cli/index.ts sync-calendar",
     "cache:refresh": "tsx src/cli/index.ts cache-refresh",
     "cache:refresh:recgov": "tsx src/cli/index.ts cache-refresh --provider=recreation-gov",

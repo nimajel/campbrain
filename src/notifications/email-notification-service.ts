@@ -1,9 +1,18 @@
-import type { NotificationService, AvailabilityAlert } from './notification-service.js';
+import type { NotificationService, AvailabilityAlert, DeliveryResult } from './notification-service.js';
 
 export function buildEmailSubject(alerts: AvailabilityAlert[]): string {
   return alerts.length === 1
     ? `CampBrain: campsite opening found – ${alerts[0]!.hit.targetName}`
     : `CampBrain: ${alerts.length} campsite openings found`;
+}
+
+function formatAsOf(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
 }
 
 export function buildEmailBody(alerts: AvailabilityAlert[]): string {
@@ -22,6 +31,9 @@ export function buildEmailBody(alerts: AvailabilityAlert[]): string {
     if (hit.bookingUrl) lines.push(`Book:       ${hit.bookingUrl}`);
     lines.push(`Source:     ${a.sourceUrl}`);
     lines.push(`Checked:    ${a.checkedAt}`);
+    if (a.availabilityAsOf) {
+      lines.push(`As of:      ${formatAsOf(a.availabilityAsOf)} — verify on the booking site before booking.`);
+    }
     lines.push('');
   }
 
@@ -34,8 +46,8 @@ export function buildEmailBody(alerts: AvailabilityAlert[]): string {
 }
 
 export class EmailNotificationService implements NotificationService {
-  async notify(alerts: AvailabilityAlert[]): Promise<void> {
-    if (alerts.length === 0) return;
+  async notify(alerts: AvailabilityAlert[]): Promise<DeliveryResult> {
+    if (alerts.length === 0) return 'delivered';
 
     const apiKey = process.env['RESEND_API_KEY'];
     const to = process.env['ALERT_EMAIL_TO'];
@@ -43,21 +55,27 @@ export class EmailNotificationService implements NotificationService {
 
     if (!apiKey || !to || !from) {
       console.log('📧 Email skipped: RESEND_API_KEY, ALERT_EMAIL_TO, and ALERT_EMAIL_FROM must all be set.');
-      return;
+      return 'skipped-unconfigured';
     }
 
-    const { Resend } = await import('resend');
-    const resend = new Resend(apiKey);
+    try {
+      const { Resend } = await import('resend');
+      const resend = new Resend(apiKey);
 
-    const subject = buildEmailSubject(alerts);
-    const text = buildEmailBody(alerts);
+      const subject = buildEmailSubject(alerts);
+      const text = buildEmailBody(alerts);
 
-    const { error } = await resend.emails.send({ from, to, subject, text });
+      const { error } = await resend.emails.send({ from, to, subject, text });
 
-    if (error) {
-      console.error(`📧 Email send failed: ${error.message}`);
-    } else {
+      if (error) {
+        console.error(`📧 Email send failed: ${error.message}`);
+        return 'failed';
+      }
       console.log(`📧 Alert email sent to ${to}`);
+      return 'delivered';
+    } catch (err: unknown) {
+      console.error(`📧 Email send failed: ${String(err)}`);
+      return 'failed';
     }
   }
 }

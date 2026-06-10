@@ -1,5 +1,6 @@
 import { listAlertsWeb } from '../lib/alerts';
 import { getLatestScanState, getHitsState } from '../lib/state';
+import RecentOpenings from './components/RecentOpenings';
 import type { Alert } from '../lib/alerts';
 import type { LatestScanSummary } from '../lib/state';
 
@@ -78,10 +79,6 @@ export default function DashboardPage() {
     .sort()
     .at(-1);
 
-  const recentHits = [...hitsState.hits]
-    .sort((a, b) => b.firstSeenAt.localeCompare(a.firstSeenAt))
-    .slice(0, 5);
-
   return (
     <>
       <div className="page-header">
@@ -110,35 +107,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {recentHits.length > 0 && (
-        <>
-          <h2>Recent Hits</h2>
-          <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Alert</th>
-                  <th>Site</th>
-                  <th>Arrival</th>
-                  <th>Nights</th>
-                  <th>First seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentHits.map((h, i) => (
-                  <tr key={i}>
-                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{h.targetName}</td>
-                    <td><span className="badge badge-match">{h.siteName}</span></td>
-                    <td>{h.arrivalDate}</td>
-                    <td>{h.nights}N</td>
-                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{relativeTime(h.firstSeenAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+      <RecentOpenings limit={5} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <h2 style={{ margin: 0, flex: 1 }}>Alerts</h2>

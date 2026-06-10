@@ -10,6 +10,7 @@ import { cacheRefreshCommand } from './commands/cache-refresh.js';
 import { dbInitCommand } from './commands/db-init.js';
 import { dbMigrateCommand } from './commands/db-migrate.js';
 import { dbBackfillTypesCommand } from './commands/db-backfill-types.js';
+import { notifyTestCommand } from './commands/notify-test.js';
 
 program
   .name('campbrain')
@@ -152,6 +153,18 @@ program
   .action(async (options) => {
     try {
       await cacheRefreshCommand({ force: options.force, daysAhead: options.daysAhead, provider: options.provider });
+    } catch (error) {
+      console.error('Error:', error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('notify-test')
+  .description('Send a sample alert through the console + email notification services')
+  .action(async () => {
+    try {
+      await notifyTestCommand();
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : error);
       process.exit(1);

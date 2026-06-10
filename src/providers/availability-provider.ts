@@ -1,5 +1,3 @@
-import type { Target } from '../config/schemas.js';
-import type { ScanCandidate, ScanResult } from '../types/scanner.js';
 import type { AvailabilityWindowEntry } from '../cache/types.js';
 import type { CampgroundCatalogEntry } from '../catalog/types.js';
 
@@ -22,13 +20,6 @@ export interface AvailabilityProvider {
    * (≈30 req/min) to stay under its rate limit. CA Parks default: 500ms.
    */
   batchDelayMs?: number;
-
-  /** Alert-based scanning — check specific date candidates against a target. */
-  scan(
-    target: Target,
-    candidates: ScanCandidate[],
-    debugMode?: boolean
-  ): Promise<ScanResult[]>;
 
   /**
    * Return the list of cache windows that should exist to cover rangeStart–rangeEnd.

@@ -52,6 +52,7 @@ export interface ScanResult {
   parsingNotes: string;
   scannedAt: string; // ISO 8601
   bookingUrl?: string;
+  availabilityAsOf?: string; // ISO 8601 — oldest covering cache window
   parsedCampground?: ParsedCampground;
   statusBySite?: Map<string, DailySiteStatus[]>;
 }
@@ -69,6 +70,7 @@ export interface ScanResultJSON {
   parsingNotes: string;
   scannedAt: string;
   bookingUrl?: string;
+  availabilityAsOf?: string;
   statusBySite?: Record<string, DailySiteStatus[]>;
 }
 
@@ -84,6 +86,7 @@ export function serializeResult(r: ScanResult): ScanResultJSON {
     scannedAt: r.scannedAt,
   };
   if (r.bookingUrl !== undefined) out.bookingUrl = r.bookingUrl;
+  if (r.availabilityAsOf !== undefined) out.availabilityAsOf = r.availabilityAsOf;
   if (r.statusBySite !== undefined) out.statusBySite = Object.fromEntries(r.statusBySite);
   return out;
 }

@@ -1,4 +1,5 @@
 import { runScan } from '../../scanner/run-scan.js';
+import { endDb } from '../../cache/db.js';
 import type { ScanResult, DailySiteStatus } from '../../types/scanner.js';
 
 export interface ScanCommandOptions {
@@ -10,11 +11,17 @@ export interface ScanCommandOptions {
 export async function scanCommand(options: ScanCommandOptions = {}): Promise<void> {
   console.log('\n🔍 Availability Scanner\n');
 
-  const summary = await runScan({
-    debug: options.debug,
-    notify: options.notify !== false,
-    targetId: options.targetId,
-  });
+  let summary;
+  try {
+    summary = await runScan({
+      debug: options.debug,
+      notify: options.notify !== false,
+      targetId: options.targetId,
+    });
+  } finally {
+    // The cache-backed scan opens a Postgres pool; close it so the CLI exits promptly.
+    await endDb();
+  }
 
   const allResults = summary.targets.flatMap((t) => t.results);
   const matches = allResults.filter((r) => r.hits.length > 0);

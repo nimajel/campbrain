@@ -28,9 +28,13 @@ export interface AvailabilityHitRecord {
   bookingUrl?: string;
   firstSeenAt: string;   // ISO 8601
   lastSeenAt: string;    // ISO 8601
+  notifiedAt?: string;   // ISO 8601 of the last successful notification delivery
+  disappearedAt?: string; // ISO 8601 — checked but no longer available
+  availabilityAsOf?: string; // ISO 8601 — cache freshness at match time
 }
 
 export interface HitsState {
+  version?: number; // 2 = notifiedAt-aware records
   hits: AvailabilityHitRecord[];
 }
 
@@ -87,53 +91,103 @@ export function hitKey(h: AvailabilityHitRecord): string {
 
 export function readHitsState(stateDir: string): HitsState {
   const p = hitsPath(stateDir);
-  if (!fs.existsSync(p)) return { hits: [] };
+  if (!fs.existsSync(p)) return { version: 2, hits: [] };
   try {
-    return JSON.parse(fs.readFileSync(p, 'utf-8')) as HitsState;
+    const state = JSON.parse(fs.readFileSync(p, 'utf-8')) as HitsState;
+    if (state.version !== 2) {
+      // One-time v1→v2 migration: legacy records predate notifiedAt, so treat
+      // them as already notified to avoid a re-notification burst on first run.
+      return {
+        version: 2,
+        hits: state.hits.map((h) => (h.notifiedAt ? h : { ...h, notifiedAt: h.lastSeenAt })),
+      };
+    }
+    return state;
   } catch {
-    return { hits: [] };
+    return { version: 2, hits: [] };
   }
 }
 
-export function mergeHits(existing: HitsState, incoming: AvailabilityHitRecord[]): HitsState {
-  const map = new Map<string, AvailabilityHitRecord>();
+export function writeHitsState(stateDir: string, state: HitsState): void {
+  ensureStateDir(stateDir);
+  const out: HitsState = { version: 2, hits: state.hits };
+  fs.writeFileSync(hitsPath(stateDir), JSON.stringify(out, null, 2) + '\n', 'utf-8');
+}
 
-  // Index existing hits
+/**
+ * Reconcile this scan's incoming hits against stored state.
+ *
+ * - prunes past-arrival hits
+ * - new key → add + notify
+ * - reappeared (had disappearedAt) → clear + notify
+ * - still present → bump lastSeenAt only
+ * - checked but absent → stamp disappearedAt
+ * - unchecked (park not scanned this run) → untouched
+ * - at-least-once: retained visible hits without notifiedAt are re-queued
+ */
+export function reconcileHits(
+  existing: HitsState,
+  incoming: AvailabilityHitRecord[],
+  checkedKeys: Set<string>,
+  now: string,
+  today: string,
+): { merged: HitsState; toNotify: AvailabilityHitRecord[] } {
+  const map = new Map<string, AvailabilityHitRecord>();
   for (const h of existing.hits) {
+    if (h.arrivalDate < today) continue;
     map.set(hitKey(h), h);
   }
 
-  // Upsert incoming — keep firstSeenAt, update lastSeenAt
+  const incomingKeys = new Set<string>();
+  const toNotifyKeys = new Set<string>();
+
   for (const h of incoming) {
     const key = hitKey(h);
+    incomingKeys.add(key);
     const prev = map.get(key);
-    if (prev) {
-      map.set(key, { ...prev, lastSeenAt: h.lastSeenAt });
-    } else {
+    if (!prev) {
       map.set(key, h);
+      toNotifyKeys.add(key);
+    } else if (prev.disappearedAt) {
+      const { disappearedAt: _gone, ...rest } = prev;
+      map.set(key, {
+        ...rest,
+        lastSeenAt: h.lastSeenAt,
+        ...(h.availabilityAsOf || prev.availabilityAsOf
+          ? { availabilityAsOf: h.availabilityAsOf ?? prev.availabilityAsOf }
+          : {}),
+      });
+      toNotifyKeys.add(key);
+    } else {
+      map.set(key, {
+        ...prev,
+        lastSeenAt: h.lastSeenAt,
+        ...(h.availabilityAsOf || prev.availabilityAsOf
+          ? { availabilityAsOf: h.availabilityAsOf ?? prev.availabilityAsOf }
+          : {}),
+      });
     }
   }
 
-  // Sort by arrivalDate desc, then siteName
+  for (const [key, h] of map) {
+    if (!incomingKeys.has(key) && checkedKeys.has(key) && !h.disappearedAt) {
+      map.set(key, { ...h, disappearedAt: now });
+    }
+  }
+
+  for (const [key, h] of map) {
+    if (!h.notifiedAt && !h.disappearedAt) toNotifyKeys.add(key);
+  }
+
   const hits = Array.from(map.values()).sort((a, b) => {
     const d = b.arrivalDate.localeCompare(a.arrivalDate);
     return d !== 0 ? d : a.siteName.localeCompare(b.siteName);
   });
 
-  return { hits };
-}
-
-export function findNewHits(
-  existing: HitsState,
-  incoming: AvailabilityHitRecord[]
-): AvailabilityHitRecord[] {
-  const existingKeys = new Set(existing.hits.map(hitKey));
-  return incoming.filter((h) => !existingKeys.has(hitKey(h)));
-}
-
-export function writeHitsState(stateDir: string, state: HitsState): void {
-  ensureStateDir(stateDir);
-  fs.writeFileSync(hitsPath(stateDir), JSON.stringify(state, null, 2) + '\n', 'utf-8');
+  return {
+    merged: { version: 2, hits },
+    toNotify: hits.filter((h) => toNotifyKeys.has(hitKey(h))),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +213,7 @@ export function resultsToHitRecords(
         lastSeenAt: now,
       };
       if (r.bookingUrl !== undefined) record.bookingUrl = r.bookingUrl;
+      if (r.availabilityAsOf !== undefined) record.availabilityAsOf = r.availabilityAsOf;
       records.push(record);
     }
   }

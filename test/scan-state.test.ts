@@ -7,7 +7,6 @@ import {
   writeLatestScan,
   readHitsState,
   writeHitsState,
-  mergeHits,
   hitKey,
   resultsToHitRecords,
   buildScanSummary,
@@ -141,7 +140,7 @@ describe('writeLatestScan / readLatestScanState', () => {
 
 describe('readHitsState', () => {
   it('returns empty hits array when state file does not exist', () => {
-    expect(readHitsState(dir)).toEqual({ hits: [] });
+    expect(readHitsState(dir)).toEqual({ version: 2, hits: [] });
   });
 });
 
@@ -169,51 +168,6 @@ describe('hitKey', () => {
     const a = makeHitRecord({ siteName: 'Site A' });
     const b = makeHitRecord({ siteName: 'Site B' });
     expect(hitKey(a)).not.toBe(hitKey(b));
-  });
-});
-
-// ---------------------------------------------------------------------------
-// mergeHits — deduplication
-// ---------------------------------------------------------------------------
-
-describe('mergeHits', () => {
-  it('adds new hits to an empty state', () => {
-    const hit = makeHitRecord();
-    const result = mergeHits({ hits: [] }, [hit]);
-    expect(result.hits).toHaveLength(1);
-  });
-
-  it('deduplicates hits with the same key', () => {
-    const existing = makeHitRecord({ firstSeenAt: '2026-05-01T00:00:00.000Z', lastSeenAt: '2026-05-01T00:00:00.000Z' });
-    const incoming = makeHitRecord({ firstSeenAt: '2026-05-28T00:00:00.000Z', lastSeenAt: '2026-05-28T00:00:00.000Z' });
-
-    const result = mergeHits({ hits: [existing] }, [incoming]);
-    expect(result.hits).toHaveLength(1);
-  });
-
-  it('preserves firstSeenAt from the existing record when deduplicating', () => {
-    const existing = makeHitRecord({ firstSeenAt: '2026-05-01T00:00:00.000Z', lastSeenAt: '2026-05-01T00:00:00.000Z' });
-    const incoming = makeHitRecord({ firstSeenAt: '2026-05-28T00:00:00.000Z', lastSeenAt: '2026-05-28T00:00:00.000Z' });
-
-    const result = mergeHits({ hits: [existing] }, [incoming]);
-    expect(result.hits[0]?.firstSeenAt).toBe('2026-05-01T00:00:00.000Z');
-  });
-
-  it('updates lastSeenAt from the incoming record when deduplicating', () => {
-    const existing = makeHitRecord({ lastSeenAt: '2026-05-01T00:00:00.000Z' });
-    const incoming = makeHitRecord({ lastSeenAt: '2026-05-28T00:00:00.000Z' });
-
-    const result = mergeHits({ hits: [existing] }, [incoming]);
-    expect(result.hits[0]?.lastSeenAt).toBe('2026-05-28T00:00:00.000Z');
-  });
-
-  it('keeps distinct hits when keys differ', () => {
-    const a = makeHitRecord({ siteName: 'Site A', arrivalDate: '2026-08-14' });
-    const b = makeHitRecord({ siteName: 'Site B', arrivalDate: '2026-08-14' });
-    const c = makeHitRecord({ siteName: 'Site A', arrivalDate: '2026-08-21' });
-
-    const result = mergeHits({ hits: [a] }, [b, c]);
-    expect(result.hits).toHaveLength(3);
   });
 });
 
