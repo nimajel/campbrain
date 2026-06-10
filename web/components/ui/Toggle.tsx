@@ -5,11 +5,13 @@ export default function Toggle({
   onChange,
   label,
   disabled = false,
+  ariaLabel,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }) {
   const control = (
     <>
@@ -17,6 +19,7 @@ export default function Toggle({
         type="checkbox"
         checked={checked}
         disabled={disabled}
+        aria-label={ariaLabel}
         onChange={(e) => onChange(e.target.checked)}
       />
       <span className="toggle-slider" />

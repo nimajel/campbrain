@@ -24,7 +24,7 @@ export default function Modal({
       <div className="modal">
         <div className="modal-header">
           <h2 style={{ margin: 0 }}>{title}</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button type="button" className="modal-close" onClick={onClose}>×</button>
         </div>
         {children}
       </div>
