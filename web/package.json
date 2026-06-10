@@ -21,6 +21,7 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@storybook/addon-docs": "^9.1.20",
     "@storybook/nextjs-vite": "^9.1.20",
     "@types/leaflet": "^1.9.21",
     "@types/leaflet.markercluster": "^1.5.6",

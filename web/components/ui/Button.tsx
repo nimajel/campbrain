@@ -21,9 +21,9 @@ function btnClasses(variant?: ButtonVariant, size?: 'sm', className?: string): s
 
 export default function Button(props: ButtonProps) {
   if (props.href !== undefined) {
-    const { variant, size, className, children, ...rest } = props;
+    const { variant, size, className, children, href, ...rest } = props;
     return (
-      <a className={btnClasses(variant, size, className)} {...rest}>
+      <a href={href} className={btnClasses(variant, size, className)} {...rest}>
         {children}
       </a>
     );

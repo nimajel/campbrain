@@ -19,7 +19,14 @@ export const Success: Story = { args: { variant: 'success', children: 'Saved' } 
 export const Small: Story = { args: { variant: 'ghost', size: 'sm', children: 'Manage →' } };
 export const Disabled: Story = { args: { variant: 'primary', disabled: true } };
 export const AsLink: Story = {
-  args: { variant: 'primary', size: 'sm', href: 'https://www.parks.ca.gov', children: 'Book' },
+  args: {
+    variant: 'primary',
+    size: 'sm',
+    href: 'https://www.parks.ca.gov',
+    target: '_blank',
+    rel: 'noopener noreferrer',
+    children: 'Book',
+  },
 };
 export const AllVariants: Story = {
   render: () => (
