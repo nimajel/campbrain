@@ -57,11 +57,19 @@ No API or schema changes.
 
 ### P2 — Pin/marker redesign: availability-first
 
-Color encodes availability (the #1 question); agency demoted to a secondary cue.
+> **Status: shipped 2026-06-09** — see [2026-06-09-map-pin-redesign-design.md](2026-06-09-map-pin-redesign-design.md) for the full design and `docs/superpowers/plans/2026-06-09-map-pin-redesign.md` for the implementation plan.
 
-- Proposed direction: green = has matching availability, grey = no match, amber = walk-up only (maybe), gold = selected. Provider shown as a small glyph on the pin or only in the detail panel. Count badge on each pin showing matching-site count. Marker clustering below a zoom threshold so the NorCal coast is legible.
-- Legend shrinks from 7 entries to ~3.
-- Touches: `LeafletMap.tsx`, summary API already returns the needed data.
+As shipped (deltas from the proposed direction below):
+
+- [x] Fill = availability: forest green = bookable match, hollow sand = no match, **golden amber** (`--walkup`, dedicated token) = walk-up only — sunset was tried first and read as "bad/unavailable"
+- [x] Park type as glyph on every pin: CA outline = CA State Parks, star = federal/Rec.gov (2 tiers, not 4 agencies)
+- [x] Selected = tone-on-tone ring (pin's own fill darkened via `color-mix`) with white casing, over the pin's own fill — selection no longer hides availability and borrows no status color (gold pin and sunset ring were both tried and rejected)
+- [x] Count badge per pin (bookable count green / walk-up count sunset, capped 99+)
+- [x] Marker clustering below zoom 9 (`leaflet.markercluster` behind a local wrapper); cluster bubbles are donuts — multi-pin glyph + total park count in the body, green ring arc = share of parks with availability (distinguishes cluster park-counts from pin site-badges)
+- [x] Legend → collapsible "Key" pill, 5 entries (down from 7)
+- [x] Pins are token-driven SVG divIcons (`web/lib/map-pins.ts`); GitHub PNG markers and the unpkg default-icon hack are deleted
+- [x] Summary API extended: `getParkAvailabilityCounts` returns `{parkPageId, siteCount, walkUpCount}[]` (the old API returned only matching IDs — counts were NOT already available)
+- Note: P1's marker `title`/`alt` was superseded by `aria-label` + a Leaflet `<Tooltip>` (name, park type, match count) — native `title` would double-tooltip
 
 **Problem solved:** findings 3 + 4 — the map starts answering the camper's question at a glance.
 
