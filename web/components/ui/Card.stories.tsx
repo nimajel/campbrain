@@ -22,9 +22,9 @@ export const WithActions: Story = {
         </>
       }
     >
-      <h3 style={{ margin: 0 }}>Angel Island weekends</h3>
+      <h3 style={{ margin: 0 }}>Riverbend weekends</h3>
       <p style={{ margin: '8px 0 0', color: 'var(--muted)', fontSize: 13 }}>
-        Angel Island SP · Ridge Sites · Sites: 4, 5, 6
+        Riverbend SP · Oak Loop · Sites: 12, 14, 15
       </p>
     </Card>
   ),

@@ -8,7 +8,7 @@ const meta = {
   args: {
     items: [
       { key: 'Provider', value: 'california-parks' },
-      { key: 'Park', value: 'Angel Island SP' },
+      { key: 'Park', value: 'Riverbend SP' },
       { key: 'Window opens', value: '2026-07-01 8:00 AM PT' },
     ],
   },
