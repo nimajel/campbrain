@@ -6,6 +6,8 @@ import SiteFilterPanel from '../components/SiteFilterPanel';
 import ProviderBadge from '../../components/ProviderBadge';
 import { injectBookingDates } from '../../lib/booking-url';
 import { ALL_REGIONS, REGION_LABELS } from '../../lib/regions';
+import { EMPTY_TAXONOMY, taxonomyToParams } from '../../lib/site-taxonomy';
+import type { TaxonomyState } from '../../lib/site-taxonomy';
 import type { CampRegion } from '../../lib/regions';
 import type { SearchApiResponse, SearchParkResponse } from '../api/search/route';
 
@@ -204,13 +206,13 @@ export default function FindCampsitesClient() {
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<CampRegion | null>(null);
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [taxonomy, setTaxonomy] = useState<TaxonomyState>(EMPTY_TAXONOMY);
   const [data, setData] = useState<SearchApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const nights = checkIn && checkOut ? dayjs(checkOut).diff(dayjs(checkIn), 'day') : 0;
-  const showWalkUp = !activeFilters.includes('exclude_walk_up');
+  const showWalkUp = !taxonomy.hide.includes('walk_up');
 
   // Clear stale results when dates become invalid
   useEffect(() => {
@@ -223,11 +225,10 @@ export default function FindCampsitesClient() {
     setLoading(true);
     setError(null);
 
-    const params = new URLSearchParams({ from: checkIn, to: checkOut });
+    const params = new URLSearchParams(taxonomyToParams(taxonomy));
+    params.set('from', checkIn);
+    params.set('to', checkOut);
     if (selectedRegion) params.set('region', selectedRegion);
-    // exclude_walk_up is display-only; other filters go to the server
-    const serverFilters = activeFilters.filter((f) => f !== 'exclude_walk_up');
-    if (serverFilters.length > 0) params.set('filters', serverFilters.join(','));
 
     try {
       const res = await fetch(`/api/search?${params.toString()}`);
@@ -244,7 +245,7 @@ export default function FindCampsitesClient() {
     } finally {
       setLoading(false);
     }
-  }, [checkIn, checkOut, selectedRegion, activeFilters]);
+  }, [checkIn, checkOut, selectedRegion, taxonomy]);
 
   useEffect(() => {
     void runSearch();
@@ -341,7 +342,7 @@ export default function FindCampsitesClient() {
         </div>
 
         {/* Site filters */}
-        <SiteFilterPanel activeFilters={activeFilters} onChange={setActiveFilters} />
+        <SiteFilterPanel state={taxonomy} onChange={setTaxonomy} />
       </div>
 
       {/* Empty states — guarded by !loading to avoid overlap with spinner */}
@@ -421,9 +422,16 @@ export default function FindCampsitesClient() {
                   : 'No availability for those dates.'}
               </p>
 
-              {activeFilters.length > 0 && (
+              {(taxonomy.access.length > 0 || taxonomy.kinds.length > 0 || taxonomy.hide.length > 0) && (
                 <p style={{ fontSize: 13, marginBottom: 12 }}>
-                  Try removing some site filters — they may be hiding available sites.
+                  Try removing some site filters — they may be hiding available sites.{' '}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setTaxonomy(EMPTY_TAXONOMY)}
+                  >
+                    Clear filters
+                  </button>
                 </p>
               )}
 

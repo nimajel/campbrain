@@ -6,9 +6,15 @@ import type { MapPark } from '../api/map/catalog/route';
 import type { ParkAvailabilityResponse, AvailableDateEntry, WeekendEntry } from '../api/map/availability/route';
 import SiteFilterPanel from '../components/SiteFilterPanel';
 import ProviderBadge from '../../components/ProviderBadge';
-import { passesSiteFilters } from '../../lib/site-filters';
 import { injectBookingDates } from '../../lib/booking-url';
 import { upcomingWeekendRange } from '../../lib/upcoming-weekend';
+import {
+  EMPTY_TAXONOMY,
+  taxonomyToParams,
+  isTaxonomyDefault,
+} from '../../lib/site-taxonomy';
+import type { TaxonomyState } from '../../lib/site-taxonomy';
+import type { SiteAccess } from '../../lib/availability-cache';
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), { ssr: false });
 
@@ -16,6 +22,12 @@ export interface ParkAvailabilitySummary {
   siteCount: number;
   walkUpCount: number;
 }
+
+const ACCESS_LABEL: Record<SiteAccess, string> = {
+  drive_in: 'drive-in',
+  hike_in: 'hike-in',
+  boat_in: 'boat-in',
+};
 
 // Render up to `max` site names with a "+N more" suffix.
 function siteListText(sites: string[], max = 5): string {
@@ -74,6 +86,7 @@ function addDaysIso(iso: string, n: number): string {
 }
 
 function formatDate(iso: string): string {
+  if (!iso) return '';
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y!, m! - 1, d!).toLocaleDateString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
@@ -98,6 +111,24 @@ function relativeTime(iso?: string | null): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+/** Returns day-of-week 0=Sun..6=Sat for an ISO date string. */
+function isoDow(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y!, m! - 1, d!).getDay();
+}
+
+/** Check whether a [from, to] range contains any Friday (5) or Saturday (6). */
+function rangeHasWeekendDay(from: string, to: string): boolean {
+  if (!from || !to) return true; // open range, assume yes
+  let cursor = from;
+  while (cursor <= to) {
+    const dow = isoDow(cursor);
+    if (dow === 5 || dow === 6) return true;
+    cursor = addDaysIso(cursor, 1);
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Availability fetcher — simple hook
 // ---------------------------------------------------------------------------
@@ -113,48 +144,51 @@ function useParkAvailability(
   facilityPageIds: string[],
   from: string,
   to: string,
+  taxonomy: TaxonomyState,
+  minNights: 1 | 2 | 3 | null,
+  weekendsOnly: boolean,
   provider?: string
 ): FetchState {
   const [cache, setCache] = useState<Record<string, FetchState>>({});
 
-  // Cache per (park, dateRange) so switching dates refetches the constrained view.
-  const key = parkPageId ? `${parkPageId}|${from}|${to}` : null;
-
-  // Trigger fetch when the park or date range changes
-  useMemo(() => {
-    if (!parkPageId || !key) return;
-    if (cache[key]) return;
-
-    setCache((prev) => ({ ...prev, [key]: { status: 'loading' } }));
-
+  // Build the full query string first — use it as the cache key so filter changes
+  // always trigger a fresh fetch.
+  const cacheKey = useMemo(() => {
+    if (!parkPageId) return null;
     const params = new URLSearchParams();
-    // Always query by the real facility IDs. For rec-gov parent groups parkPageId
-    // is a synthetic "recgov-<parentId>" key that matches no DB row, so relying on
-    // it (even for single-facility groups) returns zero availability. parkPageId is
-    // still sent so the response keeps the group's identity.
-    if (facilityPageIds.length > 0) {
-      params.set('facilityIds', facilityPageIds.join(','));
-    }
+    if (facilityPageIds.length > 0) params.set('facilityIds', facilityPageIds.join(','));
     params.set('parkPageId', parkPageId);
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     if (provider) params.set('provider', provider);
+    const tax = taxonomyToParams(taxonomy);
+    for (const [k, v] of tax) params.set(k, v);
+    if (weekendsOnly) params.set('weekendsOnly', 'true');
+    if (minNights) params.set('minNights', String(minNights));
+    return params.toString();
+  }, [parkPageId, facilityPageIds, from, to, provider, taxonomy, weekendsOnly, minNights]);
 
-    fetch(`/api/map/availability?${params.toString()}`)
+  useMemo(() => {
+    if (!parkPageId || !cacheKey) return;
+    if (cache[cacheKey]) return;
+
+    setCache((prev) => ({ ...prev, [cacheKey]: { status: 'loading' } }));
+
+    fetch(`/api/map/availability?${cacheKey}`)
       .then((r) => r.json() as Promise<ParkAvailabilityResponse>)
       .then((data) => {
-        setCache((prev) => ({ ...prev, [key]: { status: 'done', data } }));
+        setCache((prev) => ({ ...prev, [cacheKey]: { status: 'done', data } }));
       })
       .catch((err: unknown) => {
         setCache((prev) => ({
           ...prev,
-          [key]: { status: 'error', message: String(err) },
+          [cacheKey]: { status: 'error', message: String(err) },
         }));
       });
-  }, [parkPageId, key, from, to, provider, cache]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parkPageId, cacheKey, cache]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!key) return { status: 'idle' };
-  return cache[key] ?? { status: 'loading' };
+  if (!cacheKey) return { status: 'idle' };
+  return cache[cacheKey] ?? { status: 'loading' };
 }
 
 // ---------------------------------------------------------------------------
@@ -207,14 +241,29 @@ function DateRow({ entry, nights }: { entry: AvailableDateEntry; nights: number 
 // ---------------------------------------------------------------------------
 
 function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: number | null }) {
-  const show3Night = nightCount !== 1 && nightCount !== 2;
-  const show2Night = nightCount !== 1;
+  // minNights=3 → ONLY 3N tier (Fri–Mon)
+  // minNights=2 → 2N+3N (a 3N stay satisfies min 2)
+  // minNights=1/null → all tiers
+  const show3Night = nightCount !== 1; // show 3N for null/2/3
+  const show2Night = nightCount !== 1 && nightCount !== 3; // show 2N for null/2 only
+  const show3NightOnly = nightCount === 3;
 
   const hasFull3Night = show3Night && entry.campgrounds.some((cg) => cg.sites3Night.length > 0);
   const has2NightFri = show2Night && entry.campgrounds.some((cg) => cg.sites2NightFri.length > 0);
   const has2NightSat = show2Night && entry.campgrounds.some((cg) => cg.sites2NightSat.length > 0);
 
-  // Neutral header — the tier lines below carry the exact arrival dates and nights.
+  // Skip the entire row if no campground will produce visible content for the current nightCount.
+  const hasAnyVisible = entry.campgrounds.some((cg) => {
+    const l3 = show3Night && cg.sites3Night.length > 0;
+    const l2f = show2Night && !show3NightOnly && cg.sites2NightFri.length > 0 && !l3;
+    const l2s = show2Night && !show3NightOnly && cg.sites2NightSat.length > 0 && !l3;
+    const show1 = nightCount === 1 || (nightCount === null && !(l3 || l2f || l2s));
+    return l3 || l2f || l2s ||
+      (show1 && (cg.sites1NightFri.length > 0 || cg.sites1NightSat.length > 0)) ||
+      cg.walkUpSites.length > 0;
+  });
+  if (!hasAnyVisible) return null;
+
   const label = `Weekend of ${formatDate(entry.fridayDate)}`;
 
   return (
@@ -246,11 +295,10 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
         const fri = entry.fridayDate;
         const sat = entry.saturdayDate;
 
-        // Pick which stay lines to show. Each line books the exact arrival + nights.
         const line3 = show3Night && cg.sites3Night.length > 0;
-        const line2Fri = show2Night && cg.sites2NightFri.length > 0 && !line3;
-        const line2Sat = show2Night && cg.sites2NightSat.length > 0 && !line3;
-        // 1-night options only when explicitly asked for, or nothing longer qualifies.
+        // When minNights=3, skip 2-night lines entirely
+        const line2Fri = show2Night && !show3NightOnly && cg.sites2NightFri.length > 0 && !line3;
+        const line2Sat = show2Night && !show3NightOnly && cg.sites2NightSat.length > 0 && !line3;
         const longerShown = line3 || line2Fri || line2Sat;
         const show1Night = nightCount === 1 || (nightCount === null && !longerShown);
         const line1Fri = show1Night && cg.sites1NightFri.length > 0;
@@ -307,50 +355,60 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
 function DetailPanel({
   park,
   onClose,
-  activeFilters,
-  nightCount,
-  tab,
+  taxonomy,
+  minNights,
+  weekendsOnly,
   availFrom,
   availTo,
 }: {
   park: MapPark;
   onClose: () => void;
-  activeFilters: string[];
-  nightCount: number | null;
-  tab: 'dates' | 'weekends';
+  taxonomy: TaxonomyState;
+  minNights: 1 | 2 | 3 | null;
+  weekendsOnly: boolean;
   availFrom: string;
   availTo: string;
 }) {
-  const fetchState = useParkAvailability(park.parkPageId, park.facilityPageIds, availFrom, availTo, park.provider);
+  const fetchState = useParkAvailability(
+    park.parkPageId,
+    park.facilityPageIds,
+    availFrom,
+    availTo,
+    taxonomy,
+    minNights,
+    weekendsOnly,
+    park.provider
+  );
 
   const data = fetchState.status === 'done' ? fetchState.data : null;
 
-  const filteredDates = useMemo(() => {
+  // Server already applies taxonomy — consume the response directly.
+  // For the dates view with minNights >= 2, we also need consecutive-nights
+  // intersection (stay-shape logic, not taxonomy).
+  const processedDates = useMemo(() => {
     if (!data) return [];
-    let dates = data.nextAvailableDates
-      .map((entry) => ({
-        ...entry,
-        campgrounds: entry.campgrounds
-          .map((cg) => {
-            const sites = cg.sites.filter((s) => passesSiteFilters(s, cg.name, activeFilters));
-            const walkUpSites = cg.walkUpSites.filter((s) => passesSiteFilters(s, cg.name, activeFilters));
-            return { ...cg, sites, walkUpSites, availableSiteCount: sites.length };
-          })
-          .filter((cg) => cg.sites.length > 0 || cg.walkUpSites.length > 0),
-      }))
-      .filter((entry) => entry.campgrounds.length > 0);
+    let dates = data.nextAvailableDates;
 
-    if (nightCount === 2) {
+    if (minNights !== null && minNights >= 2) {
       const byDate = new Map(dates.map((d) => [d.date, d]));
       dates = dates.flatMap((entry) => {
-        const nextEntry = byDate.get(addDaysIso(entry.date, 1));
-        if (!nextEntry) return [];
+        // Collect N consecutive date entries
+        const chain: typeof entry[] = [entry];
+        for (let i = 1; i < minNights; i++) {
+          const next = byDate.get(addDaysIso(entry.date, i));
+          if (!next) return [];
+          chain.push(next);
+        }
+        // Intersect sites across all N dates per campground
         const campgrounds = entry.campgrounds.flatMap((cg) => {
-          const nextCg = nextEntry.campgrounds.find((c) => c.name === cg.name);
-          if (!nextCg) return [];
-          const sites2N = cg.sites.filter((s) => nextCg.sites.includes(s));
-          if (sites2N.length === 0) return [];
-          return [{ ...cg, sites: sites2N, walkUpSites: [], availableSiteCount: sites2N.length }];
+          let sitesIntersection = cg.sites;
+          for (let i = 1; i < chain.length; i++) {
+            const chainCg = chain[i]!.campgrounds.find((c) => c.name === cg.name);
+            if (!chainCg) return [];
+            sitesIntersection = sitesIntersection.filter((s) => chainCg.sites.includes(s));
+          }
+          if (sitesIntersection.length === 0) return [];
+          return [{ ...cg, sites: sitesIntersection, walkUpSites: [], availableSiteCount: sitesIntersection.length }];
         });
         if (campgrounds.length === 0) return [];
         return [{ ...entry, campgrounds }];
@@ -358,49 +416,14 @@ function DetailPanel({
     }
 
     return dates;
-  }, [data, activeFilters, nightCount]);
+  }, [data, minNights]);
 
-  const filteredWeekends = useMemo(() => {
-    if (!data) return [];
-    return data.nextAvailableWeekends
-      .map((w) => ({
-        ...w,
-        campgrounds: w.campgrounds
-          .map((cg) => {
-            const filt = (arr: string[]) => arr.filter((s) => passesSiteFilters(s, cg.name, activeFilters));
-            const f3 = (nightCount === 1 || nightCount === 2) ? [] : filt(cg.sites3Night);
-            const f2Fri = nightCount === 1 ? [] : filt(cg.sites2NightFri);
-            const f2Sat = nightCount === 1 ? [] : filt(cg.sites2NightSat);
-            const f1Fri = nightCount === 2 ? [] : filt(cg.sites1NightFri);
-            const f1Sat = nightCount === 2 ? [] : filt(cg.sites1NightSat);
-            // Walk-up sites are never reservable, so omit them from the 2-night view.
-            const walk = nightCount === 2 ? [] : filt(cg.walkUpSites);
-            return {
-              ...cg,
-              sites3Night: f3,
-              sites2NightFri: f2Fri,
-              sites2NightSat: f2Sat,
-              sites1NightFri: f1Fri,
-              sites1NightSat: f1Sat,
-              walkUpSites: walk,
-            };
-          })
-          .filter((cg) => {
-            if (nightCount === 2) return cg.sites2NightFri.length > 0 || cg.sites2NightSat.length > 0;
-            if (nightCount === 1) return cg.sites1NightFri.length > 0 || cg.sites1NightSat.length > 0 || cg.walkUpSites.length > 0;
-            // null = All nights: include if any availability at any tier
-            return (
-              cg.sites3Night.length > 0 ||
-              cg.sites2NightFri.length > 0 ||
-              cg.sites2NightSat.length > 0 ||
-              cg.sites1NightFri.length > 0 ||
-              cg.sites1NightSat.length > 0 ||
-              cg.walkUpSites.length > 0
-            );
-          }),
-      }))
-      .filter((w) => w.campgrounds.length > 0);
-  }, [data, activeFilters, nightCount]);
+  const processedWeekends = data?.nextAvailableWeekends ?? [];
+  const bookNights = Math.max(minNights ?? 1, 1);
+
+  // Determine empty-state condition
+  const noWeekendDays = weekendsOnly && !!availFrom && !!availTo && !rangeHasWeekendDay(availFrom, availTo);
+  const taxonomyChanged = !isTaxonomyDefault(taxonomy);
 
   return (
     <div className="map-detail-panel">
@@ -440,31 +463,28 @@ function DetailPanel({
             </div>
           )}
 
-          {fetchState.status === 'done' && tab === 'weekends' && (
+          {fetchState.status === 'done' && weekendsOnly && (
             <>
-              {filteredWeekends.length === 0 ? (
+              {noWeekendDays ? (
+                <div className="empty">No weekend days in this date range.</div>
+              ) : processedWeekends.length === 0 ? (
                 <div className="empty">
-                  {filteredDates.length > 0 ? (
-                    // Weekday availability exists but no weekends — show accurate next date
-                    <>
-                      No weekend openings.
-                      <br />
-                      <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                        Next available (weekday): {formatDate(filteredDates[0]!.date)}
-                      </span>
-                    </>
-                  ) : activeFilters.length > 0 ? (
-                    // Site filters eliminated everything
+                  {taxonomyChanged ? (
                     <>No weekends match your current filters.</>
                   ) : data!.earliestAvailableDate ? (
-                    // Genuinely fully booked — no filters involved
                     <>
                       Fully booked through{' '}
                       {relativeDate(data!.earliestAvailableDate)}.
                       <br />
-                      <span style={{ fontSize: 12, color: 'var(--green)' }}>
-                        Next opening: {formatDate(data!.earliestAvailableDate)}
-                      </span>
+                      {minNights !== null && minNights >= 2 ? (
+                        <span style={{ fontSize: 12 }}>
+                          No {minNights}-night stay in this range.
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'var(--green)' }}>
+                          Next opening: {formatDate(data!.earliestAvailableDate)}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <>
@@ -475,29 +495,33 @@ function DetailPanel({
                   )}
                 </div>
               ) : (
-                filteredWeekends.map((w) => (
-                  <WeekendRow key={w.fridayDate} entry={w} nightCount={nightCount} />
+                processedWeekends.map((w) => (
+                  <WeekendRow key={w.fridayDate} entry={w} nightCount={minNights} />
                 ))
               )}
             </>
           )}
 
-          {fetchState.status === 'done' && tab === 'dates' && (
+          {fetchState.status === 'done' && !weekendsOnly && (
             <>
-              {filteredDates.length === 0 ? (
+              {processedDates.length === 0 ? (
                 <div className="empty">
-                  {activeFilters.length > 0 ? (
-                    // Site filters eliminated everything — don't show unfiltered "next opening"
+                  {taxonomyChanged ? (
                     <>No dates match your current filters.</>
                   ) : data!.earliestAvailableDate ? (
-                    // Genuinely fully booked — no filters involved
                     <>
                       Fully booked through{' '}
                       {relativeDate(data!.earliestAvailableDate)}.
                       <br />
-                      <span style={{ fontSize: 12, color: 'var(--green)' }}>
-                        Next opening: {formatDate(data!.earliestAvailableDate)}
-                      </span>
+                      {minNights !== null && minNights >= 2 ? (
+                        <span style={{ fontSize: 12 }}>
+                          No {minNights}-night stay in this range.
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'var(--green)' }}>
+                          Next opening: {formatDate(data!.earliestAvailableDate)}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <>
@@ -509,8 +533,8 @@ function DetailPanel({
                 </div>
               ) : (
                 <div>
-                  {filteredDates.map((d) => (
-                    <DateRow key={d.date} entry={d} nights={nightCount ?? 1} />
+                  {processedDates.map((d) => (
+                    <DateRow key={d.date} entry={d} nights={bookNights} />
                   ))}
                 </div>
               )}
@@ -526,13 +550,18 @@ function DetailPanel({
 // Main MapClient
 // ---------------------------------------------------------------------------
 
+type Preset = 'this_weekend' | 'next_2_weeks' | 'next_month' | 'anytime';
+
 export default function MapClient({ initialParks }: { initialParks: MapPark[] }) {
   const [parks] = useState<MapPark[]>(initialParks);
   const [selectedPark, setSelectedPark] = useState<MapPark | null>(null);
-  const [selectedParkId, setSelectedParkId] = useState('');
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [nightCount, setNightCount] = useState<number | null>(null);
-  const [tab, setTab] = useState<'weekends' | 'dates'>('weekends');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // New filter model
+  const [taxonomy, setTaxonomy] = useState<TaxonomyState>(EMPTY_TAXONOMY);
+  const [minNights, setMinNights] = useState<1 | 2 | 3 | null>(null);
+  const [preset, setPreset] = useState<Preset>('this_weekend');
+  const [weekendsOnly, setWeekendsOnly] = useState(true);
 
   // Distance filter
   const [locationQuery, setLocationQuery] = useState('');
@@ -547,26 +576,54 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
   const [availByFacility, setAvailByFacility] = useState<Map<string, ParkAvailabilitySummary> | null>(null);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
+  // Apply a preset: sets dates and weekendsOnly state
+  function applyPreset(p: Preset) {
+    setPreset(p);
+    if (p === 'this_weekend') {
+      const { from, to } = upcomingWeekendRange(new Date());
+      setAvailFrom(from);
+      setAvailTo(to);
+      setWeekendsOnly(true);
+    } else if (p === 'next_2_weeks') {
+      setAvailFrom(todayIso());
+      setAvailTo(addDaysIso(todayIso(), 14));
+    } else if (p === 'next_month') {
+      setAvailFrom(todayIso());
+      setAvailTo(addDaysIso(todayIso(), 30));
+    } else {
+      // anytime — no clamp: from today, no `to`
+      setAvailFrom(todayIso());
+      setAvailTo('');
+    }
+  }
+
   // Default to the upcoming weekend so pins show weekend availability on first load.
-  // Set on mount (not in the initializer) so SSR and client markup match.
   useEffect(() => {
     const { from, to } = upcomingWeekendRange(new Date());
     setAvailFrom(from);
     setAvailTo(to);
   }, []);
 
+  // Derive active preset from current dates (for display parity with manual edits)
+  function derivePreset(from: string, to: string): Preset | null {
+    const wk = upcomingWeekendRange(new Date());
+    if (from === wk.from && to === wk.to) return 'this_weekend';
+    const today = todayIso();
+    if (from === today && to === addDaysIso(today, 14)) return 'next_2_weeks';
+    if (from === today && to === addDaysIso(today, 30)) return 'next_month';
+    if (from === today && to === '') return 'anytime';
+    return null;
+  }
+
+  // Summary fetch — always runs (no early return for empty dates)
   useEffect(() => {
-    if (!availFrom && !availTo) {
-      setAvailByFacility(null);
-      return;
-    }
     const id = setTimeout(() => {
       setLoadingAvailability(true);
-      const params = new URLSearchParams();
+      const params = new URLSearchParams(taxonomyToParams(taxonomy));
       if (availFrom) params.set('from', availFrom);
       if (availTo) params.set('to', availTo);
-      if (activeFilters.length > 0) params.set('filters', activeFilters.join(','));
-      if (tab === 'weekends') params.set('weekendsOnly', 'true');
+      if (weekendsOnly) params.set('weekendsOnly', 'true');
+      if (minNights) params.set('minNights', String(minNights));
       fetch(`/api/map/availability/summary?${params.toString()}`)
         .then((r) => r.json() as Promise<{ parks: { parkPageId: string; siteCount: number; walkUpCount: number }[] }>)
         .then((data) => {
@@ -578,7 +635,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
         .finally(() => { setLoadingAvailability(false); });
     }, 400);
     return () => clearTimeout(id);
-  }, [availFrom, availTo, activeFilters, tab]);
+  }, [availFrom, availTo, taxonomy, weekendsOnly, minNights]);
 
   const sortedParks = useMemo(
     () => [...parks].sort((a, b) => a.parkName.localeCompare(b.parkName)),
@@ -590,8 +647,6 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     [parks],
   );
 
-  // Parks matching ALL filters — used for count display. Dropdown selection is
-  // not a filter: it only opens the panel and flies to the park.
   const filteredParks = useMemo(() => {
     let result = parks;
 
@@ -603,8 +658,6 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     }
 
     if (availByFacility !== null) {
-      // availByFacility is keyed by facility-level IDs; a parent-grouped park matches
-      // if any of its underlying facilities has bookable availability.
       result = result.filter((p) =>
         p.facilityPageIds.some((fid) => (availByFacility.get(fid)?.siteCount ?? 0) > 0)
       );
@@ -613,7 +666,6 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     return result;
   }, [parks, resolvedLocation, distanceMiles, availByFacility]);
 
-  // Parks visible on map: distance filter hard-removes pins; other filters only grey them.
   const displayedParks = useMemo(() => {
     if (!resolvedLocation || distanceMiles === null) return allParksWithCoords;
     return allParksWithCoords.filter((p) => {
@@ -622,11 +674,6 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     });
   }, [allParksWithCoords, resolvedLocation, distanceMiles]);
 
-  const hasActiveFilters =
-    !!selectedParkId || activeFilters.length > 0 || nightCount !== null ||
-    resolvedLocation !== null || !!availFrom || !!availTo;
-
-  // Per-park availability for pin rendering. null = no date filter active.
   const availByPark = useMemo(() => {
     if (!availByFacility) return null;
     const byPark = new Map<string, ParkAvailabilitySummary>();
@@ -643,6 +690,43 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     }
     return byPark;
   }, [parks, availByFacility]);
+
+  // Summary sentence (Row 4)
+  const summarySentence = useMemo(() => {
+    const matchCount = filteredParks.length;
+    const total = parks.length;
+    const parts: string[] = [];
+    if (minNights) parts.push(`${minNights}-night`);
+    if (taxonomy.access.length === 1) parts.push(ACCESS_LABEL[taxonomy.access[0]!]);
+    if (weekendsOnly) parts.push('weekend');
+    parts.push('stay');
+    const dateClause = availTo ? ` ${formatDate(availFrom)} – ${formatDate(availTo)}` : ' anytime';
+    const nearClause = resolvedLocation && distanceMiles ? ` within ${distanceMiles} mi of ${resolvedLocation.name}` : '';
+    return { matchCount, total, parts, dateClause, nearClause };
+  }, [filteredParks.length, parks.length, minNights, taxonomy.access, weekendsOnly, availFrom, availTo, resolvedLocation, distanceMiles]);
+
+  // Reset is shown when state differs from defaults
+  const isDefaultState =
+    preset === 'this_weekend' && weekendsOnly && minNights === null &&
+    isTaxonomyDefault(taxonomy) && resolvedLocation === null;
+
+  // Filters hidden while collapsed that the summary sentence may not spell out.
+  const activeFilterCount =
+    taxonomy.access.length + taxonomy.kinds.length + taxonomy.hide.length +
+    (minNights !== null ? 1 : 0) +
+    (resolvedLocation && distanceMiles !== null ? 1 : 0);
+
+  function handleResetFilters() {
+    setTaxonomy(EMPTY_TAXONOMY);
+    setMinNights(null);
+    setWeekendsOnly(true);
+    setLocationQuery('');
+    setResolvedLocation(null);
+    setDistanceMiles(null);
+    setGeocodeError(null);
+    applyPreset('this_weekend');
+    // NOTE: selectedPark is NOT reset (park selection is navigation, not filter)
+  }
 
   const handleSelectPark = useCallback((park: MapPark) => {
     setSelectedPark(park);
@@ -692,185 +776,96 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     );
   }
 
-  function handleResetFilters() {
-    setSelectedPark(null);
-    setSelectedParkId('');
-    setActiveFilters([]);
-    setNightCount(null);
-    setLocationQuery('');
-    setResolvedLocation(null);
-    setDistanceMiles(null);
-    setGeocodeError(null);
-    setAvailFrom('');
-    setAvailTo('');
-    setAvailByFacility(null);
-  }
+  const PRESETS: { id: Preset; label: string }[] = [
+    { id: 'this_weekend', label: 'This weekend' },
+    { id: 'next_2_weeks', label: 'Next 2 weeks' },
+    { id: 'next_month', label: 'Next month' },
+    { id: 'anytime', label: 'Anytime' },
+  ];
+
+  const MIN_STAY_OPTIONS: { value: 1 | 2 | 3 | null; label: string }[] = [
+    { value: null, label: 'Any' },
+    { value: 1, label: '1 night' },
+    { value: 2, label: '2 nights' },
+    { value: 3, label: '3 nights' },
+  ];
 
   return (
     <div className="map-page">
       {/* Filter bar */}
       <div className="map-filters">
 
-        {/* Row 1: primary filters */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Park dropdown */}
-          <select
-            value={selectedParkId}
-            onChange={(e) => {
-              const id = e.target.value;
-              setSelectedParkId(id);
-              // Selecting a park by name should reveal it: open its panel and pan to it.
-              const park = id ? parks.find((p) => p.parkPageId === id) ?? null : null;
-              setSelectedPark(park);
-            }}
-            style={{
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              color: selectedParkId ? 'var(--text)' : 'var(--muted)',
-              padding: '4px 8px',
-              fontSize: 12,
-              fontFamily: 'var(--font)',
-              minWidth: 160,
-              maxWidth: 240,
-            }}
+        {/* Header row — always visible: toggle, summary sentence, reset, park finder */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <button
+            type="button"
+            className={`btn btn-sm ${filtersOpen ? 'btn-slate' : 'btn-ghost'}`}
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            style={{ flexShrink: 0, fontWeight: 600 }}
           >
-            <option value="">All parks</option>
-            {sortedParks.map((p) => (
-              <option key={p.parkPageId} value={p.parkPageId}>{p.parkName}</option>
-            ))}
-          </select>
-
-          {/* View: Weekends / All dates */}
-          <div style={{ display: 'flex', gap: 3 }}>
-            {(['weekends', 'dates'] as const).map((t) => {
-              const active = tab === t;
-              const label = t === 'weekends' ? 'Weekends' : 'All dates';
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setTab(t)}
-                  style={active ? { fontWeight: 700 } : {}}
-                >
-                  {active ? `✓ ${label}` : label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Nights */}
-          <div style={{ display: 'flex', gap: 3 }}>
-            {([null, 1, 2] as Array<number | null>).map((n) => {
-              const active = nightCount === n;
-              const label = n === null ? 'All nights' : `${n}N`;
-              return (
-                <button
-                  key={String(n)}
-                  type="button"
-                  className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setNightCount(n)}
-                  style={active ? { fontWeight: 700 } : {}}
-                >
-                  {active ? `✓ ${label}` : label}
-                </button>
-              );
-            })}
-          </div>
-
-          <span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 12 }}>
-            {filteredParks.length} / {parks.length} parks
+            {filtersOpen ? '▾' : '▸'} Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--muted)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {loadingAvailability ? (
+              'Loading…'
+            ) : (
+              <>
+                <strong style={{ color: 'var(--text)' }}>
+                  {summarySentence.matchCount} of {summarySentence.total} parks
+                </strong>
+                {' '}have a {summarySentence.parts.join(' ')}{summarySentence.dateClause}{summarySentence.nearClause}
+              </>
+            )}
           </span>
-
-          {hasActiveFilters && (
+          {!isDefaultState && (
             <button
               type="button"
               className="btn btn-ghost btn-sm"
               onClick={handleResetFilters}
+              style={{ flexShrink: 0 }}
             >
               ↺ Reset
             </button>
           )}
+          <ParkFinder parks={sortedParks} onSelect={(p) => setSelectedPark(p)} />
         </div>
 
-        {/* Row 2: site filters */}
-        <SiteFilterPanel activeFilters={activeFilters} onChange={setActiveFilters} />
+        {filtersOpen && (
+        <>
+        {/* Row 1: When */}
+        <div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <RowLabel>When</RowLabel>
+            {/* Horizon presets */}
+            <div style={{ display: 'flex', gap: 3 }}>
+              {PRESETS.map(({ id, label }) => {
+                const active = preset === id;
+                const cls = active ? 'btn-primary' : 'btn-ghost';
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`btn btn-sm ${cls}`}
+                    onClick={() => applyPreset(id)}
+                    style={active ? { fontWeight: 700 } : {}}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
 
-        {/* Row 3: location + distance + date range */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Location */}
-          <form
-            onSubmit={(e) => { e.preventDefault(); void handleGeocode(); }}
-            style={{ display: 'flex', gap: 4, alignItems: 'center' }}
-          >
-            <input
-              className="form-input"
-              placeholder="Near city…"
-              value={locationQuery}
-              onChange={(e) => {
-                setLocationQuery(e.target.value);
-                if (!e.target.value) { setResolvedLocation(null); setGeocodeError(null); }
-              }}
-              style={{ width: 150, padding: '4px 8px', fontSize: 12 }}
-            />
-            <button type="submit" className="btn btn-ghost btn-sm" disabled={geocoding} title="Search location">
-              {geocoding ? '…' : '→'}
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={handleCurrentLocation} title="Use my location">
-              📍
-            </button>
-          </form>
-
-          {resolvedLocation && (
-            <span style={{ fontSize: 11, color: 'var(--green)', whiteSpace: 'nowrap' }}>
-              ✓ {resolvedLocation.name}
-            </span>
-          )}
-          {geocodeError && (
-            <span style={{ fontSize: 11, color: 'var(--red)' }}>{geocodeError}</span>
-          )}
-
-          {/* Distance chips — only active when location is resolved */}
-          <div style={{ display: 'flex', gap: 3 }}>
-            {([null, 25, 50, 100, 200] as Array<number | null>).map((d) => {
-              const active = distanceMiles === d && resolvedLocation !== null;
-              const label = d === null ? 'Any' : `${d}mi`;
-              return (
-                <button
-                  key={String(d)}
-                  type="button"
-                  className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => {
-                    if (d === null) {
-                      setDistanceMiles(null);
-                      setGeocodeError(null);
-                      return;
-                    }
-                    if (!resolvedLocation) {
-                      setGeocodeError('Enter a city first to filter by distance');
-                      return;
-                    }
-                    setDistanceMiles(d);
-                  }}
-                  style={active ? { fontWeight: 700 } : {}}
-                >
-                  {active ? `✓ ${label}` : label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Divider */}
-          <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />
-
-          {/* Date range */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Date inputs */}
             <input
               type="date"
               value={availFrom}
               min={todayIso()}
-              onChange={(e) => setAvailFrom(e.target.value)}
+              onChange={(e) => {
+                setAvailFrom(e.target.value);
+                const derived = derivePreset(e.target.value, availTo);
+                if (derived) setPreset(derived);
+              }}
               style={{ fontSize: 12, padding: '4px 8px', width: 135, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'var(--font)', colorScheme: 'dark' }}
             />
             <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>
@@ -878,58 +873,133 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
               type="date"
               value={availTo}
               min={availFrom || todayIso()}
-              onChange={(e) => setAvailTo(e.target.value)}
+              onChange={(e) => {
+                setAvailTo(e.target.value);
+                const derived = derivePreset(availFrom, e.target.value);
+                if (derived) setPreset(derived);
+              }}
               style={{ fontSize: 12, padding: '4px 8px', width: 135, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'var(--font)', colorScheme: 'dark' }}
             />
+
+            {/* Weekends-only pill: locked when preset is this_weekend */}
             {(() => {
-              const wk = upcomingWeekendRange(new Date());
-              const active = availFrom === wk.from && availTo === wk.to;
+              const locked = preset === 'this_weekend';
+              const active = weekendsOnly;
+              const cls = active ? 'btn-primary' : 'btn-ghost';
               return (
                 <button
                   type="button"
-                  className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
-                  style={active ? { fontWeight: 700 } : {}}
-                  onClick={() => { setAvailFrom(wk.from); setAvailTo(wk.to); }}
+                  className={`btn btn-sm ${cls}`}
+                  disabled={locked}
+                  onClick={() => !locked && setWeekendsOnly((v) => !v)}
+                  style={{ fontWeight: active ? 700 : undefined, opacity: locked ? 0.8 : 1 }}
+                  title={locked ? 'Locked on for This weekend preset' : undefined}
                 >
-                  {active ? '✓ Weekend' : 'Weekend'}
+                  Weekends only
                 </button>
               );
             })()}
-            <button
-              type="button"
-              className={`btn btn-sm ${availFrom === todayIso() && availTo === addDaysIso(todayIso(), 14) ? 'btn-primary' : 'btn-ghost'}`}
-              style={availFrom === todayIso() && availTo === addDaysIso(todayIso(), 14) ? { fontWeight: 700 } : {}}
-              onClick={() => { setAvailFrom(todayIso()); setAvailTo(addDaysIso(todayIso(), 14)); }}
-            >
-              {availFrom === todayIso() && availTo === addDaysIso(todayIso(), 14) ? '✓ 2 weeks' : '2 weeks'}
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${availFrom === todayIso() && availTo === addDaysIso(todayIso(), 30) ? 'btn-primary' : 'btn-ghost'}`}
-              style={availFrom === todayIso() && availTo === addDaysIso(todayIso(), 30) ? { fontWeight: 700 } : {}}
-              onClick={() => { setAvailFrom(todayIso()); setAvailTo(addDaysIso(todayIso(), 30)); }}
-            >
-              {availFrom === todayIso() && availTo === addDaysIso(todayIso(), 30) ? '✓ 1 month' : '1 month'}
-            </button>
-            {(availFrom || availTo) && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => { setAvailFrom(''); setAvailTo(''); }}
-              >
-                ✕
-              </button>
-            )}
-            {loadingAvailability && (
-              <span style={{ fontSize: 11, color: 'var(--muted)' }}>Loading…</span>
-            )}
-            {availByFacility !== null && !loadingAvailability && (
-              <span style={{ fontSize: 11, color: 'var(--green)' }}>
-                {filteredParks.length} match
-              </span>
-            )}
           </div>
         </div>
+
+        {/* Row 2: Min stay + Near */}
+        <div>
+          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {/* Min stay */}
+            <div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <RowLabel>Min stay</RowLabel>
+                {MIN_STAY_OPTIONS.map(({ value, label }) => {
+                  const active = minNights === value;
+                  const cls = active ? 'btn-primary' : 'btn-ghost';
+                  return (
+                    <button
+                      key={String(value)}
+                      type="button"
+                      className={`btn btn-sm ${cls}`}
+                      onClick={() => setMinNights(value)}
+                      style={active ? { fontWeight: 700 } : {}}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Near */}
+            <div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <RowLabel>Near</RowLabel>
+                <form
+                  onSubmit={(e) => { e.preventDefault(); void handleGeocode(); }}
+                  style={{ display: 'flex', gap: 4, alignItems: 'center' }}
+                >
+                  <input
+                    className="form-input"
+                    placeholder="City…"
+                    value={locationQuery}
+                    onChange={(e) => {
+                      setLocationQuery(e.target.value);
+                      if (!e.target.value) { setResolvedLocation(null); setGeocodeError(null); }
+                    }}
+                    style={{ width: 130, padding: '4px 8px', fontSize: 12 }}
+                  />
+                  <button type="submit" className="btn btn-ghost btn-sm" disabled={geocoding} title="Search location">
+                    {geocoding ? '…' : '→'}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={handleCurrentLocation} title="Use my location">
+                    📍
+                  </button>
+                </form>
+
+                {resolvedLocation && (
+                  <span style={{ fontSize: 11, color: 'var(--green)', whiteSpace: 'nowrap' }}>
+                    ✓ {resolvedLocation.name}
+                  </span>
+                )}
+                {geocodeError && (
+                  <span style={{ fontSize: 11, color: 'var(--red)' }}>{geocodeError}</span>
+                )}
+
+                {/* Distance pills — disabled until location resolves */}
+                <div style={{ display: 'flex', gap: 3 }}>
+                  {([null, 25, 50, 100, 200] as Array<number | null>).map((d) => {
+                    const active = distanceMiles === d && resolvedLocation !== null;
+                    const label = d === null ? 'Any' : `${d}mi`;
+                    const disabled = d !== null && !resolvedLocation;
+                    return (
+                      <button
+                        key={String(d)}
+                        type="button"
+                        className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
+                        disabled={disabled}
+                        onClick={() => {
+                          if (d === null) { setDistanceMiles(null); setGeocodeError(null); return; }
+                          if (!resolvedLocation) return;
+                          setDistanceMiles(d);
+                        }}
+                        style={{
+                          ...(active ? { fontWeight: 700 } : {}),
+                          ...(disabled ? { opacity: 0.5 } : {}),
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Taxonomy filters */}
+        <div>
+          <SiteFilterPanel state={taxonomy} onChange={setTaxonomy} dense />
+        </div>
+        </>
+        )}
       </div>
 
       {/* Map — fills remaining space */}
@@ -951,12 +1021,62 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
         <DetailPanel
           park={selectedPark}
           onClose={() => setSelectedPark(null)}
-          activeFilters={activeFilters}
-          nightCount={nightCount}
-          tab={tab}
+          taxonomy={taxonomy}
+          minNights={minNights}
+          weekendsOnly={weekendsOnly}
           availFrom={availFrom}
           availTo={availTo}
         />
+      )}
+    </div>
+  );
+}
+
+function RowLabel({ children }: { children: string }) {
+  return (
+    <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', flexShrink: 0 }}>
+      {children}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Park finder overlay (Task 15)
+// ---------------------------------------------------------------------------
+
+function ParkFinder({ parks, onSelect }: { parks: MapPark[]; onSelect: (park: MapPark) => void }) {
+  const [query, setQuery] = useState('');
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return parks
+      .filter((p) => p.parkName.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [query, parks]);
+
+  return (
+    <div className="park-finder">
+      <input
+        className="form-input"
+        placeholder="Find a park…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        style={{ width: 220, fontSize: 12, padding: '6px 10px' }}
+      />
+      {matches.length > 0 && (
+        <ul className="park-finder-results">
+          {matches.map((p) => (
+            <li key={p.parkPageId}>
+              <button
+                type="button"
+                onClick={() => { onSelect(p); setQuery(''); }}
+                style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: 'var(--text)', padding: '6px 10px', cursor: 'pointer', fontSize: 12 }}
+              >
+                {p.parkName}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
