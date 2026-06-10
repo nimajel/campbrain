@@ -1,6 +1,7 @@
 import { listAlertsWeb } from '../lib/alerts';
 import { getLatestScanState, getHitsState } from '../lib/state';
 import RecentOpenings from './components/RecentOpenings';
+import { Badge, Button, Card, EmptyState, PageHeader, StatCard, StatusDot } from '../components/ui';
 import type { Alert } from '../lib/alerts';
 import type { LatestScanSummary } from '../lib/state';
 
@@ -27,13 +28,13 @@ function dateRangeLabel(alert: Alert): string {
 
 function AlertRow({ alert, scan }: { alert: Alert; scan?: LatestScanSummary }) {
   return (
-    <div className="card" style={{ opacity: alert.enabled ? 1 : 0.6 }}>
+    <Card style={{ opacity: alert.enabled ? 1 : 0.6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <span className={`dot ${alert.enabled ? 'dot-green' : 'dot-gray'}`} />
+        <StatusDot tone={alert.enabled ? 'green' : 'gray'} />
         <h3 style={{ margin: 0, flex: 1 }}>{alert.name}</h3>
-        <span className="badge badge-blue">{alert.provider}</span>
-        {alert.emailEnabled && <span className="badge badge-gray" title="Email enabled">📧</span>}
-        {alert.calendarEnabled && <span className="badge badge-gray" title="Calendar enabled">📅</span>}
+        <Badge tone="blue">{alert.provider}</Badge>
+        {alert.emailEnabled && <Badge tone="gray" title="Email enabled">📧</Badge>}
+        {alert.calendarEnabled && <Badge tone="gray" title="Calendar enabled">📅</Badge>}
       </div>
 
       <div style={{ display: 'flex', gap: 24, fontSize: 12, color: 'var(--muted)', flexWrap: 'wrap' }}>
@@ -60,9 +61,9 @@ function AlertRow({ alert, scan }: { alert: Alert; scan?: LatestScanSummary }) {
       )}
 
       <div style={{ marginTop: 10 }}>
-        <a href="/alerts" className="btn btn-ghost btn-sm">Manage →</a>
+        <Button href="/alerts" variant="ghost" size="sm">Manage →</Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -81,24 +82,19 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>Dashboard</h1>
-        <p className="page-subtitle">Campsite availability monitoring</p>
-      </div>
+      <PageHeader title="Dashboard" subtitle="Campsite availability monitoring" />
 
       <div className="grid-3" style={{ marginBottom: 24 }}>
-        <div className="card">
-          <div className="stat-label">Active alerts</div>
-          <div className="stat-value">{activeAlerts.length}<span style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 400 }}>/{alerts.length}</span></div>
-        </div>
-        <div className="card">
-          <div className="stat-label">Current matches</div>
-          <div className="stat-value" style={{ color: totalMatches > 0 ? 'var(--green)' : undefined }}>{totalMatches}</div>
-        </div>
-        <div className="card">
-          <div className="stat-label">Total hits recorded</div>
-          <div className="stat-value">{totalHits}</div>
-        </div>
+        <StatCard
+          label="Active alerts"
+          value={<>{activeAlerts.length}<span style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 400 }}>/{alerts.length}</span></>}
+        />
+        <StatCard
+          label="Current matches"
+          value={totalMatches}
+          valueStyle={totalMatches > 0 ? { color: 'var(--green)' } : undefined}
+        />
+        <StatCard label="Total hits recorded" value={totalHits} />
       </div>
 
       {lastScanTime && (
@@ -111,13 +107,13 @@ export default function DashboardPage() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <h2 style={{ margin: 0, flex: 1 }}>Alerts</h2>
-        <a href="/alerts" className="btn btn-primary btn-sm">+ New alert</a>
+        <Button href="/alerts" variant="primary" size="sm">+ New alert</Button>
       </div>
 
       {alerts.length === 0 && (
-        <div className="empty">
+        <EmptyState>
           No alerts configured. <a href="/alerts">Create your first alert →</a>
-        </div>
+        </EmptyState>
       )}
 
       {alerts.map((a) => (
