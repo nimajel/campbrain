@@ -12,6 +12,11 @@ import { upcomingWeekendRange } from '../../lib/upcoming-weekend';
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), { ssr: false });
 
+export interface ParkAvailabilitySummary {
+  siteCount: number;
+  walkUpCount: number;
+}
+
 // Render up to `max` site names with a "+N more" suffix.
 function siteListText(sites: string[], max = 5): string {
   return sites.slice(0, max).join(', ') + (sites.length > max ? ` +${sites.length - max} more` : '');
@@ -539,7 +544,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
   // Date availability filter
   const [availFrom, setAvailFrom] = useState('');
   const [availTo, setAvailTo] = useState('');
-  const [parksInDateRange, setParksInDateRange] = useState<Set<string> | null>(null);
+  const [availByFacility, setAvailByFacility] = useState<Map<string, ParkAvailabilitySummary> | null>(null);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   // Default to the upcoming weekend so pins show weekend availability on first load.
@@ -552,7 +557,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
 
   useEffect(() => {
     if (!availFrom && !availTo) {
-      setParksInDateRange(null);
+      setAvailByFacility(null);
       return;
     }
     const id = setTimeout(() => {
@@ -563,8 +568,12 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
       if (activeFilters.length > 0) params.set('filters', activeFilters.join(','));
       if (tab === 'weekends') params.set('weekendsOnly', 'true');
       fetch(`/api/map/availability/summary?${params.toString()}`)
-        .then((r) => r.json() as Promise<{ parks: string[] }>)
-        .then((data) => { setParksInDateRange(new Set(data.parks)); })
+        .then((r) => r.json() as Promise<{ parks: { parkPageId: string; siteCount: number; walkUpCount: number }[] }>)
+        .then((data) => {
+          setAvailByFacility(
+            new Map(data.parks.map((p) => [p.parkPageId, { siteCount: p.siteCount, walkUpCount: p.walkUpCount }])),
+          );
+        })
         .catch(() => {})
         .finally(() => { setLoadingAvailability(false); });
     }, 400);
@@ -593,16 +602,16 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
       });
     }
 
-    if (parksInDateRange !== null) {
-      // parksInDateRange contains facility-level IDs; a parent-grouped park matches
-      // if any of its underlying facilities has availability.
+    if (availByFacility !== null) {
+      // availByFacility is keyed by facility-level IDs; a parent-grouped park matches
+      // if any of its underlying facilities has bookable availability.
       result = result.filter((p) =>
-        p.facilityPageIds.some((fid) => parksInDateRange.has(fid))
+        p.facilityPageIds.some((fid) => (availByFacility.get(fid)?.siteCount ?? 0) > 0)
       );
     }
 
     return result;
-  }, [parks, resolvedLocation, distanceMiles, parksInDateRange]);
+  }, [parks, resolvedLocation, distanceMiles, availByFacility]);
 
   // Parks visible on map: distance filter hard-removes pins; other filters only grey them.
   const displayedParks = useMemo(() => {
@@ -617,15 +626,23 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     !!selectedParkId || activeFilters.length > 0 || nightCount !== null ||
     resolvedLocation !== null || !!availFrom || !!availTo;
 
-  // Which displayed parks get a blue pin (match non-distance filters).
-  // null = no non-distance filter active → all displayed parks are blue.
-  const hasOtherFilters = parksInDateRange !== null;
-  const matchingParkIds = useMemo(
-    () => hasOtherFilters
-      ? new Set(filteredParks.filter((p) => p.latitude && p.longitude).map((p) => p.parkPageId))
-      : null,
-    [hasOtherFilters, filteredParks],
-  );
+  // Per-park availability for pin rendering. null = no date filter active.
+  const availByPark = useMemo(() => {
+    if (!availByFacility) return null;
+    const byPark = new Map<string, ParkAvailabilitySummary>();
+    for (const p of parks) {
+      let siteCount = 0;
+      let walkUpCount = 0;
+      for (const fid of p.facilityPageIds) {
+        const a = availByFacility.get(fid);
+        if (!a) continue;
+        siteCount += a.siteCount;
+        walkUpCount += a.walkUpCount;
+      }
+      byPark.set(p.parkPageId, { siteCount, walkUpCount });
+    }
+    return byPark;
+  }, [parks, availByFacility]);
 
   const handleSelectPark = useCallback((park: MapPark) => {
     setSelectedPark(park);
@@ -686,7 +703,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     setGeocodeError(null);
     setAvailFrom('');
     setAvailTo('');
-    setParksInDateRange(null);
+    setAvailByFacility(null);
   }
 
   return (
@@ -906,7 +923,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
             {loadingAvailability && (
               <span style={{ fontSize: 11, color: 'var(--muted)' }}>Loading…</span>
             )}
-            {parksInDateRange !== null && !loadingAvailability && (
+            {availByFacility !== null && !loadingAvailability && (
               <span style={{ fontSize: 11, color: 'var(--green)' }}>
                 {filteredParks.length} match
               </span>
@@ -924,7 +941,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
             onSelectPark={handleSelectPark}
             focusLocation={resolvedLocation}
             distanceMiles={distanceMiles}
-            matchingParkIds={matchingParkIds}
+            availability={availByPark}
           />
         </Suspense>
       </div>

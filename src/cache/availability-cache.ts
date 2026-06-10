@@ -365,23 +365,23 @@ const FILTER_SQL: Record<string, { exclude: boolean; pattern: string }> = {
   exclude_boat_in:    { exclude: true,  pattern: '\\yboat[ -]?(in|to|access)\\y' },
 };
 
-export async function getParksWithAvailability(
+const WALK_UP_SQL = "s.site_name ~* 'hike *[/&]? *bike'";
+
+export interface AvailabilityClauseResult {
+  clauses: string[];
+  params: string[];
+  excludeWalkUp: boolean;
+}
+
+/** Pure WHERE-clause builder for the availability summary query (exported for tests). */
+export function buildAvailabilityClauses(
   from?: string | null,
   to?: string | null,
   filterIds: string[] = [],
   weekendsOnly = false,
-): Promise<string[]> {
-  const sql = getSql();
-
-  // Build dynamic clauses for site name filters (patterns are hardcoded, not user input)
+): AvailabilityClauseResult {
   const params: string[] = [];
-  const clauses: string[] = [
-    'a.status = \'available\'',
-    'a.date >= CURRENT_DATE',
-    // Walk-up / first-come hike-bike sites are never reservable online, so they
-    // must not light a pin as bookable availability.
-    "NOT (s.site_name ~* 'hike *[/&]? *bike')",
-  ];
+  const clauses: string[] = ["a.status = 'available'", 'a.date >= CURRENT_DATE'];
 
   if (from) { clauses.push(`a.date >= $${params.length + 1}`); params.push(from); }
   if (to)   { clauses.push(`a.date <= $${params.length + 1}`); params.push(to); }
@@ -390,21 +390,59 @@ export async function getParksWithAvailability(
   // means you can't arrive for a Fri-Sun or Sat-Sun stay, so it shouldn't light up the pin.
   if (weekendsOnly) clauses.push('EXTRACT(DOW FROM a.date)::int IN (5, 6)');
 
+  let excludeWalkUp = false;
   for (const id of filterIds) {
+    if (id === 'exclude_walk_up') { excludeWalkUp = true; continue; }
     const f = FILTER_SQL[id];
     if (!f) continue;
     const col = `(s.site_name || ' ' || s.campground_name) ~* '${f.pattern}'`;
     clauses.push(f.exclude ? `NOT (${col})` : col);
   }
 
-  const rows = await sql.unsafe<{ park_page_id: string }[]>(`
-    SELECT DISTINCT s.park_page_id
+  return { clauses, params, excludeWalkUp };
+}
+
+export interface ParkAvailabilityCount {
+  parkPageId: string;
+  siteCount: number;
+  walkUpCount: number;
+}
+
+/**
+ * Per-facility availability counts in the given date range. siteCount is bookable
+ * sites only (walk-up hike/bike sites never count as bookable); walkUpCount is the
+ * matching walk-up sites, forced to 0 when the exclude_walk_up filter is active.
+ * Facilities with neither are omitted. COUNT(DISTINCT) dedupes sites that appear
+ * in multiple overlapping scan windows.
+ */
+export async function getParkAvailabilityCounts(
+  from?: string | null,
+  to?: string | null,
+  filterIds: string[] = [],
+  weekendsOnly = false,
+): Promise<ParkAvailabilityCount[]> {
+  const sql = getSql();
+  const { clauses, params, excludeWalkUp } = buildAvailabilityClauses(from, to, filterIds, weekendsOnly);
+
+  const bookable = `COUNT(DISTINCT s.site_id) FILTER (WHERE NOT (${WALK_UP_SQL}))`;
+  const walkUp = excludeWalkUp ? '0' : `COUNT(DISTINCT s.site_id) FILTER (WHERE ${WALK_UP_SQL})`;
+
+  const rows = await sql.unsafe<{ park_page_id: string; site_count: number; walk_up_count: number }[]>(`
+    SELECT s.park_page_id,
+           (${bookable})::int AS site_count,
+           (${walkUp})::int AS walk_up_count
     FROM availability a
     JOIN sites s ON s.site_id = a.site_id
     WHERE ${clauses.join('\n      AND ')}
+    GROUP BY s.park_page_id
+    HAVING (${bookable}) > 0${excludeWalkUp ? '' : ` OR (${walkUp}) > 0`}
   `, params);
 
-  return rows.map((r) => r.park_page_id);
+  return rows.map((r) => ({
+    parkPageId: r.park_page_id,
+    siteCount: Number(r.site_count),
+    walkUpCount: Number(r.walk_up_count),
+  }));
 }
 
 // ---------------------------------------------------------------------------

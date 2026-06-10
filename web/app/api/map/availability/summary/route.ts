@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getParksWithAvailability } from '../../../../../lib/availability-cache';
+import { getParkAvailabilityCounts } from '../../../../../lib/availability-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +11,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const activeFilters = filtersParam ? filtersParam.split(',') : [];
   const weekendsOnly = searchParams.get('weekendsOnly') === 'true';
 
-  const parks = await getParksWithAvailability(from, to, activeFilters, weekendsOnly);
+  const parks = await getParkAvailabilityCounts(from, to, activeFilters, weekendsOnly);
   return NextResponse.json({ parks });
 }
