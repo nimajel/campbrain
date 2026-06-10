@@ -10,6 +10,8 @@ export interface SiteDailyAvailability {
   name: string;
   /** Keys are YYYY-MM-DD dates within the window */
   dates: Record<string, 'available' | 'unavailable' | 'unknown'>;
+  /** Rec.gov campsite_type string when available — used to classify site type at upsert. */
+  recGovCampsiteType?: string;
 }
 
 export interface CampgroundWindow {

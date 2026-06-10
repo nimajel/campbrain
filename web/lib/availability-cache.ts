@@ -13,3 +13,4 @@ export async function getAllEntriesWeb(): Promise<AvailabilityWindowEntry[]> {
 export { getCacheStats, getAvailableSitesForStay, getEntriesForPark, getEntriesForParks, getParkAvailabilityCounts, listAvailableStays, refreshMaterializedView, rebuildMaterializedView, searchAvailableStays, findNextAvailableDates };
 export type { AvailabilityWindowEntry, CampgroundWindow, SiteDailyAvailability, AvailableStay, SearchParkResult, SearchCampground, NextAvailableResult };
 export type { ParkAvailabilityCount } from '../../src/cache/availability-cache';
+export type { SiteAccess, SiteKind, HideTarget, AvailabilityClauseOptions } from '../../src/cache/availability-cache';

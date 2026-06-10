@@ -39,10 +39,10 @@ const MV_DEFINITION = `
       s.site_name,
       s.site_id,
       a.date,
-      s.site_name ~* 'hike\\s*[/&]?\\s*bike' AS is_walk_up
+      s.is_walk_up
     FROM availability a
     JOIN sites s ON s.site_id = a.site_id
-    WHERE a.status = 'available' AND a.date >= CURRENT_DATE
+    WHERE a.status = 'available' AND a.date >= CURRENT_DATE AND s.is_day_use = false
   ),
   stays AS (
     -- 1-night stays: all sites (bookable + walk-up)
@@ -67,7 +67,7 @@ const MV_DEFINITION = `
     s.arrival_date,
     s.nights,
     coalesce(
-      array_agg(s.site_name ORDER BY s.site_name) FILTER (WHERE NOT s.is_walk_up),
+      array_agg(DISTINCT s.site_name ORDER BY s.site_name) FILTER (WHERE NOT s.is_walk_up),
       '{}'::text[]
     ) AS available_sites,
     coalesce(
@@ -142,6 +142,13 @@ export async function initDb(): Promise<void> {
         REFERENCES campgrounds(provider_id, park_page_id, campground_name)
     )
   `;
+
+  await db`ALTER TABLE sites ADD COLUMN IF NOT EXISTS access TEXT NOT NULL DEFAULT 'drive_in'`;
+  await db`ALTER TABLE sites ADD COLUMN IF NOT EXISTS site_kind TEXT`;
+  await db`ALTER TABLE sites ADD COLUMN IF NOT EXISTS is_group BOOLEAN NOT NULL DEFAULT false`;
+  await db`ALTER TABLE sites ADD COLUMN IF NOT EXISTS is_equestrian BOOLEAN NOT NULL DEFAULT false`;
+  await db`ALTER TABLE sites ADD COLUMN IF NOT EXISTS is_walk_up BOOLEAN NOT NULL DEFAULT false`;
+  await db`ALTER TABLE sites ADD COLUMN IF NOT EXISTS is_day_use BOOLEAN NOT NULL DEFAULT false`;
 
   await db`
     CREATE TABLE IF NOT EXISTS scan_windows (

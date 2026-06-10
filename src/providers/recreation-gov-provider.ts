@@ -13,6 +13,7 @@ interface RecGovCampsite {
   type_of_use: string;
   max_num_people: number;
   min_num_people: number;
+  campsite_type?: string;
 }
 
 export interface RecGovAvailabilityResponse {
@@ -237,7 +238,9 @@ export class RecreationGovProvider implements AvailabilityProvider {
     for (const campsite of Object.values(data.campsites)) {
       const siteName = campsite.site;
       if (!siteMap.has(siteName)) {
-        siteMap.set(siteName, { name: siteName, dates: {} });
+        const entry: SiteDailyAvailability = { name: siteName, dates: {} };
+        if (campsite.campsite_type) entry.recGovCampsiteType = campsite.campsite_type;
+        siteMap.set(siteName, entry);
       }
       const siteEntry = siteMap.get(siteName)!;
       for (const [isoDatetime, status] of Object.entries(campsite.availabilities)) {

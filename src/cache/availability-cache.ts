@@ -3,6 +3,7 @@ import { getSql, rebuildMaterializedView } from './db.js';
 export { rebuildMaterializedView };
 import type { AvailabilityWindowEntry, AvailableStay, CampgroundWindow } from './types.js';
 import { WINDOW_DAYS } from './types.js';
+import { classifySite } from '../catalog/site-classifier.js';
 
 
 // ---------------------------------------------------------------------------
@@ -112,15 +113,27 @@ export async function upsertEntry(entry: AvailabilityWindowEntry, providerId: st
         booking_url = EXCLUDED.booking_url
     `;
 
-    // 6. Bulk upsert sites — deduplicate by (campground_name, site_name) within this park
-    const siteRowMap = new Map<string, { provider_id: string; park_page_id: string; campground_name: string; site_name: string }>();
+    // 6. Bulk upsert sites — deduplicate by (campground_name, site_name) within this park.
+    //    Classify each site so the typed columns are set on insert and healed on conflict.
+    const siteRowMap = new Map<string, {
+      provider_id: string; park_page_id: string; campground_name: string; site_name: string;
+      access: string; site_kind: string | null;
+      is_group: boolean; is_equestrian: boolean; is_walk_up: boolean; is_day_use: boolean;
+    }>();
     for (const cg of entry.campgrounds) {
       for (const site of cg.sites) {
+        const info = classifySite(site.name, cg.name, site.recGovCampsiteType);
         siteRowMap.set(`${cg.name}::${site.name}`, {
           provider_id: providerId,
           park_page_id: entry.parkPageId,
           campground_name: cg.name,
           site_name: site.name,
+          access: info.access,
+          site_kind: info.siteKind,
+          is_group: info.isGroup,
+          is_equestrian: info.isEquestrian,
+          is_walk_up: info.isWalkUp,
+          is_day_use: info.isDayUse,
         });
       }
     }
@@ -130,9 +143,16 @@ export async function upsertEntry(entry: AvailabilityWindowEntry, providerId: st
 
     type SiteRow = { site_id: number; campground_name: string; site_name: string };
     const returnedSites = (await tx`
-      INSERT INTO sites ${tx(siteRows, 'provider_id', 'park_page_id', 'campground_name', 'site_name')}
+      INSERT INTO sites ${tx(siteRows, 'provider_id', 'park_page_id', 'campground_name', 'site_name', 'access', 'site_kind', 'is_group', 'is_equestrian', 'is_walk_up', 'is_day_use')}
       ON CONFLICT (provider_id, park_page_id, campground_name, site_name)
-      DO UPDATE SET site_name = EXCLUDED.site_name
+      DO UPDATE SET
+        site_name = EXCLUDED.site_name,
+        access = EXCLUDED.access,
+        site_kind = EXCLUDED.site_kind,
+        is_group = EXCLUDED.is_group,
+        is_equestrian = EXCLUDED.is_equestrian,
+        is_walk_up = EXCLUDED.is_walk_up,
+        is_day_use = EXCLUDED.is_day_use
       RETURNING site_id, campground_name, site_name
     `) as unknown as SiteRow[];
 
@@ -353,53 +373,123 @@ export async function getEntriesForPark(
   return getEntriesForParks([parkPageId], providerName);
 }
 
-/** Returns park_page_ids that have at least one available site in the given date range. */
-// Site filter patterns — mirrors the JS regex logic in web/lib/site-filters.ts,
-// translated to PostgreSQL POSIX regex. Patterns are hardcoded; filterIds come
-// from a closed enum so sql.unsafe is safe here.
-const FILTER_SQL: Record<string, { exclude: boolean; pattern: string }> = {
-  exclude_group:      { exclude: true,  pattern: '\\ygroup\\y' },
-  exclude_day_use:    { exclude: true,  pattern: '\\y(day.use|dailyuse|picnic)\\y' },
-  hike_in_only:       { exclude: false, pattern: '\\y(hike.in|walk.in)\\y' },
-  exclude_equestrian: { exclude: true,  pattern: '\\y(equestrian|horse)\\y' },
-  exclude_boat_in:    { exclude: true,  pattern: '\\yboat[ -]?(in|to|access)\\y' },
-};
+export type SiteAccess = 'drive_in' | 'hike_in' | 'boat_in';
+export type SiteKind = 'tent' | 'hookup' | 'cabin';
+export type HideTarget = 'group' | 'equestrian' | 'walk_up';
 
-const WALK_UP_SQL = "s.site_name ~* 'hike *[/&]? *bike'";
+export interface AvailabilityClauseOptions {
+  from?: string | null;
+  to?: string | null;
+  access?: SiteAccess[];
+  kinds?: SiteKind[];
+  hide?: HideTarget[];
+  minNights?: 1 | 2 | 3;
+  weekendsOnly?: boolean;
+}
 
 export interface AvailabilityClauseResult {
   clauses: string[];
+  dowClauses: string[];
   params: string[];
   excludeWalkUp: boolean;
+  minNights?: 1 | 2 | 3;
 }
 
-/** Pure WHERE-clause builder for the availability summary query (exported for tests). */
-export function buildAvailabilityClauses(
-  from?: string | null,
-  to?: string | null,
-  filterIds: string[] = [],
-  weekendsOnly = false,
-): AvailabilityClauseResult {
+/**
+ * Validates an enum list against the allowed set before inlining into SQL.
+ * Returns a Postgres array literal like '{hike_in,boat_in}' or null if empty.
+ */
+function pgEnumArray(values: string[] | undefined, allowed: readonly string[]): string | null {
+  if (!values || values.length === 0) return null;
+  const safe = values.filter((v) => allowed.includes(v));
+  if (safe.length === 0) return null;
+  return `'{${safe.join(',')}}'`;
+}
+
+const ACCESS_VALUES = ['drive_in', 'hike_in', 'boat_in'] as const;
+const KIND_VALUES = ['tent', 'hookup', 'cabin'] as const;
+
+/** Pure WHERE-clause builder for availability queries (exported for tests). */
+export function buildAvailabilityClauses(opts: AvailabilityClauseOptions): AvailabilityClauseResult {
+  const { from, to, access, kinds, hide = [], minNights, weekendsOnly = false } = opts;
   const params: string[] = [];
-  const clauses: string[] = ["a.status = 'available'", 'a.date >= CURRENT_DATE'];
+  const clauses: string[] = [
+    "a.status = 'available'",
+    'a.date >= CURRENT_DATE',
+    's.is_day_use = false',
+  ];
+  // DOW filter kept separate so the min-nights path can omit it (arrival DOW is
+  // checked in siteMatchesMinStay, which handles the multi-night window correctly).
+  const dowClauses: string[] = [];
 
   if (from) { clauses.push(`a.date >= $${params.length + 1}`); params.push(from); }
   if (to)   { clauses.push(`a.date <= $${params.length + 1}`); params.push(to); }
 
-  // Weekends mode: only count Friday (5) or Saturday (6) arrivals. Sunday-only availability
-  // means you can't arrive for a Fri-Sun or Sat-Sun stay, so it shouldn't light up the pin.
-  if (weekendsOnly) clauses.push('EXTRACT(DOW FROM a.date)::int IN (5, 6)');
+  if (weekendsOnly) dowClauses.push('EXTRACT(DOW FROM a.date)::int IN (5, 6)');
+
+  const accessArr = pgEnumArray(access, ACCESS_VALUES);
+  if (accessArr) clauses.push(`s.access = ANY(${accessArr})`);
+
+  const kindArr = pgEnumArray(kinds, KIND_VALUES);
+  if (kindArr) clauses.push(`s.site_kind = ANY(${kindArr})`);
 
   let excludeWalkUp = false;
-  for (const id of filterIds) {
-    if (id === 'exclude_walk_up') { excludeWalkUp = true; continue; }
-    const f = FILTER_SQL[id];
-    if (!f) continue;
-    const col = `(s.site_name || ' ' || s.campground_name) ~* '${f.pattern}'`;
-    clauses.push(f.exclude ? `NOT (${col})` : col);
+  for (const h of hide) {
+    if (h === 'group') clauses.push('NOT s.is_group');
+    else if (h === 'equestrian') clauses.push('NOT s.is_equestrian');
+    else if (h === 'walk_up') excludeWalkUp = true;
   }
 
-  return { clauses, params, excludeWalkUp };
+  const result: AvailabilityClauseResult = { clauses, dowClauses, params, excludeWalkUp };
+  if (minNights) result.minNights = minNights;
+  return result;
+}
+
+export interface MinStayOptions {
+  minNights: 1 | 2 | 3;
+  from?: string | null;
+  to?: string | null;
+  weekendsOnly?: boolean;
+}
+
+/** DOW of an ISO date: 0=Sun … 5=Fri, 6=Sat (UTC-safe, date-only). */
+function isoDow(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay();
+}
+
+function addDaysIso(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y!, m! - 1, d!));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
+/**
+ * True if the site (given its available dates) supports at least one stay of
+ * `minNights` consecutive available nights with arrival d where d >= from,
+ * d + minNights - 1 <= to, and (when weekendsOnly) DOW(d) in {5,6}.
+ * Dedupes input dates (overlapping scan windows can repeat a date).
+ */
+export function siteMatchesMinStay(availableDates: string[], opts: MinStayOptions): boolean {
+  const { minNights, from, to, weekendsOnly = false } = opts;
+  const set = new Set(availableDates);
+  const sorted = [...set].sort();
+  for (const arrival of sorted) {
+    if (from && arrival < from) continue;
+    const lastNight = addDaysIso(arrival, minNights - 1);
+    if (to && lastNight > to) continue;
+    if (weekendsOnly) {
+      const dow = isoDow(arrival);
+      if (dow !== 5 && dow !== 6) continue;
+    }
+    let ok = true;
+    for (let i = 0; i < minNights; i++) {
+      if (!set.has(addDaysIso(arrival, i))) { ok = false; break; }
+    }
+    if (ok) return true;
+  }
+  return false;
 }
 
 export interface ParkAvailabilityCount {
@@ -409,40 +499,74 @@ export interface ParkAvailabilityCount {
 }
 
 /**
- * Per-facility availability counts in the given date range. siteCount is bookable
- * sites only (walk-up hike/bike sites never count as bookable); walkUpCount is the
- * matching walk-up sites, forced to 0 when the exclude_walk_up filter is active.
- * Facilities with neither are omitted. COUNT(DISTINCT) dedupes sites that appear
- * in multiple overlapping scan windows.
+ * Per-facility bookable + walk-up site counts in the date range, with optional
+ * access/kind/hide filters and a min-stay (consecutive-nights) constraint.
+ * Walk-up (hike/bike) sites never count as bookable; walkUpCount is forced to 0
+ * when walk_up is hidden. Counts dedupe sites across overlapping scan windows.
  */
 export async function getParkAvailabilityCounts(
-  from?: string | null,
-  to?: string | null,
-  filterIds: string[] = [],
-  weekendsOnly = false,
+  opts: AvailabilityClauseOptions = {},
 ): Promise<ParkAvailabilityCount[]> {
   const sql = getSql();
-  const { clauses, params, excludeWalkUp } = buildAvailabilityClauses(from, to, filterIds, weekendsOnly);
+  const { clauses, dowClauses, params, excludeWalkUp, minNights } = buildAvailabilityClauses(opts);
 
-  const bookable = `COUNT(DISTINCT s.site_id) FILTER (WHERE NOT (${WALK_UP_SQL}))`;
-  const walkUp = excludeWalkUp ? '0' : `COUNT(DISTINCT s.site_id) FILTER (WHERE ${WALK_UP_SQL})`;
+  if (!minNights) {
+    const bookable = 'COUNT(DISTINCT s.site_id) FILTER (WHERE NOT s.is_walk_up)';
+    const walkUp = excludeWalkUp ? '0' : 'COUNT(DISTINCT s.site_id) FILTER (WHERE s.is_walk_up)';
+    const allClauses = dowClauses.length > 0
+      ? [...clauses, ...dowClauses]
+      : clauses;
+    const rows = await sql.unsafe<{ park_page_id: string; site_count: number; walk_up_count: number }[]>(`
+      SELECT s.park_page_id,
+             (${bookable})::int AS site_count,
+             (${walkUp})::int AS walk_up_count
+      FROM availability a
+      JOIN sites s ON s.site_id = a.site_id
+      WHERE ${allClauses.join('\n        AND ')}
+      GROUP BY s.park_page_id
+      HAVING (${bookable}) > 0${excludeWalkUp ? '' : ` OR (${walkUp}) > 0`}
+    `, params);
+    return rows.map((r) => ({
+      parkPageId: r.park_page_id,
+      siteCount: Number(r.site_count),
+      walkUpCount: Number(r.walk_up_count),
+    }));
+  }
 
-  const rows = await sql.unsafe<{ park_page_id: string; site_count: number; walk_up_count: number }[]>(`
-    SELECT s.park_page_id,
-           (${bookable})::int AS site_count,
-           (${walkUp})::int AS walk_up_count
+  // Min-stay path: pull per-site available dates within the window, then apply the
+  // gaps-and-islands helper per site and aggregate per park. The WHERE clause already
+  // bounds dates/access/kind/hide; DOW clauses are omitted here — arrival DOW is checked
+  // in siteMatchesMinStay (a Saturday-arrival 2-night stay legitimately includes Sunday).
+  type Row = { park_page_id: string; site_id: number; is_walk_up: boolean; date: string };
+  const rows = await sql.unsafe<Row[]>(`
+    SELECT s.park_page_id, s.site_id, s.is_walk_up, a.date::text AS date
     FROM availability a
     JOIN sites s ON s.site_id = a.site_id
     WHERE ${clauses.join('\n      AND ')}
-    GROUP BY s.park_page_id
-    HAVING (${bookable}) > 0${excludeWalkUp ? '' : ` OR (${walkUp}) > 0`}
+    ORDER BY s.park_page_id, s.site_id, a.date
   `, params);
 
-  return rows.map((r) => ({
-    parkPageId: r.park_page_id,
-    siteCount: Number(r.site_count),
-    walkUpCount: Number(r.walk_up_count),
-  }));
+  // Group dates per site, keep park + walk-up flag.
+  const bySite = new Map<number, { parkPageId: string; isWalkUp: boolean; dates: string[] }>();
+  for (const r of rows) {
+    let e = bySite.get(r.site_id);
+    if (!e) { e = { parkPageId: r.park_page_id, isWalkUp: r.is_walk_up, dates: [] }; bySite.set(r.site_id, e); }
+    e.dates.push(r.date);
+  }
+
+  const stay = { minNights, from: opts.from ?? null, to: opts.to ?? null, weekendsOnly: opts.weekendsOnly ?? false };
+  const perPark = new Map<string, { siteCount: number; walkUpCount: number }>();
+  for (const { parkPageId, isWalkUp, dates } of bySite.values()) {
+    if (!siteMatchesMinStay(dates, stay)) continue;
+    let p = perPark.get(parkPageId);
+    if (!p) { p = { siteCount: 0, walkUpCount: 0 }; perPark.set(parkPageId, p); }
+    if (isWalkUp) { if (!excludeWalkUp) p.walkUpCount++; }
+    else p.siteCount++;
+  }
+
+  return [...perPark.entries()]
+    .map(([parkPageId, c]) => ({ parkPageId, ...c }))
+    .filter((c) => c.siteCount > 0 || c.walkUpCount > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -675,9 +799,7 @@ export type SearchParkResult = {
 /**
  * Find all sites with status='available' on EVERY night from `from` (inclusive)
  * to `to` (exclusive — last night is the night before `to`).
- * Applies FILTER_SQL patterns for the given filterIds. `exclude_walk_up` is
- * intentionally not in FILTER_SQL — walk-up sites are always returned in the
- * `walkUpSites` array and the caller decides whether to display them.
+ * Applies typed column predicates for access/kinds/hide filters.
  * Walk-up (hike/bike) sites are separated into walkUpSites; bookable sites go
  * into availableSites. Parks with zero bookable sites still appear if they have
  * walk-up sites.
@@ -685,22 +807,25 @@ export type SearchParkResult = {
 export async function searchAvailableStays(params: {
   from: string;
   to: string;
-  filterIds?: string[];
+  access?: SiteAccess[];
+  kinds?: SiteKind[];
+  hide?: HideTarget[];
 }): Promise<SearchParkResult[]> {
   const sql = getSql();
-  const { from, to, filterIds = [] } = params;
+  const { from, to, access, kinds, hide = [] } = params;
   const nightCount = dayjs(to).diff(dayjs(from), 'day');
   if (nightCount < 1) return [];
 
-  // Build dynamic filter clauses — patterns are hardcoded constants, not user input
-  const filterClauses: string[] = [];
-  for (const id of filterIds) {
-    const f = FILTER_SQL[id];
-    if (!f) continue; // unknown filter ids (e.g. exclude_walk_up) are silently skipped
-    const col = `(s.site_name || ' ' || s.campground_name) ~* '${f.pattern}'`;
-    filterClauses.push(f.exclude ? `NOT (${col})` : col);
-  }
-  const filterWhere = filterClauses.length > 0 ? `AND ${filterClauses.join(' AND ')}` : '';
+  const filterClauses: string[] = ['s.is_day_use = false'];
+  const accessArr = pgEnumArray(access, ACCESS_VALUES);
+  if (accessArr) filterClauses.push(`s.access = ANY(${accessArr})`);
+  const kindArr = pgEnumArray(kinds, KIND_VALUES);
+  if (kindArr) filterClauses.push(`s.site_kind = ANY(${kindArr})`);
+  if (hide.includes('group')) filterClauses.push('NOT s.is_group');
+  if (hide.includes('equestrian')) filterClauses.push('NOT s.is_equestrian');
+  const excludeWalkUp = hide.includes('walk_up');
+  if (excludeWalkUp) filterClauses.push('NOT s.is_walk_up');
+  const filterWhere = `AND ${filterClauses.join(' AND ')}`;
 
   type Row = {
     park_page_id: string;
@@ -720,7 +845,7 @@ export async function searchAvailableStays(params: {
       cg.nightly_fee::text,
       cg.booking_url,
       s.site_name,
-      s.site_name ~* 'hike\\s*[/&]?\\s*bike' AS is_walk_up
+      s.is_walk_up
     FROM sites s
     JOIN campgrounds cg
       ON cg.provider_id = s.provider_id
@@ -804,7 +929,8 @@ export async function findNextAvailableDates(params: {
     `a.date <= $1::date`,
     // Walk-up (hike/bike) sites are never reservable; exclude so the fallback
     // panel only surfaces parks with actual bookable openings.
-    `NOT (s.site_name ~* 'hike\\s*[/&]?\\s*bike')`,
+    'NOT s.is_walk_up',
+    's.is_day_use = false',
   ];
 
   if (parkPageIds && parkPageIds.length > 0) {

@@ -18,6 +18,7 @@
     "db:init": "tsx src/cli/index.ts db init",
     "db:migrate": "tsx src/cli/index.ts db migrate",
     "db:rebuild-mv": "tsx src/cli/index.ts db rebuild-mv",
+    "db:backfill-types": "tsx src/cli/index.ts db backfill-types",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "verify": "npm run typecheck && npm test && npm run upcoming && npm run scan && npm --prefix web run build"

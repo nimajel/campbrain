@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEntriesForParks } from '../../../../lib/availability-cache';
 import type { AvailabilityWindowEntry } from '../../../../lib/availability-cache';
-import { isWalkUpSite } from '../../../../lib/site-filters';
+import { parseFilterParams } from '../../../../lib/filter-params';
+import type { SiteAccess, SiteKind, HideTarget } from '../../../../lib/availability-cache';
+import { classifySite } from '../../../../../src/catalog/site-classifier';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -124,14 +126,17 @@ function weekendFridaysFromAvailableDates(
 
 // Build a Map<date → Map<campgroundName → {sites, bookingUrl}>> from all entries.
 // Caller is responsible for pre-filtering entries to the relevant facilities.
+// The `passes` predicate is applied per-site so filtered sites never enter the map.
 function buildDateSiteMap(
   entries: AvailabilityWindowEntry[],
+  passes: (siteName: string, cgName: string) => boolean,
 ): Map<string, Map<string, { sites: string[]; bookingUrl?: string }>> {
   const dateMap = new Map<string, Map<string, { sites: string[]; bookingUrl?: string }>>();
 
   for (const entry of entries) {
     for (const cg of entry.campgrounds) {
       for (const site of cg.sites) {
+        if (!passes(site.name, cg.name)) continue;
         for (const [date, status] of Object.entries(site.dates)) {
           if (status !== 'available') continue;
           if (!dateMap.has(date)) dateMap.set(date, new Map());
@@ -168,11 +173,15 @@ function sitesAvailableForDates(
 }
 
 /** Split site names into bookable (reservable) vs walk-up (first-come) buckets, sorted. */
-function splitWalkUp(names: string[]): { bookable: string[]; walkUp: string[] } {
+function splitWalkUp(
+  names: string[],
+  cgName: string,
+  isWalkUp: (name: string, cgName: string) => boolean,
+): { bookable: string[]; walkUp: string[] } {
   const bookable: string[] = [];
   const walkUp: string[] = [];
   for (const name of names) {
-    (isWalkUpSite(name) ? walkUp : bookable).push(name);
+    (isWalkUp(name, cgName) ? walkUp : bookable).push(name);
   }
   return { bookable: bookable.sort(), walkUp: walkUp.sort() };
 }
@@ -210,6 +219,22 @@ export async function GET(
   const from = req.nextUrl.searchParams.get('from');
   const to = req.nextUrl.searchParams.get('to');
 
+  // Taxonomy filters — applied server-side so filtered sites never reach the response.
+  // minNights is intentionally NOT applied here: min-stay is a stay-shape constraint
+  // handled by the client (dates-view consecutive intersection, weekend tier logic).
+  const { access, kinds, hide } = parseFilterParams(req.nextUrl.searchParams);
+
+  function passesTaxonomy(siteName: string, cgName: string): boolean {
+    const info = classifySite(siteName, cgName);
+    if (info.isDayUse) return false;
+    if (access.length > 0 && !access.includes(info.access)) return false;
+    if (kinds.length > 0 && (info.siteKind === null || !kinds.includes(info.siteKind))) return false;
+    if (hide.includes('group') && info.isGroup) return false;
+    if (hide.includes('equestrian') && info.isEquestrian) return false;
+    if (hide.includes('walk_up') && info.isWalkUp) return false;
+    return true;
+  }
+
   const parkEntries = await getEntriesForParks(facilityIds, providerName);
 
   if (parkEntries.length === 0) {
@@ -229,7 +254,7 @@ export async function GET(
     parkEntries[0]!.scannedAt
   );
 
-  const dateMap = buildDateSiteMap(parkEntries);
+  const dateMap = buildDateSiteMap(parkEntries, passesTaxonomy);
   const today = todayIso();
   const allAvailableDates = [...dateMap.keys()].filter((d) => d >= today).sort();
   const earliestAvailableDate = allAvailableDates[0] ?? null;
@@ -251,6 +276,13 @@ export async function GET(
   }
   const allCgNames = [...cgMeta.keys()];
 
+  // Walk-up detector for the split — used to separate bookable vs walk-up within
+  // the already-taxonomy-filtered site lists. Sites that fail passesTaxonomy are
+  // never in the dateMap; isWalkUp here only splits remaining sites for display.
+  function isWalkUpForSplit(siteName: string, cgName: string): boolean {
+    return classifySite(siteName, cgName).isWalkUp;
+  }
+
   // -------------------------------------------------------------------------
   // 1. Next available dates — any date from today onward with at least 1 open site
   // -------------------------------------------------------------------------
@@ -260,7 +292,7 @@ export async function GET(
     const cgMap = dateMap.get(date)!;
     const campgrounds = [...cgMap.entries()]
       .map(([name, { sites, bookingUrl }]) => {
-        const { bookable, walkUp } = splitWalkUp(sites);
+        const { bookable, walkUp } = splitWalkUp(sites, name, isWalkUpForSplit);
         return {
           name,
           bookingUrl,
@@ -301,22 +333,22 @@ export async function GET(
     for (const cgName of allCgNames) {
       // Each tier is split so walk-up (non-reservable) sites never appear as bookable.
       const sites3Night = allowFridayArrival
-        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat, sun])).bookable
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat, sun]), cgName, isWalkUpForSplit).bookable
         : [];
       const sites2NightFri = allowFridayArrival
-        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat])).bookable
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat]), cgName, isWalkUpForSplit).bookable
         : [];
       const sites2NightSat = allowSaturdayArrival
-        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [sat, sun])).bookable
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [sat, sun]), cgName, isWalkUpForSplit).bookable
         : [];
 
       // Single-night Fri / Sat options. Sunday-only availability is omitted —
       // arriving Sunday means a Mon check-out, not a useful "weekend" trip.
       const friSplit = allowFridayArrival
-        ? splitWalkUp([...(dateMap.get(fri)?.get(cgName)?.sites ?? [])])
+        ? splitWalkUp([...(dateMap.get(fri)?.get(cgName)?.sites ?? [])], cgName, isWalkUpForSplit)
         : { bookable: [], walkUp: [] };
       const satSplit = allowSaturdayArrival
-        ? splitWalkUp([...(dateMap.get(sat)?.get(cgName)?.sites ?? [])])
+        ? splitWalkUp([...(dateMap.get(sat)?.get(cgName)?.sites ?? [])], cgName, isWalkUpForSplit)
         : { bookable: [], walkUp: [] };
       const sites1NightFri = friSplit.bookable;
       const sites1NightSat = satSplit.bookable;

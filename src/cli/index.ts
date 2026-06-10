@@ -9,6 +9,7 @@ import { catalogRefreshCommand, catalogListCommand } from './commands/catalog.js
 import { cacheRefreshCommand } from './commands/cache-refresh.js';
 import { dbInitCommand } from './commands/db-init.js';
 import { dbMigrateCommand } from './commands/db-migrate.js';
+import { dbBackfillTypesCommand } from './commands/db-backfill-types.js';
 
 program
   .name('campbrain')
@@ -182,6 +183,13 @@ dbCmd.command('migrate').description('Migrate JSON cache to PostgreSQL').action(
   try { await dbMigrateCommand(); }
   catch (e) { console.error(e); process.exit(1); }
 });
+
+dbCmd.command('backfill-types')
+  .description('Classify existing sites rows by name and set type columns')
+  .action(async () => {
+    try { await dbBackfillTypesCommand(); }
+    catch (e) { console.error(e); process.exit(1); }
+  });
 
 dbCmd.command('rebuild-mv')
   .description('Rebuild materialized view (required after MV schema changes)')

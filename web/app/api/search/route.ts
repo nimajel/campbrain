@@ -5,6 +5,7 @@ import { classifyRegion, ALL_REGIONS } from '../../../lib/regions';
 import type { CampRegion } from '../../../lib/regions';
 import type { SearchParkResult, SearchCampground } from '../../../lib/availability-cache';
 import { listParksWeb } from '../../../lib/catalog';
+import { parseFilterParams } from '../../../lib/filter-params';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,7 @@ export type SearchApiResponse = {
 };
 
 // ---------------------------------------------------------------------------
-// GET /api/search?from=YYYY-MM-DD&to=YYYY-MM-DD[&filters=id1,id2][&region=slug]
+// GET /api/search?from=YYYY-MM-DD&to=YYYY-MM-DD[&access=...][&kinds=...][&hide=...][&region=slug]
 // ---------------------------------------------------------------------------
 
 export async function GET(
@@ -45,8 +46,7 @@ export async function GET(
   const { searchParams } = req.nextUrl;
   const from = searchParams.get('from');
   const to = searchParams.get('to');
-  const filtersParam = searchParams.get('filters') ?? '';
-  const filterIds = filtersParam ? filtersParam.split(',') : [];
+  const { access, kinds, hide } = parseFilterParams(searchParams);
   const regionParam = searchParams.get('region');
   const regionFilter: CampRegion | null =
     regionParam && (ALL_REGIONS as string[]).includes(regionParam)
@@ -83,7 +83,7 @@ export async function GET(
       catalogParks.map((p) => [p.parkPageId, p.provider])
     );
 
-    const results: SearchParkResult[] = await searchAvailableStays({ from, to, filterIds });
+    const results: SearchParkResult[] = await searchAvailableStays({ from, to, access, kinds, hide });
 
     const parks: SearchParkResponse[] = results
       .map((park) => {
