@@ -7,6 +7,7 @@ export type { ChipTone } from './Chip';
 export { default as StatusDot } from './StatusDot';
 export type { DotTone } from './StatusDot';
 export { default as SiteChip } from './SiteChip';
+export type { SiteChipProps } from './SiteChip';
 export { default as EmptyState } from './EmptyState';
 export { default as Card } from './Card';
 export { default as StatCard } from './StatCard';

@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-type SiteChipProps =
+export type SiteChipProps =
   | { children: ReactNode; more?: false; onClick?: never; title?: string; style?: CSSProperties }
   | { children: ReactNode; more: true; onClick: () => void; title?: string; style?: CSSProperties };
 
