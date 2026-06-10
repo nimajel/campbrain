@@ -9,8 +9,16 @@ import type { SheetDetent } from '../../lib/sheet-detent';
 const SORTS: { key: ParkListSort; label: string }[] = [
   { key: 'sites', label: 'Most sites' },
   { key: 'distance', label: 'Nearest' },
+  { key: 'soonest', label: 'Soonest' },
   { key: 'name', label: 'A–Z' },
 ];
+
+function formatShortDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  });
+}
 
 function RowGlyph({ isFederal, walkUpOnly }: { isFederal: boolean; walkUpOnly: boolean }) {
   return (
@@ -83,13 +91,6 @@ export default function ResultsList({
               </button>
             );
           })}
-          <span
-            className="btn btn-sm btn-ghost"
-            style={{ opacity: 0.45, cursor: 'default' }}
-            title="Soonest-opening sort is coming — needs scanner-side data"
-          >
-            Soonest
-          </span>
         </div>
       </div>
       <div className="map-results-list" ref={listRef}>
@@ -116,6 +117,7 @@ export default function ResultsList({
                       {r.siteCount} site{r.siteCount !== 1 ? 's' : ''}
                     </span>
                   )}
+                  {sort === 'soonest' && r.soonestDate && <> · opens {formatShortDate(r.soonestDate)}</>}
                   {r.distanceMi !== null && <> · {Math.round(r.distanceMi)} mi</>}
                 </span>
               </span>

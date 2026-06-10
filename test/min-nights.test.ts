@@ -38,3 +38,23 @@ describe('siteMatchesMinStay', () => {
     expect(siteMatchesMinStay(['2026-06-05', '2026-06-05', '2026-06-06'], opts())).toBe(true);
   });
 });
+
+import { firstMatchingArrival } from '../src/cache/availability-cache.js';
+
+describe('firstMatchingArrival', () => {
+  it('returns the first valid arrival date', () => {
+    expect(firstMatchingArrival(['2026-06-12', '2026-06-13', '2026-06-14'], { minNights: 2 }))
+      .toBe('2026-06-12');
+  });
+  it('skips arrivals whose stay would exceed `to`', () => {
+    expect(firstMatchingArrival(['2026-06-14', '2026-06-15'], { minNights: 2, to: '2026-06-14' }))
+      .toBeNull();
+  });
+  it('honors weekendsOnly arrival DOW', () => {
+    expect(firstMatchingArrival(['2026-06-10', '2026-06-11', '2026-06-12', '2026-06-13'], { minNights: 2, weekendsOnly: true }))
+      .toBe('2026-06-12');
+  });
+  it('returns null when no window fits', () => {
+    expect(firstMatchingArrival(['2026-06-12', '2026-06-15'], { minNights: 2 })).toBeNull();
+  });
+});

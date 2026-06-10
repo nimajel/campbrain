@@ -13,6 +13,7 @@ import { getParkType } from '../../lib/map-pins';
 import type { ParkListRow, ParkListSort } from '../../lib/park-list';
 import { useIsMobile } from './useIsMobile';
 import NavMenu from '../components/NavMenu';
+import DateRangePicker from './DateRangePicker';
 import { cycleDetent } from '../../lib/sheet-detent';
 import type { SheetDetent } from '../../lib/sheet-detent';
 import { upcomingWeekendRange } from '../../lib/upcoming-weekend';
@@ -29,6 +30,7 @@ const LeafletMap = dynamic(() => import('./LeafletMap'), { ssr: false });
 export interface ParkAvailabilitySummary {
   siteCount: number;
   walkUpCount: number;
+  soonestDate: string | null;
 }
 
 const ACCESS_LABEL: Record<SiteAccess, string> = {
@@ -279,10 +281,15 @@ function DateRow({ entry, nights }: { entry: AvailableDateEntry; nights: number 
       </div>
       {entry.campgrounds.map((cg) => (
         <div key={cg.name} style={{ fontSize: 12, color: 'var(--muted)', paddingLeft: 8 }}>
-          <span style={{ color: 'var(--text)' }}>{cg.name}</span>
+          <span style={{ color: 'var(--text)' }}>
+            {cg.name}
+            {cg.nightlyFee != null && (
+              <span style={{ color: 'var(--muted)' }}> · ${cg.nightlyFee}/night</span>
+            )}
+          </span>
           {cg.sites.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>{siteListText(cg.sites, 6)}</span>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 2 }}>
+              <SiteChips sites={cg.sites} />
               <BookLink url={cg.bookingUrl} arrival={entry.date} nights={nights} />
             </div>
           )}
@@ -672,10 +679,10 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
       if (weekendsOnly) params.set('weekendsOnly', 'true');
       if (minNights) params.set('minNights', String(minNights));
       fetch(`/api/map/availability/summary?${params.toString()}`)
-        .then((r) => r.json() as Promise<{ parks: { parkPageId: string; siteCount: number; walkUpCount: number }[] }>)
+        .then((r) => r.json() as Promise<{ parks: { parkPageId: string; siteCount: number; walkUpCount: number; soonestDate: string | null }[] }>)
         .then((data) => {
           setAvailByFacility(
-            new Map(data.parks.map((p) => [p.parkPageId, { siteCount: p.siteCount, walkUpCount: p.walkUpCount }])),
+            new Map(data.parks.map((p) => [p.parkPageId, { siteCount: p.siteCount, walkUpCount: p.walkUpCount, soonestDate: p.soonestDate ?? null }])),
           );
         })
         .catch(() => {})
@@ -727,13 +734,17 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     for (const p of parks) {
       let siteCount = 0;
       let walkUpCount = 0;
+      let soonestDate: string | null = null;
       for (const fid of p.facilityPageIds) {
         const a = availByFacility.get(fid);
         if (!a) continue;
         siteCount += a.siteCount;
         walkUpCount += a.walkUpCount;
+        if (a.soonestDate && (soonestDate === null || a.soonestDate < soonestDate)) {
+          soonestDate = a.soonestDate;
+        }
       }
-      byPark.set(p.parkPageId, { siteCount, walkUpCount });
+      byPark.set(p.parkPageId, { siteCount, walkUpCount, soonestDate });
     }
     return byPark;
   }, [parks, availByFacility]);
@@ -754,6 +765,7 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
         distanceMi: resolvedLocation && p.latitude && p.longitude
           ? haversine(resolvedLocation.lat, resolvedLocation.lon, p.latitude, p.longitude)
           : null,
+        soonestDate: a.soonestDate,
       }];
     });
   }, [displayedParks, availByPark, resolvedLocation]);
@@ -940,29 +952,17 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
               })}
             </div>
 
-            {/* Date inputs */}
-            <input
-              type="date"
-              value={availFrom}
-              min={todayIso()}
-              onChange={(e) => {
-                setAvailFrom(e.target.value);
-                const derived = derivePreset(e.target.value, availTo);
+            {/* Date range picker */}
+            <DateRangePicker
+              from={availFrom}
+              to={availTo}
+              mobile={isMobile}
+              onChange={(f, t) => {
+                setAvailFrom(f);
+                setAvailTo(t);
+                const derived = derivePreset(f, t);
                 if (derived) setPreset(derived);
               }}
-              style={{ fontSize: 12, padding: '4px 8px', width: 135, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'var(--font)', colorScheme: 'dark' }}
-            />
-            <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>
-            <input
-              type="date"
-              value={availTo}
-              min={availFrom || todayIso()}
-              onChange={(e) => {
-                setAvailTo(e.target.value);
-                const derived = derivePreset(availFrom, e.target.value);
-                if (derived) setPreset(derived);
-              }}
-              style={{ fontSize: 12, padding: '4px 8px', width: 135, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'var(--font)', colorScheme: 'dark' }}
             />
 
             {/* Weekends-only pill: locked when preset is this_weekend */}
@@ -1021,19 +1021,19 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
                 >
                   <input
                     className="form-input"
-                    placeholder="City…"
+                    placeholder="City or place…"
                     value={locationQuery}
                     onChange={(e) => {
                       setLocationQuery(e.target.value);
                       if (!e.target.value) { setResolvedLocation(null); setGeocodeError(null); }
                     }}
-                    style={{ width: 130, padding: '4px 8px', fontSize: 12 }}
+                    style={{ width: 150, padding: '4px 8px', fontSize: 12 }}
                   />
-                  <button type="submit" className="btn btn-ghost btn-sm" disabled={geocoding} title="Search location">
-                    {geocoding ? '…' : '→'}
+                  <button type="submit" className="btn btn-ghost btn-sm" disabled={geocoding}>
+                    {geocoding ? 'Searching…' : 'Search'}
                   </button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={handleCurrentLocation} title="Use my location">
-                    📍
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={handleCurrentLocation}>
+                    📍 Use my location
                   </button>
                 </form>
 

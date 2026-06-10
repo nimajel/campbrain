@@ -466,12 +466,12 @@ function addDaysIso(iso: string, n: number): string {
 }
 
 /**
- * True if the site (given its available dates) supports at least one stay of
- * `minNights` consecutive available nights with arrival d where d >= from,
- * d + minNights - 1 <= to, and (when weekendsOnly) DOW(d) in {5,6}.
+ * Earliest arrival date d (or null) where the site supports a stay of `minNights`
+ * consecutive available nights with d >= from, d + minNights - 1 <= to, and
+ * (when weekendsOnly) DOW(d) in {5,6}.
  * Dedupes input dates (overlapping scan windows can repeat a date).
  */
-export function siteMatchesMinStay(availableDates: string[], opts: MinStayOptions): boolean {
+export function firstMatchingArrival(availableDates: string[], opts: MinStayOptions): string | null {
   const { minNights, from, to, weekendsOnly = false } = opts;
   const set = new Set(availableDates);
   const sorted = [...set].sort();
@@ -487,15 +487,22 @@ export function siteMatchesMinStay(availableDates: string[], opts: MinStayOption
     for (let i = 0; i < minNights; i++) {
       if (!set.has(addDaysIso(arrival, i))) { ok = false; break; }
     }
-    if (ok) return true;
+    if (ok) return arrival;
   }
-  return false;
+  return null;
+}
+
+/** True if the site supports at least one qualifying min-stay window. */
+export function siteMatchesMinStay(availableDates: string[], opts: MinStayOptions): boolean {
+  return firstMatchingArrival(availableDates, opts) !== null;
 }
 
 export interface ParkAvailabilityCount {
   parkPageId: string;
   siteCount: number;
   walkUpCount: number;
+  /** Earliest bookable date matching the filters; null when only walk-up sites match. */
+  soonestDate: string | null;
 }
 
 /**
@@ -516,10 +523,11 @@ export async function getParkAvailabilityCounts(
     const allClauses = dowClauses.length > 0
       ? [...clauses, ...dowClauses]
       : clauses;
-    const rows = await sql.unsafe<{ park_page_id: string; site_count: number; walk_up_count: number }[]>(`
+    const rows = await sql.unsafe<{ park_page_id: string; site_count: number; walk_up_count: number; soonest_date: string | null }[]>(`
       SELECT s.park_page_id,
              (${bookable})::int AS site_count,
-             (${walkUp})::int AS walk_up_count
+             (${walkUp})::int AS walk_up_count,
+             (MIN(a.date) FILTER (WHERE NOT s.is_walk_up))::text AS soonest_date
       FROM availability a
       JOIN sites s ON s.site_id = a.site_id
       WHERE ${allClauses.join('\n        AND ')}
@@ -530,6 +538,7 @@ export async function getParkAvailabilityCounts(
       parkPageId: r.park_page_id,
       siteCount: Number(r.site_count),
       walkUpCount: Number(r.walk_up_count),
+      soonestDate: r.soonest_date ?? null,
     }));
   }
 
@@ -555,13 +564,17 @@ export async function getParkAvailabilityCounts(
   }
 
   const stay = { minNights, from: opts.from ?? null, to: opts.to ?? null, weekendsOnly: opts.weekendsOnly ?? false };
-  const perPark = new Map<string, { siteCount: number; walkUpCount: number }>();
+  const perPark = new Map<string, { siteCount: number; walkUpCount: number; soonestDate: string | null }>();
   for (const { parkPageId, isWalkUp, dates } of bySite.values()) {
-    if (!siteMatchesMinStay(dates, stay)) continue;
+    const arrival = firstMatchingArrival(dates, stay);
+    if (arrival === null) continue;
     let p = perPark.get(parkPageId);
-    if (!p) { p = { siteCount: 0, walkUpCount: 0 }; perPark.set(parkPageId, p); }
+    if (!p) { p = { siteCount: 0, walkUpCount: 0, soonestDate: null }; perPark.set(parkPageId, p); }
     if (isWalkUp) { if (!excludeWalkUp) p.walkUpCount++; }
-    else p.siteCount++;
+    else {
+      p.siteCount++;
+      if (p.soonestDate === null || arrival < p.soonestDate) p.soonestDate = arrival;
+    }
   }
 
   return [...perPark.entries()]

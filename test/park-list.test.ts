@@ -9,6 +9,7 @@ function row(partial: Partial<ParkListRow> & { parkName: string }): ParkListRow 
     siteCount: 0,
     walkUpCount: 0,
     distanceMi: null,
+    soonestDate: null,
     ...partial,
   };
 }
@@ -32,6 +33,16 @@ describe('sortParkRows', () => {
   it('name: alphabetical', () => {
     const rows = [row({ parkName: 'Salt Point SP' }), row({ parkName: 'Angel Island SP' })];
     expect(sortParkRows(rows, 'name').map((r) => r.parkName)).toEqual(['Angel Island SP', 'Salt Point SP']);
+  });
+
+  it('soonest: ascending date, nulls last, name tiebreak', () => {
+    const rows = [
+      row({ parkName: 'B', soonestDate: '2026-06-19' }),
+      row({ parkName: 'WalkUpOnly' }),
+      row({ parkName: 'A', soonestDate: '2026-06-12' }),
+      row({ parkName: 'C', soonestDate: '2026-06-12' }),
+    ];
+    expect(sortParkRows(rows, 'soonest').map((r) => r.parkName)).toEqual(['A', 'C', 'B', 'WalkUpOnly']);
   });
 
   it('does not mutate the input array', () => {

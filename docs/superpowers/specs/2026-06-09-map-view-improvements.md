@@ -158,13 +158,25 @@ naming collision, include/exclude grab-bag, Rec.gov sites invisible to name filt
 
 **Problem solved:** finding 1 — the phone experience went from broken to first-class.
 
-### P6 — Input & chrome polish
+### P6 — Input & chrome polish + Soonest sort
 
-- Styled date-range picker matching the naturalist theme (replaces native `mm/dd/yyyy`)
-- Clearer geocode controls (labeled "Search" button, "Use my location" text button)
-- Any remaining theming passes (popup, focus states)
+> **Status: shipped 2026-06-10** — spec:
+> [2026-06-10-map-input-polish-design.md](2026-06-10-map-input-polish-design.md);
+> plan: `docs/superpowers/plans/2026-06-10-map-input-polish.md`.
 
-**Problem solved:** finding 8 leftovers.
+- [x] Themed date-range picker (react-day-picker v9): trigger pill + popover (2 months
+  side-by-side) on desktop, inline single month in the mobile filters sheet; naturalist
+  rdp theming; click-on-complete-range starts a fresh range; presets derive as before
+- [x] Geocode controls: "City or place…" + labeled **Search** + **📍 Use my location**
+- [x] "Soonest opening" sort end to end: `firstMatchingArrival` + `soonestDate` in both
+  cache query paths → summary API → drawer sort with "opens Fri, Jun 19" sub-lines;
+  walk-up-only parks (null) sort last (the P4 fast-follow, unblocked post-alert-scanner)
+- [x] `:focus-visible` rings on buttons, rows, inputs
+- [x] **Bonus fix:** `DateRow` still called the deleted `siteListText` (latent P3 crash
+  in the dates view) — root `typecheck` never covered `web/`; `npm run typecheck` now
+  runs both tsconfigs, which catches this class permanently
+
+**Problem solved:** finding 8 leftovers + the drawer's missing sort dimension.
 
 ---
 
