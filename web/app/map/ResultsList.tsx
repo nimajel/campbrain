@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { GLYPHS } from '../../lib/map-pins';
 import { sortParkRows } from '../../lib/park-list';
 import type { ParkListRow, ParkListSort } from '../../lib/park-list';
+import type { SheetDetent } from '../../lib/sheet-detent';
 
 const SORTS: { key: ParkListSort; label: string }[] = [
   { key: 'sites', label: 'Most sites' },
@@ -29,6 +30,9 @@ export default function ResultsList({
   selectedParkId,
   onSelectRow,
   open,
+  mobile = false,
+  detent = 'peek',
+  onCycleDetent,
 }: {
   rows: ParkListRow[];
   sort: ParkListSort;
@@ -37,6 +41,9 @@ export default function ResultsList({
   selectedParkId: string | null;
   onSelectRow: (parkPageId: string) => void;
   open: boolean;
+  mobile?: boolean;
+  detent?: SheetDetent;
+  onCycleDetent?: () => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -49,8 +56,13 @@ export default function ResultsList({
 
   const sorted = sortParkRows(rows, sort);
 
+  const mobileClass = mobile ? ` detent-${detent}` : '';
+
   return (
-    <div className={`map-results-drawer${open ? '' : ' closed'}`} aria-hidden={!open}>
+    <div className={`map-results-drawer${open ? '' : ' closed'}${mobileClass}`} aria-hidden={!open}>
+      {mobile && (
+        <div className="map-results-grip" onClick={onCycleDetent} aria-label="Resize list"><span /></div>
+      )}
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 7 }}>
           {rows.length} park{rows.length !== 1 ? 's' : ''} with stays

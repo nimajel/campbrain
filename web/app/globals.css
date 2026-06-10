@@ -359,3 +359,53 @@ legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
   flex-shrink: 0;
 }
 .map-results-glyph.walkup { background: var(--walkup); }
+
+/* Mobile hamburger nav (P5) */
+.topnav-burger { display: none; justify-self: end; background: none; border: none; font-size: 22px; color: var(--text); cursor: pointer; line-height: 1; padding: 4px 6px; }
+.nav-menu-backdrop { position: fixed; inset: 0; background: rgba(20,18,14,.4); z-index: 3000; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.nav-menu-backdrop.show { opacity: 1; pointer-events: auto; }
+.nav-menu { position: absolute; top: 0; right: 0; height: 100%; width: 72%; max-width: 280px; background: var(--surface); box-shadow: var(--shadow-float); padding: 24px 20px; display: flex; flex-direction: column; gap: 4px; transform: translateX(100%); transition: transform .25s cubic-bezier(.32,.72,0,1); }
+.nav-menu-backdrop.show .nav-menu { transform: translateX(0); }
+.nav-menu a { font-size: 15px; color: var(--muted); padding: 11px 10px; border-radius: 8px; }
+.nav-menu a:hover { text-decoration: none; color: var(--text); }
+.nav-menu a.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+@media (max-width: 640px) {
+  /* Nav: collapse pill to hamburger; hide entirely on the immersive map */
+  .topnav { height: 52px; padding: 0 16px; grid-template-columns: 1fr auto; }
+  .navpill { display: none; }
+  .topnav-avatar { display: none; }
+  .topnav-burger { display: block; }
+  .layout:has(.map-page) .topnav { display: none; }
+
+  /* Immersive full-bleed map: floating top row, full-screen filters sheet */
+  .map-filters { top: 8px; left: 8px; right: 8px; padding: 8px 10px; border-radius: var(--radius); }
+  .map-filters.filters-sheet-open {
+    position: fixed; inset: 0; border-radius: 0; padding: 14px 16px 90px; z-index: 2500;
+    background: var(--surface-2); -webkit-backdrop-filter: none; backdrop-filter: none; overflow-y: auto;
+  }
+  .map-results-toggle { display: none; }
+
+  /* Results bottom sheet with tap-cycle detents — full-height so detents reveal content */
+  .map-results-drawer {
+    left: 0; right: 0; top: 0; bottom: auto; height: 100%; width: auto;
+    border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.13);
+    transition: transform .32s cubic-bezier(.32,.72,0,1);
+  }
+  .map-results-drawer.detent-peek,
+  .map-results-drawer.closed.detent-peek { transform: translateY(calc(100% - 140px)); opacity: 1; pointer-events: auto; }
+  .map-results-drawer.detent-half { transform: translateY(48%); }
+  .map-results-drawer.detent-full { transform: translateY(56px); }
+  .map-results-grip { display: flex; justify-content: center; padding: 9px 0 4px; cursor: pointer; }
+  .map-results-grip span { width: 38px; height: 5px; border-radius: 3px; background: var(--border); }
+  .map-results-row { padding: 12px 15px; }
+
+  /* Detail rising sheet over a dimmed backdrop */
+  .map-detail-backdrop { position: fixed; inset: 0; background: rgba(20,18,14,.32); z-index: 1100; }
+  .map-detail-panel {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto;
+    max-height: 88%; border-radius: 18px 18px 0 0; z-index: 1200;
+    animation: sheet-rise .3s cubic-bezier(.32,.72,0,1);
+  }
+  @keyframes sheet-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
+}

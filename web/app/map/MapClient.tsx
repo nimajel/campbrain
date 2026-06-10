@@ -11,6 +11,10 @@ import { formatSiteName } from '../../lib/site-display';
 import ResultsList from './ResultsList';
 import { getParkType } from '../../lib/map-pins';
 import type { ParkListRow, ParkListSort } from '../../lib/park-list';
+import { useIsMobile } from './useIsMobile';
+import NavMenu from '../components/NavMenu';
+import { cycleDetent } from '../../lib/sheet-detent';
+import type { SheetDetent } from '../../lib/sheet-detent';
 import { upcomingWeekendRange } from '../../lib/upcoming-weekend';
 import {
   EMPTY_TAXONOMY,
@@ -614,6 +618,11 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
   const [listSortChoice, setListSortChoice] = useState<ParkListSort | null>(null);
   const listSort: ParkListSort = listSortChoice ?? (resolvedLocation ? 'distance' : 'sites');
 
+  // Mobile
+  const isMobile = useIsMobile();
+  const [detent, setDetent] = useState<SheetDetent>('peek');
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
+
   // Apply a preset: sets dates and weekendsOnly state
   function applyPreset(p: Preset) {
     setPreset(p);
@@ -857,10 +866,21 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
   return (
     <div className="map-page">
       {/* Filter bar */}
-      <div className="map-filters">
+      <div className={`map-filters${isMobile && filtersOpen ? ' filters-sheet-open' : ''}`}>
 
         {/* Header row — always visible: toggle, summary sentence, reset, park finder */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          {isMobile && !filtersOpen && (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              aria-label="Menu"
+              onClick={() => setNavMenuOpen(true)}
+              style={{ flexShrink: 0, fontWeight: 600 }}
+            >
+              ☰
+            </button>
+          )}
           <button
             type="button"
             className={`btn btn-sm ${filtersOpen ? 'btn-slate' : 'btn-ghost'}`}
@@ -1062,6 +1082,17 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
         <div>
           <SiteFilterPanel state={taxonomy} onChange={setTaxonomy} dense />
         </div>
+
+        {isMobile && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ width: '100%', marginTop: 8 }}
+            onClick={() => setFiltersOpen(false)}
+          >
+            Show {summarySentence.matchCount} park{summarySentence.matchCount !== 1 ? 's' : ''}
+          </button>
+        )}
         </>
         )}
       </div>
@@ -1078,14 +1109,16 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
             availability={availByPark}
           />
         </Suspense>
-        <button
-          type="button"
-          className="btn btn-sm map-results-toggle"
-          onClick={() => setListOpen((o) => !o)}
-          aria-expanded={listOpen}
-        >
-          ☰ {listRows.length} park{listRows.length !== 1 ? 's' : ''}
-        </button>
+        {!isMobile && (
+          <button
+            type="button"
+            className="btn btn-sm map-results-toggle"
+            onClick={() => setListOpen((o) => !o)}
+            aria-expanded={listOpen}
+          >
+            ☰ {listRows.length} park{listRows.length !== 1 ? 's' : ''}
+          </button>
+        )}
         <ResultsList
           rows={listRows}
           sort={listSort}
@@ -1093,22 +1126,30 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
           hasLocation={resolvedLocation !== null}
           selectedParkId={selectedPark?.parkPageId ?? null}
           onSelectRow={handleSelectRow}
-          open={listOpen}
+          open={isMobile ? true : listOpen}
+          mobile={isMobile}
+          detent={detent}
+          onCycleDetent={() => setDetent((d) => cycleDetent(d))}
         />
       </div>
 
-      {/* Detail panel — overlays on right when a park is selected */}
+      {/* Detail panel — right-side on desktop; rising sheet over a backdrop on mobile */}
       {selectedPark && (
-        <DetailPanel
-          park={selectedPark}
-          onClose={() => setSelectedPark(null)}
-          taxonomy={taxonomy}
-          minNights={minNights}
-          weekendsOnly={weekendsOnly}
-          availFrom={availFrom}
-          availTo={availTo}
-        />
+        <>
+          {isMobile && <div className="map-detail-backdrop" onClick={() => setSelectedPark(null)} />}
+          <DetailPanel
+            park={selectedPark}
+            onClose={() => setSelectedPark(null)}
+            taxonomy={taxonomy}
+            minNights={minNights}
+            weekendsOnly={weekendsOnly}
+            availFrom={availFrom}
+            availTo={availTo}
+          />
+        </>
       )}
+
+      {isMobile && <NavMenu open={navMenuOpen} onClose={() => setNavMenuOpen(false)} />}
     </div>
   );
 }

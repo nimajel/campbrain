@@ -137,11 +137,26 @@ naming collision, include/exclude grab-bag, Rec.gov sites invisible to name filt
 
 ### P5 — Mobile layout: bottom sheets
 
-Full-bleed map; filters and detail panel become bottom sheets; legend collapses to a
-button. *Note: CampBrain runs on localhost — phone use means dev server on LAN. Ranked
-below P4 for that reason; bump it up if phone-on-LAN is a real usage pattern.*
+> **Status: shipped 2026-06-10** — design validated via interactive mobile prototype;
+> spec: [2026-06-10-map-mobile-experience-design.md](2026-06-10-map-mobile-experience-design.md);
+> plan: `docs/superpowers/plans/2026-06-10-map-mobile-experience.md`.
 
-**Problem solved:** finding 1.
+- [x] Single `@media (max-width: 640px)` breakpoint; desktop layout untouched (verified
+  via regression at 1280px). Client behavior keyed off mount-safe `useIsMobile()`.
+- [x] Fully immersive: global `.topnav` hidden on the mobile map route; edge-to-edge map.
+  Navigation via a `☰` slide-in `NavMenu` (shared `NAV_LINKS`); hamburger pattern also
+  applied to mobile non-map pages.
+- [x] Floating top row `[☰] [Filters] [Find a park…]`; Filters opens the full filter
+  groups as a full-screen sheet with a sticky "Show N parks" apply button.
+- [x] Results bottom sheet with tap-cycle detents (peek → half → full via grip);
+  `cycleDetent` pure helper (TDD). Desktop left-drawer behavior unchanged.
+- [x] Detail rises as a bottom sheet over a dimmed backdrop (full P3 content); pin/row
+  tap both fly the map and raise it.
+- Fast-follows: swipe-drag gesture physics (v1 = tap-cycle), full-width "Book" button in
+  the mobile detail sheet (v1 reuses the P3 BookLink pill), tablet-specific layout,
+  `/explore` + other surfaces going mobile.
+
+**Problem solved:** finding 1 — the phone experience went from broken to first-class.
 
 ### P6 — Input & chrome polish
 
