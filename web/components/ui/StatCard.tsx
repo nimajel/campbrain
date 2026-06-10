@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import Card from './Card';
 
 export default function StatCard({
   label,
@@ -10,9 +11,9 @@ export default function StatCard({
   valueStyle?: CSSProperties;
 }) {
   return (
-    <div className="card">
+    <Card>
       <div className="stat-label">{label}</div>
       <div className="stat-value" style={valueStyle}>{value}</div>
-    </div>
+    </Card>
   );
 }
