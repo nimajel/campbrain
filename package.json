@@ -6,6 +6,7 @@
   "scripts": {
     "cli": "tsx src/cli/index.ts",
     "dev": "npm --prefix web run dev",
+    "storybook": "npm --prefix web run storybook",
     "scan": "tsx src/cli/index.ts scan",
     "worker": "tsx src/cli/index.ts worker",
     "upcoming": "tsx src/cli/index.ts upcoming",

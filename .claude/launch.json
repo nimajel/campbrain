@@ -14,6 +14,13 @@
       "runtimeArgs": ["-c", "cd web && npx next dev --port 3002"],
       "port": 3002,
       "autoPort": false
+    },
+    {
+      "name": "storybook",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "storybook"],
+      "port": 6006,
+      "autoPort": false
     }
   ]
 }
