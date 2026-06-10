@@ -7,7 +7,9 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start --port 3001",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -19,11 +21,14 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@storybook/nextjs-vite": "^9.1.20",
     "@types/leaflet": "^1.9.21",
     "@types/leaflet.markercluster": "^1.5.6",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.8.3"
+    "storybook": "^9.1.20",
+    "typescript": "^5.8.3",
+    "vite": "^6.4.3"
   }
 }
