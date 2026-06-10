@@ -73,6 +73,33 @@ As shipped (deltas from the proposed direction below):
 
 **Problem solved:** findings 3 + 4 — the map starts answering the camper's question at a glance.
 
+### P2.5 — Filter bar rework + site type taxonomy
+
+> **Status: shipped 2026-06-09** — see
+> [2026-06-09-map-filter-rework-design.md](2026-06-09-map-filter-rework-design.md) for
+> the full design and `docs/superpowers/plans/2026-06-09-map-filter-rework.md` for the
+> implementation plan.
+
+- [x] Disambiguate the two "weekend" controls: horizon presets (This weekend / Next 2
+  weeks / Next month / Anytime) + a separate "Weekends only" pill replacing the tab
+- [x] Persist site types on `sites` (access / site_kind / group / equestrian / walk-up /
+  day-use) — classified from CA name patterns and Rec.gov `campsite_type`; replaces
+  all query-time name regexes (`FILTER_SQL` deleted); single classifier in
+  `src/catalog/site-classifier.ts`
+- [x] New filter groups: Access (Drive-in / Hike-in / Boat-in), Site kind (Tent /
+  Hookups / Cabin), Hide (Group / Equestrian / Walk-up) — one pill language;
+  taxonomy exported from `web/lib/site-taxonomy.ts`
+- [x] Min stay (Any/1/2/3, ≥N consecutive nights) reaches the pin summary query via
+  gaps-and-islands helper (`siteMatchesMinStay`)
+- [x] Day-use sites leave the bookable pool everywhere; "Anytime" preset removes the
+  all-green cleared-date state; Reset restores defaults; one summary sentence
+  replaces both counts; park dropdown becomes a find-a-park search on the map
+- [x] `/explore` adopts the same grouped panel; all filter params sent server-side
+- [x] `npm run db:backfill-types` one-off command classifies existing rows by name
+
+**Problem solved:** filter-bar critique 2026-06-09 (scope inconsistencies, weekend
+naming collision, include/exclude grab-bag, Rec.gov sites invisible to name filters).
+
 ### P3 — Detail panel content redesign
 
 - Title-case site names; render sites as chips or "N sites" + expandable list instead of comma-runs

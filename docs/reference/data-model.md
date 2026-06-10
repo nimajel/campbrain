@@ -67,13 +67,19 @@ CREATE TABLE sites (
   park_page_id   TEXT NOT NULL,
   campground_name TEXT NOT NULL,
   site_name      TEXT NOT NULL,
+  access         TEXT NOT NULL DEFAULT 'drive_in',  -- 'drive_in' | 'hike_in' | 'boat_in'
+  site_kind      TEXT,                               -- 'tent' | 'hookup' | 'cabin' | NULL
+  is_group       BOOLEAN NOT NULL DEFAULT false,
+  is_equestrian  BOOLEAN NOT NULL DEFAULT false,
+  is_walk_up     BOOLEAN NOT NULL DEFAULT false,     -- first-come hike/bike; never bookable
+  is_day_use     BOOLEAN NOT NULL DEFAULT false,     -- excluded from every user-facing surface
   UNIQUE (provider_id, park_page_id, campground_name, site_name),
   FOREIGN KEY (provider_id, park_page_id, campground_name)
     REFERENCES campgrounds(provider_id, park_page_id, campground_name)
 )
 ```
 
-`site_id` is a Postgres serial used as the FK in `availability`. Site names are the raw text strings from the provider (e.g. `"Hike/Bike"`, `"Site 001"`).
+`site_id` is a Postgres serial used as the FK in `availability`. Site names are the raw text strings from the provider (e.g. `"Hike/Bike"`, `"Site 001"`). The six type columns are added idempotently by `initDb()` (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) and populated at upsert time by `classifySite()` in `src/catalog/site-classifier.ts`. Use `npm run db:backfill-types` to classify existing rows after a schema migration.
 
 ---
 
@@ -141,7 +147,10 @@ WITH NO DATA
 | `available_sites text[]` | Reservable (bookable) site names for this arrival date + night count |
 | `walk_up_sites text[]` | First-come / non-reservable sites. Walk-up sites are **never** in `available_sites`. |
 
-**Walk-up invariant:** A site is walk-up if `site_name ~* 'hike\s*[/&]?\s*bike'`. Such sites are excluded from `available_sites` in the MV and from bookable counts everywhere in the UI. They are surfaced visually with a walk-up badge.
+**Walk-up / day-use invariants:**
+- Walk-up sites (`is_walk_up = true`) are excluded from `available_sites` in the MV and from bookable counts everywhere. They appear in `walk_up_sites` for badge display only.
+- Day-use sites (`is_day_use = true`) are excluded from both columns (`WHERE s.is_day_use = false` in the MV).
+- Classification is done by `src/catalog/site-classifier.ts`; the MV reads the persisted columns (no inline name regexes).
 
 **2-night stay note:** The MV only generates 2-night rows for non-walk-up sites (walk-up sites cannot be reserved across multiple nights).
 
@@ -161,6 +170,8 @@ export interface SiteDailyAvailability {
   name: string;
   /** Keys are YYYY-MM-DD dates within the window */
   dates: Record<string, 'available' | 'unavailable' | 'unknown'>;
+  /** Rec.gov campsite_type string when available — used by classifySite() at upsert. */
+  recGovCampsiteType?: string;
 }
 
 export interface CampgroundWindow {
@@ -221,23 +232,22 @@ export const WINDOW_DAYS = 8;
 
 Implemented in `ttlMinutes()` (`src/cache/availability-cache.ts`). Used by `findStaleWindows()` to select which windows to re-scan. Expired windows are pruned by `evictExpired()`.
 
-### Walk-up regex
+### Walk-up / day-use detection
 
-`/\bhike\s*[/&]?\s*bike\b/i` (JavaScript, `src/cache/types.ts` + `web/lib/site-filters.ts`)
+Site type is determined once at upsert time by `classifySite()` in `src/catalog/site-classifier.ts` and persisted on the `sites` row. The JavaScript helper `isWalkUpSite()` (re-exported via `web/lib/site-filters.ts`) is still available for display logic that only needs the walk-up boolean without a full DB lookup.
 
-Postgres equivalent in MV: `site_name ~* 'hike\s*[/&]?\s*bike'`
+There are no query-time name regexes for filtering. `FILTER_SQL` and `WALK_UP_SQL` have been deleted; all queries filter on the typed columns.
 
-### Server-side filter patterns (`FILTER_SQL`)
+### Typed-column filtering
 
-Applied in `getParksWithAvailability()` for map pin-lighting. Note: `exclude_walk_up` is **not** in `FILTER_SQL` — walk-up exclusion is handled via the hardcoded `NOT (s.site_name ~* 'hike *[/&]? *bike')` clause that always fires.
+Map pin-lighting (`getParkAvailabilityCounts`) and explore search (`searchAvailableStays`) accept:
 
-| Filter ID | SQL pattern |
-|---|---|
-| `exclude_group` | `\ygroup\y` |
-| `exclude_day_use` | `\y(day.use\|dailyuse\|picnic)\y` |
-| `hike_in_only` | `\y(hike.in\|walk.in)\y` |
-| `exclude_equestrian` | `\y(equestrian\|horse)\y` |
-| `exclude_boat_in` | `\yboat[ -]?(in\|to\|access)\y` |
+| Param | Column | Semantics |
+|---|---|---|
+| `access` CSV | `s.access` | `= ANY(...)` — empty = all |
+| `kinds` CSV | `s.site_kind` | `= ANY(...)` — empty = all; selecting a kind excludes NULL-kind sites |
+| `hide` items | `s.is_group`, `s.is_equestrian`, `s.is_walk_up` | `NOT s.is_*` per item |
+| (always) | `s.is_day_use` | `= false` — unconditional |
 
 ---
 

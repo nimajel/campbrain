@@ -16,8 +16,11 @@ For request/response shapes that reference database types, see [data-model.md](d
 - **Params (query string):**
   - `from` — `YYYY-MM-DD`, required. Start of desired arrival window (inclusive).
   - `to` — `YYYY-MM-DD`, required. End of arrival window (exclusive — `from` must be before `to`).
-  - `filters` — optional, comma-separated filter IDs (e.g. `exclude_group,exclude_walk_up`). See [data-model.md](data-model.md) for valid IDs.
+  - `access` — optional CSV: `drive_in`, `hike_in`, `boat_in`. Empty = all access types.
+  - `kinds` — optional CSV: `tent`, `hookup`, `cabin`. Empty = all site kinds.
+  - `hide` — optional CSV: `group`, `equestrian`, `walk_up`. Walk-up hides walk-up rows.
   - `region` — optional, one of the `CampRegion` slugs (`norcal`, `socal`, `central`, etc.). Restricts to parks in that geographic region.
+  - Legacy `filters` param is **removed**; use `access`/`kinds`/`hide` instead.
 - **Response:** `SearchApiResponse`
   ```typescript
   {
@@ -35,7 +38,7 @@ For request/response shapes that reference database types, see [data-model.md](d
     totalAvailable: number; // bookable sites only (walk-up excluded)
   };
   ```
-- **Backed by:** `searchAvailableStays()` in `web/lib/availability-cache.ts`, which reads `mv_available_stays`.
+- **Backed by:** `searchAvailableStays()` in `web/lib/availability-cache.ts`, which reads `mv_available_stays`. Day-use sites are always excluded. Filter params are parsed by `web/lib/filter-params.ts`.
 - **Consumed by:** `/explore` (`web/app/explore/FindCampsitesClient.tsx`).
 
 ---
@@ -49,6 +52,10 @@ For request/response shapes that reference database types, see [data-model.md](d
   - `provider` — optional, scopes query to prevent cross-provider ID collisions.
   - `from` — optional `YYYY-MM-DD`, constrains the dates and weekends returned.
   - `to` — optional `YYYY-MM-DD`.
+  - `access` — optional CSV: `drive_in`, `hike_in`, `boat_in`.
+  - `kinds` — optional CSV: `tent`, `hookup`, `cabin`.
+  - `hide` — optional CSV: `group`, `equestrian`, `walk_up`.
+  - `minNights` is **not** accepted here — min-stay is applied client-side in the dates view and via tier logic in the weekends view.
 - **Response:** `ParkAvailabilityResponse`
   ```typescript
   {
@@ -76,7 +83,7 @@ For request/response shapes that reference database types, see [data-model.md](d
     }[];
   };
   ```
-- **Backed by:** `getEntriesForParks()` in `web/lib/availability-cache.ts`, reads `scan_windows` + `availability` directly. Walk-up sites are split via `isWalkUpSite()` from `web/lib/site-filters.ts`. Site names are deduped across overlapping windows via a `Set`-based `buildDateSiteMap`.
+- **Backed by:** `getEntriesForParks()` in `web/lib/availability-cache.ts`, reads `scan_windows` + `availability` directly. Taxonomy filtering is applied server-side via `classifySite()` from `src/catalog/site-classifier.ts` (a `passesTaxonomy` predicate in the route). Site names are deduped across overlapping windows via a `Set`-based `buildDateSiteMap`. Day-use sites are always excluded.
 - **Consumed by:** `/map` (`web/app/map/MapClient.tsx`, client-side fetch on pin click).
 
 ---
@@ -87,13 +94,18 @@ For request/response shapes that reference database types, see [data-model.md](d
 - **Params (query string):**
   - `from` — optional `YYYY-MM-DD`.
   - `to` — optional `YYYY-MM-DD`.
-  - `filters` — optional, comma-separated filter IDs.
+  - `access` — optional CSV: `drive_in`, `hike_in`, `boat_in`.
+  - `kinds` — optional CSV: `tent`, `hookup`, `cabin`.
+  - `hide` — optional CSV: `group`, `equestrian`, `walk_up`.
+  - `minNights` — optional `1|2|3`. Requires ≥N consecutive available nights (gaps-and-islands).
   - `weekendsOnly` — optional `"true"`. When set, only Friday and Saturday arrivals count.
+  - Legacy `filters` param is **removed**.
 - **Response:**
   ```typescript
-  { parks: string[] }  // array of park_page_id strings with available bookable sites
+  { parks: { parkPageId: string; siteCount: number; walkUpCount: number }[] }
+  // siteCount = bookable matching sites; walkUpCount = walk-up sites (0 when walk_up is hidden)
   ```
-- **Backed by:** `getParksWithAvailability()` in `web/lib/availability-cache.ts`. Applies `FILTER_SQL` server-side. Walk-up sites are always excluded from the pin-lighting query (hardcoded).
+- **Backed by:** `getParkAvailabilityCounts()` in `web/lib/availability-cache.ts`. Filters on typed `sites` columns (no name regexes). Day-use sites always excluded (`is_day_use = false`). Walk-up sites never count as bookable. Filter params parsed by `web/lib/filter-params.ts`.
 - **Consumed by:** `/map` (`web/app/map/MapClient.tsx`, to colour pins blue/grey).
 
 ---

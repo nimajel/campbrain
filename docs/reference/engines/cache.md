@@ -18,7 +18,7 @@ Serve every availability query — including arbitrary night-count queries — f
 - Detect stale windows for re-scan (`findStaleWindows` + TTL logic).
 - Evict past-date windows and availability rows (`evictExpired`).
 - Serve bulk window reads (`listAllEntries`, `listFreshEntries`, `getEntriesForPark`).
-- Serve map pin-lighting queries with server-side filter patterns (`getParksWithAvailability`).
+- Serve map pin-lighting queries with typed-column predicates (`getParkAvailabilityCounts`).
 - Serve the `/explore` date-range search with full night-count filtering (`searchAvailableStays`).
 - Serve the `/explore` pre-computed stay list from the materialized view (`listAvailableStays`).
 - Manage `mv_available_stays` refresh and rebuild.
@@ -30,7 +30,7 @@ Serve every availability query — including arbitrary night-count queries — f
 
 | Path | Role |
 |---|---|
-| `src/cache/availability-cache.ts` | All read/write query functions; TTL logic; `FILTER_SQL` patterns |
+| `src/cache/availability-cache.ts` | All read/write query functions; TTL logic; `buildAvailabilityClauses` (typed columns, access/kinds/hide/minNights) |
 | `src/cache/db.ts` | `initDb()` (schema DDL), `rebuildMaterializedView()`, `getSql()` connection singleton |
 | `src/cache/types.ts` | Shared TypeScript types (`AvailabilityWindowEntry`, `AvailableStay`, `WINDOW_DAYS`) |
 | `web/lib/availability-cache.ts` | Thin re-export shim — the only import point for Next.js API routes |
@@ -58,27 +58,30 @@ Defined in `web/app/api/map/availability/route.ts`. Called by the map availabili
 
 **Failure to dedupe inflates site counts and booking-link counts.** Any code that flattens windows per date must use the same deduplication pattern. See [data-model.md](../data-model.md#window-overlap-and-dedupe).
 
-### `FILTER_SQL` — server-side filter patterns
+### `buildAvailabilityClauses` — typed-column predicate builder
 
-Applied by `getParksWithAvailability()` (map pin-lighting) and `searchAvailableStays()` (explore search). Patterns are hardcoded constants (never user input) translated from the JavaScript regexes in `web/lib/site-filters.ts`:
+`FILTER_SQL` (hardcoded name regexes) and `WALK_UP_SQL` are **deleted**. All filtering now operates on the typed columns on `sites` that were persisted at upsert time by `src/catalog/site-classifier.ts`. `buildAvailabilityClauses(opts)` accepts:
 
-| Filter ID | SQL POSIX pattern | Effect |
+| Option | Type | Effect |
 |---|---|---|
-| `exclude_group` | `\ygroup\y` | Excludes group sites/campgrounds |
-| `exclude_day_use` | `\y(day.use\|dailyuse\|picnic)\y` | Excludes day-use areas |
-| `hike_in_only` | `\y(hike.in\|walk.in)\y` | Includes only hike-in/walk-in sites |
-| `exclude_equestrian` | `\y(equestrian\|horse)\y` | Excludes equestrian sites |
-| `exclude_boat_in` | `\yboat[ -]?(in\|to\|access)\y` | Excludes boat-in sites |
+| `access` | `('drive_in'\|'hike_in'\|'boat_in')[]` | `s.access = ANY(...)` — empty = all |
+| `kinds` | `('tent'\|'hookup'\|'cabin')[]` | `s.site_kind = ANY(...)` — empty = all; selecting a kind excludes NULL-kind sites |
+| `hide` | `('group'\|'equestrian'\|'walk_up')[]` | `NOT s.is_group` / `NOT s.is_equestrian` / sets `excludeWalkUp` flag |
+| `minNights` | `1\|2\|3` | Gaps-and-islands consecutive-night check via `siteMatchesMinStay` helper |
+| `weekendsOnly` | `boolean` | `EXTRACT(DOW FROM a.date)::int IN (5, 6)` |
+| `from`/`to` | `string\|null` | Parameterized date bounds |
 
-`exclude_walk_up` is **not** in `FILTER_SQL`. Walk-up exclusion from bookable counts is handled by a hardcoded `NOT (s.site_name ~* 'hike *[/&]? *bike')` clause that always fires. Walk-up sites are surfaced in a separate `walk_up_sites` column and returned to the caller for badge display.
+`is_day_use = false` is always included. Enum values are validated against a closed allowlist before inlining.
 
-### Walk-up invariant
+### Walk-up / day-use invariants
 
-A site is walk-up if `site_name ~* 'hike\s*[/&]?\s*bike'` (Postgres) / `/\bhike\s*[/&]?\s*bike\b/i` (JS). Walk-up sites:
+Walk-up (`is_walk_up = true`) and day-use (`is_day_use = true`) are **typed columns** on `sites`, set at upsert time by the classifier. Walk-up sites:
 - Are **never** in `available_sites` in `mv_available_stays`.
 - Do not light pins on `/map`.
 - Are not counted in bookable site counts.
 - Are returned in `walk_up_sites` for badge display only.
+
+Day-use sites are excluded from `mv_available_stays` and from every availability query.
 
 ### Materialized view — `mv_available_stays`
 
@@ -109,10 +112,10 @@ Defined as `TTL_MINUTES` constants in `src/cache/availability-cache.ts` and used
 
 ## Reproduction checklist
 
-1. Schema setup: `npm run db:init` — idempotent, safe to re-run.
-2. After any MV schema change: `npm run db:rebuild-mv` (drops and recreates the view; no data loss on the base tables).
-3. Verify `FILTER_SQL` patterns are consistent with `web/lib/site-filters.ts` — both must define the same filter IDs.
-4. To force a full cache repopulation: `npm run worker` (or `npm run scan` for a one-off).
+1. Schema setup: `npm run db:init` — idempotent, safe to re-run (adds new site-type columns via `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`).
+2. Classify existing sites after a schema migration: `npm run db:backfill-types` — classifies every existing `sites` row by name.
+3. After any MV schema change: `npm run db:rebuild-mv` (drops and recreates the view; no data loss on the base tables).
+4. To force a full cache repopulation: `npm run worker` (or `npm run scan` for a one-off). After first worker run, Rec.gov rows get `campsite_type`-based classification.
 5. To manually refresh the MV without a scan: `npm run cache:refresh`.
 6. To confirm the walk-up invariant: search for a park with "Hike/Bike" sites on `/explore` — they must appear with a walk-up badge, not in the bookable site count.
 
