@@ -114,12 +114,26 @@ naming collision, include/exclude grab-bag, Rec.gov sites invisible to name filt
 
 ### P4 — Synced results list (split view)
 
-A collapsible list pane synced with the map: parks with matching availability, sorted
-by soonest opening / nearest / most sites. Click list row ↔ highlight pin. Turns the
-map from a lookup tool into a planning tool ("15 parks have weekend openings — compare").
+> **Status: shipped 2026-06-10** — design validated via interactive in-chat prototype;
+> spec: [2026-06-10-map-results-drawer-design.md](2026-06-10-map-results-drawer-design.md);
+> plan: `docs/superpowers/plans/2026-06-10-map-results-drawer.md`.
 
-**Problem solved:** finding 5. Largest functional bet; design needs care (layout, sort
-options, interaction with distance filter).
+- [x] Collapsible 290px left drawer, closed by default; toggle button carries the live
+  count ("≡ 78 parks"); positioned below the floating filter bar
+- [x] Rows: pin-system glyph (CA/federal), park name, green site count or amber
+  "walk-up only", distance when a location is resolved; walk-up-only parks included
+  (the list derives its own row set — `filteredParks` excludes them)
+- [x] Sort: Most sites / Nearest (disabled without location) / A–Z; auto-default
+  (Nearest with location, else Most sites) until the user picks; disabled "Soonest"
+  pill marks the fast-follow
+- [x] Two-way sync: row click = pin click (flies/zooms + opens detail panel); pin
+  click highlights + scrolls its row into view
+- [x] Zero API/cache changes — counts from existing summary, distance client-side
+  (`web/lib/park-list.ts` sort helper, 5 unit tests; `ResultsList.tsx` component)
+- Fast-follows: "Soonest opening" sort (cache query — deferred while the alert-scanner
+  session owns `availability-cache.ts`), hover-row → highlight pin
+
+**Problem solved:** finding 5 — compare parks without clicking pins serially.
 
 ### P5 — Mobile layout: bottom sheets
 

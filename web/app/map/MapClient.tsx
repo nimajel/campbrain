@@ -8,6 +8,9 @@ import SiteFilterPanel from '../components/SiteFilterPanel';
 import ProviderBadge from '../../components/ProviderBadge';
 import { injectBookingDates } from '../../lib/booking-url';
 import { formatSiteName } from '../../lib/site-display';
+import ResultsList from './ResultsList';
+import { getParkType } from '../../lib/map-pins';
+import type { ParkListRow, ParkListSort } from '../../lib/park-list';
 import { upcomingWeekendRange } from '../../lib/upcoming-weekend';
 import {
   EMPTY_TAXONOMY,
@@ -606,6 +609,11 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
   const [availByFacility, setAvailByFacility] = useState<Map<string, ParkAvailabilitySummary> | null>(null);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
+  // Results drawer
+  const [listOpen, setListOpen] = useState(false);
+  const [listSortChoice, setListSortChoice] = useState<ParkListSort | null>(null);
+  const listSort: ParkListSort = listSortChoice ?? (resolvedLocation ? 'distance' : 'sites');
+
   // Apply a preset: sets dates and weekendsOnly state
   function applyPreset(p: Preset) {
     setPreset(p);
@@ -721,6 +729,26 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
     return byPark;
   }, [parks, availByFacility]);
 
+  // Drawer rows: distance-filtered parks with any availability (bookable OR walk-up —
+  // unlike filteredParks, which counts only bookable parks).
+  const listRows = useMemo<ParkListRow[]>(() => {
+    if (!availByPark) return [];
+    return displayedParks.flatMap((p) => {
+      const a = availByPark.get(p.parkPageId);
+      if (!a || (a.siteCount === 0 && a.walkUpCount === 0)) return [];
+      return [{
+        parkPageId: p.parkPageId,
+        parkName: p.parkName,
+        isFederal: getParkType(p.provider) === 'federal',
+        siteCount: a.siteCount,
+        walkUpCount: a.walkUpCount,
+        distanceMi: resolvedLocation && p.latitude && p.longitude
+          ? haversine(resolvedLocation.lat, resolvedLocation.lon, p.latitude, p.longitude)
+          : null,
+      }];
+    });
+  }, [displayedParks, availByPark, resolvedLocation]);
+
   // Summary sentence (Row 4)
   const summarySentence = useMemo(() => {
     const matchCount = filteredParks.length;
@@ -761,6 +789,12 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
   const handleSelectPark = useCallback((park: MapPark) => {
     setSelectedPark(park);
   }, []);
+
+  // Row click = pin click: setSelectedPark flows into FlyTo, so the map zooms to the park.
+  const handleSelectRow = useCallback((parkPageId: string) => {
+    const park = parks.find((p) => p.parkPageId === parkPageId);
+    if (park) setSelectedPark(park);
+  }, [parks]);
 
   async function handleGeocode() {
     const q = locationQuery.trim();
@@ -1044,6 +1078,23 @@ export default function MapClient({ initialParks }: { initialParks: MapPark[] })
             availability={availByPark}
           />
         </Suspense>
+        <button
+          type="button"
+          className="btn btn-sm map-results-toggle"
+          onClick={() => setListOpen((o) => !o)}
+          aria-expanded={listOpen}
+        >
+          ☰ {listRows.length} park{listRows.length !== 1 ? 's' : ''}
+        </button>
+        <ResultsList
+          rows={listRows}
+          sort={listSort}
+          onSortChange={setListSortChoice}
+          hasLocation={resolvedLocation !== null}
+          selectedParkId={selectedPark?.parkPageId ?? null}
+          onSelectRow={handleSelectRow}
+          open={listOpen}
+        />
       </div>
 
       {/* Detail panel — overlays on right when a park is selected */}
