@@ -26,8 +26,9 @@ incrementally.
 
 - New directory: `web/components/ui/` — one component per PascalCase `.tsx` file
   (matches the existing `web/components/` convention).
-- Barrel export: `web/components/ui/index.ts` — consumers import from
-  `@/components/ui`.
+- Barrel export: `web/components/ui/index.ts` — consumers import it relatively
+  (e.g. `../components/ui` from `web/app/` pages; the project has no `@/` alias and
+  uses relative imports throughout).
 - Stories co-located: `Button.stories.tsx` next to `Button.tsx`, CSF3 with `autodocs`.
 - Components are client-safe, presentational, and stateless except where the wrapped
   behavior requires state (`Modal`, `Toggle`). Strict TypeScript, no `any`.
@@ -54,10 +55,12 @@ Primitives extracted from the `globals.css` class inventory:
 | `Modal` | `.modal`, `.modal-backdrop`, `.modal-header`, `.modal-close` | `open`, `onClose`, `title`, children |
 
 Existing components that get stories **without modification**: `ProviderBadge`,
-`SiteFilterPanel`, `DateRangePicker`, `MapLegend`, `RecentOpenings`.
+`SiteFilterPanel`, `DateRangePicker`, `MapLegend`.
 
 Out of scope (first pass): `LeafletMap`, `MarkerClusterGroup`, `ResultsList`,
-`NavBar`/`NavMenu`, `ParkMapPopover`, page-level composites in `MapClient.tsx`.
+`NavBar`/`NavMenu`, `ParkMapPopover`, page-level composites in `MapClient.tsx`, and
+`RecentOpenings` (server component that reads alert/scan state from disk at render
+time — not renderable in Storybook without mocking).
 
 ## Storybook setup
 
@@ -73,9 +76,9 @@ Out of scope (first pass): `LeafletMap`, `MarkerClusterGroup`, `ResultsList`,
 
 ## Proof-of-adoption migration
 
-Migrate the dashboard (`web/app/page.tsx`) to consume the primitives (`Card`,
-`StatCard`, `Badge`, `Button`, `EmptyState`, `KVList`). Rendered markup must produce the
-same class names as before — zero visual change. All other pages migrate
+Migrate the dashboard (`web/app/page.tsx`) to consume the primitives (`PageHeader`,
+`Card`, `StatCard`, `StatusDot`, `Badge`, `Button`, `EmptyState`). Rendered markup must
+produce the same class names as before — zero visual change. All other pages migrate
 opportunistically when touched. **New UI must use the library going forward.**
 
 ## Error handling
