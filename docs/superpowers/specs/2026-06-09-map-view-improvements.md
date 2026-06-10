@@ -102,11 +102,13 @@ naming collision, include/exclude grab-bag, Rec.gov sites invisible to name filt
 
 ### P3 — Detail panel content redesign
 
-- Title-case site names; render sites as chips or "N sites" + expandable list instead of comma-runs
-- Surface nightly fee per campground (data exists — `/explore` shows it)
-- Clarify weekend tier rows: arrival date, nights, and sites per tier, visually separated
-- Themed (or removed) map popup so the panel is the single source of detail
-- Touches: `MapClient.tsx` (DetailPanel/WeekendRow/DateRow), CSS.
+> **Status: shipped 2026-06-10** — plan: `docs/superpowers/plans/2026-06-09-map-detail-panel.md`.
+
+- [x] Site names render as capped, expandable chips (`SiteChips`, first 6 + "+N more"/"less" toggle, max-width ellipsis with full name on hover); `formatSiteName()` in `web/lib/site-display.ts` title-cases all-caps words but preserves mixed case, single letters, digit tokens, and #-prefixed site codes (6 unit tests)
+- [x] Nightly fee per campground: `nightlyFee: number | null` added to both campground shapes in `/api/map/availability` (threaded through `buildDateSiteMap` + `cgMeta`); panel shows "· $30/night" after the campground name, omitted when null
+- [x] Tier rows restructured: single `TierLine` component (label "Fri–Mon · 3 nights" / chips / right-aligned Book) replaces five copy-pasted tier blocks; `WalkUpLine` keeps badge + "first-come" note with muted chips
+- [x] Marker `<Popup>` deleted — P2's hover `<Tooltip>` + the panel are the only surfaces (the search-location popup stays)
+- [x] Folded-in P2.5 cleanups: `WeekendRow` prop renamed `nightCount` → `minNights`; dead `web/lib/site-filters.ts` shim deleted; `siteListText()` removed
 
 **Problem solved:** finding 6 — the panel becomes bookable-decision quality.
 

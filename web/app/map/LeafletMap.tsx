@@ -144,11 +144,6 @@ export default function LeafletMap({
                   {availability && state === 'walk-up' ? ' · walk-up only' : ''}
                   {availability && state === 'none' ? ' · no availability' : ''}
                 </Tooltip>
-                <Popup>
-                  <strong>{park.parkName}</strong>
-                  <br />
-                  {park.campgroundCount} campground{park.campgroundCount !== 1 ? 's' : ''} · {park.siteCount} sites
-                </Popup>
               </Marker>
             );
           })}

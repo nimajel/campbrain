@@ -7,6 +7,7 @@ import type { ParkAvailabilityResponse, AvailableDateEntry, WeekendEntry } from 
 import SiteFilterPanel from '../components/SiteFilterPanel';
 import ProviderBadge from '../../components/ProviderBadge';
 import { injectBookingDates } from '../../lib/booking-url';
+import { formatSiteName } from '../../lib/site-display';
 import { upcomingWeekendRange } from '../../lib/upcoming-weekend';
 import {
   EMPTY_TAXONOMY,
@@ -29,9 +30,34 @@ const ACCESS_LABEL: Record<SiteAccess, string> = {
   boat_in: 'boat-in',
 };
 
-// Render up to `max` site names with a "+N more" suffix.
-function siteListText(sites: string[], max = 5): string {
-  return sites.slice(0, max).join(', ') + (sites.length > max ? ` +${sites.length - max} more` : '');
+/** Site names as capped, expandable chips. */
+function SiteChips({ sites, max = 6, muted = false }: { sites: string[]; max?: number; muted?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  if (sites.length === 0) return null;
+  const shown = expanded ? sites : sites.slice(0, max);
+  const hidden = sites.length - shown.length;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', flex: 1, minWidth: 0 }}>
+      {shown.map((s) => {
+        const name = formatSiteName(s);
+        return (
+          <span key={s} className="site-chip" title={name} style={muted ? { opacity: 0.75 } : undefined}>
+            {name}
+          </span>
+        );
+      })}
+      {hidden > 0 && (
+        <button type="button" className="site-chip site-chip--more" onClick={() => setExpanded(true)}>
+          +{hidden} more
+        </button>
+      )}
+      {expanded && sites.length > max && (
+        <button type="button" className="site-chip site-chip--more" onClick={() => setExpanded(false)}>
+          less
+        </button>
+      )}
+    </div>
+  );
 }
 
 /** "Book" button that injects the actual arrival date + nights into the ReserveCalifornia URL. */
@@ -50,15 +76,39 @@ function BookLink({ url, arrival, nights }: { url?: string; arrival: string; nig
   );
 }
 
+/** One bookable stay option: tier label + site chips + Book button. */
+function TierLine({ label, sites, url, arrival, nights, highlight = false }: {
+  label: string;
+  sites: string[];
+  url?: string;
+  arrival: string;
+  nights: number;
+  highlight?: boolean;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, paddingLeft: 8, marginTop: 4 }}>
+      <span style={{
+        fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', paddingTop: 3,
+        color: highlight ? 'var(--green)' : 'var(--muted)',
+      }}>
+        {label}
+      </span>
+      <SiteChips sites={sites} />
+      <BookLink url={url} arrival={arrival} nights={nights} />
+    </div>
+  );
+}
+
 /** Greyed line listing walk-up / first-come sites that cannot be reserved online. */
 function WalkUpLine({ sites }: { sites: string[] }) {
   if (sites.length === 0) return null;
   return (
-    <div style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 8, marginTop: 2 }}>
-      <span className="badge badge-gray" style={{ fontSize: 9 }}>walk-up</span>
-      {' '}
-      {siteListText(sites, 4)}
-      <span style={{ fontStyle: 'italic' }}> · first-come, not reservable</span>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, paddingLeft: 8, marginTop: 4 }}>
+      <span className="badge badge-gray" style={{ fontSize: 9, flexShrink: 0, marginTop: 2 }}>walk-up</span>
+      <SiteChips sites={sites} max={4} muted />
+      <span style={{ fontSize: 10.5, fontStyle: 'italic', color: 'var(--muted)', whiteSpace: 'nowrap', paddingTop: 2 }}>
+        first-come, not reservable
+      </span>
     </div>
   );
 }
@@ -240,24 +290,24 @@ function DateRow({ entry, nights }: { entry: AvailableDateEntry; nights: number 
 // Weekend section
 // ---------------------------------------------------------------------------
 
-function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: number | null }) {
+function WeekendRow({ entry, minNights }: { entry: WeekendEntry; minNights: number | null }) {
   // minNights=3 → ONLY 3N tier (Fri–Mon)
   // minNights=2 → 2N+3N (a 3N stay satisfies min 2)
   // minNights=1/null → all tiers
-  const show3Night = nightCount !== 1; // show 3N for null/2/3
-  const show2Night = nightCount !== 1 && nightCount !== 3; // show 2N for null/2 only
-  const show3NightOnly = nightCount === 3;
+  const show3Night = minNights !== 1; // show 3N for null/2/3
+  const show2Night = minNights !== 1 && minNights !== 3; // show 2N for null/2 only
+  const show3NightOnly = minNights === 3;
 
   const hasFull3Night = show3Night && entry.campgrounds.some((cg) => cg.sites3Night.length > 0);
   const has2NightFri = show2Night && entry.campgrounds.some((cg) => cg.sites2NightFri.length > 0);
   const has2NightSat = show2Night && entry.campgrounds.some((cg) => cg.sites2NightSat.length > 0);
 
-  // Skip the entire row if no campground will produce visible content for the current nightCount.
+  // Skip the entire row if no campground will produce visible content for the current minNights.
   const hasAnyVisible = entry.campgrounds.some((cg) => {
     const l3 = show3Night && cg.sites3Night.length > 0;
     const l2f = show2Night && !show3NightOnly && cg.sites2NightFri.length > 0 && !l3;
     const l2s = show2Night && !show3NightOnly && cg.sites2NightSat.length > 0 && !l3;
-    const show1 = nightCount === 1 || (nightCount === null && !(l3 || l2f || l2s));
+    const show1 = minNights === 1 || (minNights === null && !(l3 || l2f || l2s));
     return l3 || l2f || l2s ||
       (show1 && (cg.sites1NightFri.length > 0 || cg.sites1NightSat.length > 0)) ||
       cg.walkUpSites.length > 0;
@@ -300,7 +350,7 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
         const line2Fri = show2Night && !show3NightOnly && cg.sites2NightFri.length > 0 && !line3;
         const line2Sat = show2Night && !show3NightOnly && cg.sites2NightSat.length > 0 && !line3;
         const longerShown = line3 || line2Fri || line2Sat;
-        const show1Night = nightCount === 1 || (nightCount === null && !longerShown);
+        const show1Night = minNights === 1 || (minNights === null && !longerShown);
         const line1Fri = show1Night && cg.sites1NightFri.length > 0;
         const line1Sat = show1Night && cg.sites1NightSat.length > 0;
 
@@ -308,38 +358,18 @@ function WeekendRow({ entry, nightCount }: { entry: WeekendEntry; nightCount: nu
         if (!hasBookable && cg.walkUpSites.length === 0) return null;
 
         return (
-          <div key={cg.name} style={{ marginBottom: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>{cg.name}</div>
-            {line3 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--green)', paddingLeft: 8 }}>
-                <span>Fri–Mon (3 nights): {siteListText(cg.sites3Night)}</span>
-                <BookLink url={cg.bookingUrl} arrival={fri} nights={3} />
-              </div>
-            )}
-            {line2Fri && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                <span>Fri–Sun (2 nights): {siteListText(cg.sites2NightFri)}</span>
-                <BookLink url={cg.bookingUrl} arrival={fri} nights={2} />
-              </div>
-            )}
-            {line2Sat && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                <span>Sat–Mon (2 nights): {siteListText(cg.sites2NightSat)}</span>
-                <BookLink url={cg.bookingUrl} arrival={sat} nights={2} />
-              </div>
-            )}
-            {line1Fri && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                <span>Fri (1 night): {siteListText(cg.sites1NightFri)}</span>
-                <BookLink url={cg.bookingUrl} arrival={fri} nights={1} />
-              </div>
-            )}
-            {line1Sat && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--muted)', paddingLeft: 8 }}>
-                <span>Sat (1 night): {siteListText(cg.sites1NightSat)}</span>
-                <BookLink url={cg.bookingUrl} arrival={sat} nights={1} />
-              </div>
-            )}
+          <div key={cg.name} style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600 }}>
+              {cg.name}
+              {cg.nightlyFee != null && (
+                <span style={{ fontWeight: 400, color: 'var(--muted)' }}> · ${cg.nightlyFee}/night</span>
+              )}
+            </div>
+            {line3 && <TierLine label="Fri–Mon · 3 nights" sites={cg.sites3Night} url={cg.bookingUrl} arrival={fri} nights={3} highlight />}
+            {line2Fri && <TierLine label="Fri–Sun · 2 nights" sites={cg.sites2NightFri} url={cg.bookingUrl} arrival={fri} nights={2} />}
+            {line2Sat && <TierLine label="Sat–Mon · 2 nights" sites={cg.sites2NightSat} url={cg.bookingUrl} arrival={sat} nights={2} />}
+            {line1Fri && <TierLine label="Fri · 1 night" sites={cg.sites1NightFri} url={cg.bookingUrl} arrival={fri} nights={1} />}
+            {line1Sat && <TierLine label="Sat · 1 night" sites={cg.sites1NightSat} url={cg.bookingUrl} arrival={sat} nights={1} />}
             <WalkUpLine sites={cg.walkUpSites} />
           </div>
         );
@@ -496,7 +526,7 @@ function DetailPanel({
                 </div>
               ) : (
                 processedWeekends.map((w) => (
-                  <WeekendRow key={w.fridayDate} entry={w} nightCount={minNights} />
+                  <WeekendRow key={w.fridayDate} entry={w} minNights={minNights} />
                 ))
               )}
             </>

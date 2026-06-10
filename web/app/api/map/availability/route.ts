@@ -16,6 +16,7 @@ export type AvailableDateEntry = {
   campgrounds: {
     name: string;
     bookingUrl?: string;
+    nightlyFee: number | null;
     availableSiteCount: number; // bookable (reservable) sites only
     sites: string[];            // bookable site names (deduped)
     walkUpSites: string[];      // walk-up / first-come sites (not reservable)
@@ -30,6 +31,7 @@ export type WeekendEntry = {
   campgrounds: {
     name: string;
     bookingUrl?: string;
+    nightlyFee: number | null;
     // The tier arrays below are all bookable (walk-up excluded) and deduped.
     // Sites open the whole Fri+Sat+Sun weekend (3 nights)
     sites3Night: string[];
@@ -130,8 +132,8 @@ function weekendFridaysFromAvailableDates(
 function buildDateSiteMap(
   entries: AvailabilityWindowEntry[],
   passes: (siteName: string, cgName: string) => boolean,
-): Map<string, Map<string, { sites: string[]; bookingUrl?: string }>> {
-  const dateMap = new Map<string, Map<string, { sites: string[]; bookingUrl?: string }>>();
+): Map<string, Map<string, { sites: string[]; bookingUrl?: string; nightlyFee: number | null }>> {
+  const dateMap = new Map<string, Map<string, { sites: string[]; bookingUrl?: string; nightlyFee: number | null }>>();
 
   for (const entry of entries) {
     for (const cg of entry.campgrounds) {
@@ -142,7 +144,7 @@ function buildDateSiteMap(
           if (!dateMap.has(date)) dateMap.set(date, new Map());
           const cgMap = dateMap.get(date)!;
           if (!cgMap.has(cg.name)) {
-            cgMap.set(cg.name, { sites: [], bookingUrl: cg.bookingUrl });
+            cgMap.set(cg.name, { sites: [], bookingUrl: cg.bookingUrl, nightlyFee: cg.nightlyFee ?? null });
           }
           // Overlapping scan windows can cover the same date, so the same site
           // may appear more than once — dedupe to keep counts and lists accurate.
@@ -157,7 +159,7 @@ function buildDateSiteMap(
 }
 
 function sitesAvailableForDates(
-  dateMap: Map<string, Map<string, { sites: string[]; bookingUrl?: string }>>,
+  dateMap: Map<string, Map<string, { sites: string[]; bookingUrl?: string; nightlyFee: number | null }>>,
   cgName: string,
   dates: string[]
 ): string[] {
@@ -267,11 +269,13 @@ export async function GET(
     (d) => d >= rangeStart && (!to || d <= to)
   );
 
-  // Collect all campground names + bookingUrls (for reference)
-  const cgMeta = new Map<string, string | undefined>();
+  // Collect all campground names + booking metadata (for reference)
+  const cgMeta = new Map<string, { bookingUrl?: string; nightlyFee: number | null }>();
   for (const entry of parkEntries) {
     for (const cg of entry.campgrounds) {
-      if (!cgMeta.has(cg.name)) cgMeta.set(cg.name, cg.bookingUrl);
+      if (!cgMeta.has(cg.name)) {
+        cgMeta.set(cg.name, { bookingUrl: cg.bookingUrl, nightlyFee: cg.nightlyFee ?? null });
+      }
     }
   }
   const allCgNames = [...cgMeta.keys()];
@@ -291,11 +295,12 @@ export async function GET(
   for (const date of sortedAvailableDates) {
     const cgMap = dateMap.get(date)!;
     const campgrounds = [...cgMap.entries()]
-      .map(([name, { sites, bookingUrl }]) => {
+      .map(([name, { sites, bookingUrl, nightlyFee }]) => {
         const { bookable, walkUp } = splitWalkUp(sites, name, isWalkUpForSplit);
         return {
           name,
           bookingUrl,
+          nightlyFee,
           availableSiteCount: bookable.length,
           sites: bookable,
           walkUpSites: walkUp,
@@ -364,7 +369,8 @@ export async function GET(
 
       weekendCampgrounds.push({
         name: cgName,
-        bookingUrl: cgMeta.get(cgName),
+        bookingUrl: cgMeta.get(cgName)?.bookingUrl,
+        nightlyFee: cgMeta.get(cgName)?.nightlyFee ?? null,
         sites3Night,
         sites2NightFri,
         sites2NightSat,
