@@ -4,7 +4,7 @@
 
 Single file to edit for visual restyle. The tokens, components, and layout patterns below are the complete shared aesthetic layer. Surface Presentation sections reference this doc rather than duplicating style definitions.
 
-Source files: `web/app/globals.css` (tokens + global classes), `web/app/layout.tsx` (nav/layout shell), `web/app/components/SiteFilterPanel.tsx`, `web/app/components/ParkMapPopover.tsx`, `web/components/ProviderBadge.tsx`, `web/lib/providers.ts`, `web/lib/site-filters.ts`.
+Source files: `web/app/globals.css` (tokens + global classes), `web/app/layout.tsx` (nav/layout shell), `web/app/components/SiteFilterPanel.tsx`, `web/app/components/ParkMapPopover.tsx`, `web/components/ProviderBadge.tsx`, `web/components/ui/` (component library — 14 primitives), `web/lib/providers.ts`, `web/lib/site-filters.ts`.
 
 > Future: This is the designated entry point for the planned aesthetic polish pass. A restyle touches this file plus the Presentation sections of affected surface docs. Behavior/Contract sections and Reproduction checklists remain untouched, so a re-skin cannot introduce functional regressions in the docs.
 
@@ -12,53 +12,110 @@ Source files: `web/app/globals.css` (tokens + global classes), `web/app/layout.t
 
 ## Tokens (CSS custom properties)
 
-Defined in `:root` in `web/app/globals.css`:
+Defined in `:root` in `web/app/globals.css`. The theme is an earthy light palette:
 
 | Token | Value | Purpose |
 |---|---|---|
-| `--bg` | `#0f1117` | Page background |
-| `--surface` | `#1a1d27` | Card / sidebar background |
-| `--border` | `#2a2d3a` | Dividers, input borders |
-| `--text` | `#e8eaf0` | Primary text |
-| `--muted` | `#8b90a0` | Secondary / label text |
-| `--accent` | `#4f8ef7` | Links, active states, focus ring |
-| `--green` | `#3ecf8e` | Available / success |
-| `--red` | `#ff6b6b` | Unavailable / error |
-| `--yellow` | `#f5c842` | Warning / pending |
-| `--radius` | `8px` | Default border radius |
-| `--font` | `'Inter', system-ui, -apple-system, sans-serif` | Body font stack |
+| `--bg` | `#ece5d6` | Tinted sand page background |
+| `--surface` | `#ffffff` | Cards, panels, fields |
+| `--surface-2` | `#fbfaf6` | Off-white page body |
+| `--surface-sunken` | `#f6f3ec` | Inset rows, segmented tracks |
+| `--border` | `#e7e1d4` | Dividers, input borders |
+| `--text` | `#2f3a2e` | Deep forest — primary text |
+| `--muted` | `#5c6657` | Secondary / label text |
+| `--accent` | `#3a6b4f` | Forest green — links, active states, focus ring |
+| `--accent-soft` | `#e3efe6` | Tinted green background for badges/chips |
+| `--green` | `#3a6b4f` | Available / match (unified with `--accent`) |
+| `--red` | `#b3402f` | Muted brick — unavailable / error |
+| `--yellow` | `#a8481f` | Sunset accent (kept name for back-compat) |
+| `--warn` | `#a8481f` | Warning text color |
+| `--warn-soft` | `#f6e7d6` | Warning tinted background |
+| `--walkup` | `#b8860b` | Golden amber — walk-up / first-come badge |
+| `--radius` | `10px` | Default border radius |
+| `--radius-lg` | `16px` | Large radius (modals) |
+| `--shadow-sm` | `0 1px 3px rgba(60,70,50,.10)` | Card shadow |
+| `--shadow-float` | `0 8px 26px rgba(40,40,30,.18)` | Floating element shadow |
+| `--font` | `var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif` | Body font |
+| `--font-display` | `var(--font-fraunces), 'Fraunces', Georgia, serif` | Display / heading font |
 
-**Tailwind usage:** The project uses Tailwind CSS in the web app but relies primarily on the custom properties above for theming rather than Tailwind's color scale. Layout and spacing classes from Tailwind are used on a case-by-case basis per page.
+**Styling approach:** No Tailwind. The project uses custom CSS classes and the token system above, all defined in `globals.css`. Component styles are applied via these shared classes rather than utility-class composition.
+
+**Known token note:** `.badge-blue` and `.badge-green` resolve to identical computed styles in this theme — both use `--accent-soft` background and `--accent` text. They are kept as separate class names for semantic intent but are visually indistinguishable until a future token split.
 
 ---
 
 ## Layout shell
 
-Defined in `web/app/layout.tsx` + `globals.css`:
+Defined in `web/app/layout.tsx` + `globals.css`. The layout is a top-nav column, not a sidebar:
 
 ```
-.layout            flex row, min-height: 100vh
-  .sidebar         200px fixed-width, sticky top, --surface background
-    .sidebar-brand  "Camp<span>Brain</span>" — span colored with --accent
-    nav             7 links: /, /explore, /map, /alerts, /scan-history, /calendar, /settings
-  .main            flex:1, padding 32px 40px, max-width 960px
+.layout            flex column, min-height: 100vh
+  .topnav          64px header, grid 1fr auto 1fr, --bg background
+    .topnav-brand  "Camp<span>Brain</span>" — span colored with --accent (Fraunces font)
+    .navpill       center pill nav: floating --surface rounded pill with nav links
+    .topnav-avatar right — 30px avatar circle
+    .topnav-burger mobile hamburger (shows on narrow viewports)
+  .main            flex:1, max-width 1100px, centered, padding 28px 40px, --surface-2 background
 ```
 
-The nav links (as of `web/app/layout.tsx`):
+The nav links (from `web/app/components/nav-links.ts`):
 
 | Label | Route |
 |---|---|
-| Dashboard | `/` |
-| Find Campsites | `/explore` |
+| Campsites | `/explore` |
 | Map | `/map` |
 | Alerts | `/alerts` |
 | Scan History | `/scan-history` |
 | Calendar | `/calendar` |
 | Settings | `/settings` |
 
-Active link styling: `.sidebar nav a.active` — `color: --text`, `background: rgba(79,142,247,.1)`.
+Active link styling: `.navpill a.active` — `background: --accent`, `color: #fff`.
 
 **Map page exception:** `.main:has(.map-page)` removes padding and max-width so the map fills the viewport. The `.map-page`, `.map-filters`, `.map-container`, and `.map-detail-panel` classes handle the full-height layout.
+
+---
+
+## Component Library
+
+`web/components/ui/` — 14 typed primitive components, thin React wrappers over the `globals.css` class system. No new CSS was introduced for the library (one `focus-visible` rule for Toggle was added to `globals.css`). Import from the barrel:
+
+```typescript
+import { Badge, Button, Chip, StatusDot, SiteChip, EmptyState,
+         Card, StatCard, PageHeader, SectionTitle, KVList, KVRow,
+         Input, Toggle, Modal } from '@/components/ui';
+```
+
+| Component | Wraps classes | Exported types |
+|---|---|---|
+| `Badge` | `.badge .badge-{tone}` | `BadgeTone` |
+| `Button` | `.btn .btn-{variant}` | `ButtonProps`, `ButtonVariant` |
+| `Chip` | `.chip .chip-{tone}` | `ChipTone` |
+| `StatusDot` | `.dot .dot-{tone}` | `DotTone` |
+| `SiteChip` | `.chip` + site icon logic | `SiteChipProps` |
+| `EmptyState` | `.empty` | — |
+| `Card` | `.card` | — |
+| `StatCard` | composes `Card` + `.stat-label`/`.stat-value` | — |
+| `PageHeader` | `.page-header`/`.page-subtitle` | — |
+| `SectionTitle` | `.section-title` | — |
+| `KVList` / `KVRow` | `.kv-row`/`.kv-key`/`.kv-val` | — |
+| `Input` | `<input>` global form styles | — |
+| `Toggle` | `.toggle`/`.toggle-slider` | — |
+| `Modal` | `.modal-backdrop`/`.modal` | — |
+
+**Migration policy:** New UI must use the library. Existing pages migrate opportunistically when touched. The dashboard (`web/app/page.tsx`) was the first page migrated; rendered markup is class-identical to the pre-migration version.
+
+### Storybook
+
+`@storybook/nextjs-vite` 9.1 with `@storybook/addon-docs`. Config in `web/.storybook/` (`main.ts`, `preview.tsx`).
+
+- `preview.tsx` imports `globals.css` and loads Inter + Fraunces fonts, matching the app's font setup. Autodocs enabled. Backgrounds preset to app token values (`--surface-2` / `--bg`).
+- Stories for all 14 library components are co-located as `*.stories.tsx` in `web/components/ui/`.
+- Stories for existing shared components also exist: `ProviderBadge`, `SiteFilterPanel`, `DateRangePicker`, `MapLegend` (components themselves unmodified).
+
+```
+npm run storybook            # component catalog on :6006
+npm --prefix web run build-storybook   # static build
+```
 
 ---
 
@@ -71,26 +128,16 @@ Active link styling: `.sidebar nav a.active` — `color: --text`, `background: r
 **Props:**
 ```typescript
 {
-  activeFilters: string[];
-  onChange: (activeFilters: string[]) => void;
-  include?: string[];  // subset of filter IDs to display; defaults to all
+  state: TaxonomyState;
+  onChange: (next: TaxonomyState) => void;
+  groups?: Array<'access' | 'kinds' | 'hide'>;  // defaults to all three
+  dense?: boolean;                               // tighter spacing for map filter bar
 }
 ```
 
-Renders a row of toggle-button chips from `AVAILABLE_FILTERS` (see `web/lib/site-filters.ts`). Includes a "Clear all" link when any filter is active. Used on `/explore` and `/map`.
+`TaxonomyState` is `{ access: SiteAccess[]; kinds: SiteKind[]; hide: HideTarget[] }` from `web/lib/site-taxonomy.ts`. Renders three labeled pill groups (Access / Site kind / Hide). Used on `/explore` and `/map`.
 
-**Filter IDs** (from `web/lib/site-filters.ts`):
-
-| ID | Label | Behavior |
-|---|---|---|
-| `exclude_group` | Exclude group sites | Hides names matching `\bgroup\b` |
-| `exclude_walk_up` | Exclude walk-up sites | Hides hike/bike (non-reservable) sites |
-| `exclude_day_use` | Exclude day-use & picnic areas | Hides day-use / picnic / dailyuse names |
-| `hike_in_only` | Hike-in sites only | Shows only hike-in / walk-in names |
-| `exclude_equestrian` | Exclude equestrian sites | Hides equestrian / horse names |
-| `exclude_boat_in` | Exclude boat-in sites | Hides boat-in / boat-access names |
-
-Note: `exclude_boat_in` was added in a recent commit. CLAUDE.md's Site Filters table does not yet list it — this doc is authoritative.
+See CLAUDE.md "Site Filters" for the full taxonomy table.
 
 ---
 
@@ -120,11 +167,11 @@ Renders a geocoded OpenStreetMap iframe embed for a park name, with optional chi
 
 ```css
 .badge           base — inline-block, 11px, uppercase, 600 weight
-.badge-green     rgba(62,207,142,.15) bg + --green text
-.badge-red       rgba(255,107,107,.15) bg + --red text
-.badge-blue      rgba(79,142,247,.15) bg + --accent text
-.badge-gray      rgba(139,144,160,.15) bg + --muted text
-.badge-match     rgba(62,207,142,.2) bg + --green text, 12px, slightly larger padding
+.badge-green     --accent-soft bg + --accent text
+.badge-red       --warn-soft bg + --warn text
+.badge-blue      --accent-soft bg + --accent text  (same as .badge-green in current theme)
+.badge-gray      --surface-sunken bg + --muted text
+.badge-match     --accent-soft bg + --accent text, 12px, slightly larger padding
 ```
 
 ### Status dots
@@ -155,10 +202,11 @@ Renders a geocoded OpenStreetMap iframe embed for a park name, with optional chi
 ```css
 .btn             inline-flex, 8px 16px padding, 13px 600-weight
 .btn-primary     --accent bg, white text
-.btn-ghost       --border bg, --text text
+.btn-ghost       --surface-sunken bg, --text color, --border border
+.btn-slate       --surface-2 bg, --muted color, --border border
 .btn-sm          5px 10px, 12px font
-.btn-danger      red-tinted bg + --red text
-.btn-success     green-tinted bg + --green text
+.btn-danger      --warn-soft bg + --warn text
+.btn-success     --accent-soft bg + --accent text
 .btn:disabled    opacity .5, not-allowed cursor
 ```
 
@@ -173,11 +221,28 @@ Renders a geocoded OpenStreetMap iframe embed for a park name, with optional chi
 ### Status chips
 
 ```css
-.chip        inline-flex, 3px 10px, 12px, 500 weight
-.chip-green  green-tinted
-.chip-red    red-tinted
-.chip-gray   --muted-tinted
-.chip-yellow yellow-tinted
+.chip        inline-flex, 3px 11px, 12px, 500 weight
+.chip-green  --accent-soft bg + --accent text
+.chip-red    --warn-soft bg + --warn text
+.chip-gray   --surface-sunken bg + --muted text
+.chip-yellow --warn-soft bg + --warn text
+```
+
+### Toggle switch
+
+```css
+.toggle          relative 36×20px label wrapper
+.toggle-slider   pill track: --border when off, --accent when checked
+                 focus-visible: 2px --accent outline (added with component library)
+```
+
+### Modal
+
+```css
+.modal-backdrop  fixed overlay, rgba(40,40,30,.35) bg, z-index 100
+.modal           --surface bg, --radius-lg corners, 28px padding, max-width 640px
+.modal-header    flex row, space-between — title + close button
+.modal-close     ghost X button (type="button" — does not submit forms)
 ```
 
 ### Map-specific classes

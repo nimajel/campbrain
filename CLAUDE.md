@@ -94,11 +94,11 @@ Reservation rules:
 - **Execution**: tsx
 - **Config**: JSON + `.env` (root `.env`; bridged into the Next.js process by `web/next.config.ts`)
 - **Cache / persistence**: PostgreSQL via the `postgres` client (`src/cache/db.ts`). Local DB via `docker-compose.yml` (postgres:16). Connection via `DATABASE_URL`.
-- **Web**: Next.js 14, React 18
+- **Web**: Next.js 15, React 19
 - **Map**: Leaflet + react-leaflet (OpenStreetMap tiles); geocoding via Nominatim
 - **Calendar**: Google Calendar API (`googleapis`) for booking-window reminders
 - **Email**: Resend (`resend`) for alert notifications
-- **UI**: Tailwind CSS + light custom CSS
+- **UI**: Custom CSS design system (`globals.css` tokens + classes); `web/components/ui/` — 14 typed primitives; Storybook 9 component catalog
 
 ---
 
@@ -126,6 +126,9 @@ web/
       search/       GET available stays (filters, region, date range)
       map/          catalog, availability, summary
     components/     Shared React components (SiteFilterPanel, ParkMapPopover)
+  components/
+    ui/             Component library — 14 typed primitives (Badge, Button, Chip, StatusDot, SiteChip, EmptyState, Card, StatCard, PageHeader, SectionTitle, KVList, Input, Toggle, Modal); barrel export index.ts; co-located *.stories.tsx
+  .storybook/       Storybook 9 config (main.ts, preview.tsx)
   lib/              Client-safe utilities (available-display, site-filters, booking-url, catalog, availability-cache re-exports)
 
 data/
@@ -252,8 +255,9 @@ npm run catalog:refresh -- --provider=recreation-gov  # Seed Rec.gov catalog (re
 npm run catalog:list          # List catalog entries
 npm run upcoming              # Print upcoming booking windows for configured targets
 npm run sync-calendar         # Sync booking windows to Google Calendar
+npm run storybook             # Component catalog (Storybook 9, port 6006)
 npm run typecheck             # TypeScript check
-npm test                      # Vitest suite (340 tests)
+npm test                      # Vitest suite (421 tests)
 npm run verify                # typecheck + test + upcoming + scan + web build
 ```
 
@@ -342,6 +346,7 @@ Before committing:
 - [~] Alert scanner for saved targets (email via Resend wired up; saved-target matching WIP)
 - [~] Google Calendar sync for booking-window reminders (`sync-calendar` exists)
 - [x] Recreation.gov provider adapter (proactive scan + ProviderBadge UI; catalog populated via `npm run catalog:refresh -- --provider=recreation-gov` once RIDB_API_KEY is set)
+- [x] UI component library + Storybook catalog (14 primitives in `web/components/ui/`; Storybook 9 on :6006)
 - [ ] User-defined saved searches
 - [ ] Lottery window calculator (Yosemite, Death Valley, etc.)
 - [ ] SMS / Slack notifications
