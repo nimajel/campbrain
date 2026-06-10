@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
-export default function EmptyState({ children }: { children: ReactNode }) {
-  return <div className="empty">{children}</div>;
+export default function EmptyState({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return <div className="empty" style={style}>{children}</div>;
 }
