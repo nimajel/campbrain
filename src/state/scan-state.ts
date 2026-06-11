@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { ScanResultJSON } from '../types/scanner.js';
+import type { SavedSearchOpening } from '../saved-search/match.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,6 +22,11 @@ export type LatestScanState = Record<string, LatestScanSummary>;
 export interface AvailabilityHitRecord {
   targetId: string;
   targetName: string;
+  // Optional fields set when this record originates from a saved search
+  savedSearchId?: string;
+  parkPageId?: string;
+  parkName?: string;
+  campgroundName?: string;
   siteName: string;
   arrivalDate: string;   // YYYY-MM-DD
   departureDate: string; // YYYY-MM-DD (= candidate.endDate)
@@ -86,6 +92,9 @@ export function writeLatestScan(
 // ---------------------------------------------------------------------------
 
 export function hitKey(h: AvailabilityHitRecord): string {
+  if (h.savedSearchId !== undefined) {
+    return `ss:${h.savedSearchId}|${h.parkPageId ?? ''}|${h.campgroundName ?? ''}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`;
+  }
   return `${h.targetId}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`;
 }
 
@@ -239,4 +248,33 @@ export function buildScanSummary(
     matchCount: results.filter((r) => r.hits.length > 0).length,
     results,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Convert saved-search openings → hit records
+// ---------------------------------------------------------------------------
+
+export function openingsToHitRecords(
+  openings: SavedSearchOpening[],
+  now: string = new Date().toISOString()
+): AvailabilityHitRecord[] {
+  return openings.map((o) => {
+    const record: AvailabilityHitRecord = {
+      targetId: '',
+      targetName: '',
+      savedSearchId: o.savedSearchId,
+      parkPageId: o.parkPageId,
+      parkName: o.parkName,
+      campgroundName: o.campgroundName,
+      siteName: o.siteName,
+      arrivalDate: o.arrivalDate,
+      departureDate: o.departureDate,
+      nights: o.nights,
+      firstSeenAt: now,
+      lastSeenAt: now,
+    };
+    if (o.bookingUrl !== null) record.bookingUrl = o.bookingUrl;
+    if (o.availabilityAsOf !== undefined) record.availabilityAsOf = o.availabilityAsOf;
+    return record;
+  });
 }
