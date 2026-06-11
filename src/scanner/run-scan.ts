@@ -319,7 +319,7 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
     }
     if (stampKeys.size > 0) {
       const stamped = {
-        version: 2,
+        version: 3,
         hits: merged.hits.map((h) => (stampKeys.has(hitKey(h)) ? { ...h, notifiedAt: now } : h)),
       };
       writeHitsState(stateDir, stamped);
