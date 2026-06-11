@@ -96,11 +96,9 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
         notify: options.notify !== false,
       });
 
-      const { totalCandidates, totalMatches, totalNewHits } = summary;
+      const { totalNewHits } = summary;
       console.log(
         `[${timestamp()}] Alert scan #${scanCount} done — ` +
-          `${totalCandidates} candidates, ` +
-          `${totalMatches} match${totalMatches !== 1 ? 'es' : ''}, ` +
           `${totalNewHits} new hit${totalNewHits !== 1 ? 's' : ''}`
       );
     } catch (err) {

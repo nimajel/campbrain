@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadTargets } from '../../../lib/targets';
-import { runScan } from '../../../lib/scanner';
+import { getEntriesForPark } from '../../../../src/cache/availability-cache';
+import { matchCandidates } from '../../../../src/scanner/match-candidates';
+import { generateScanCandidates } from '../../../../src/rules/scan-candidates';
+import { serializeResult } from '../../../../src/types/scanner';
 import { saveScanResults } from '../../../lib/state';
+
+const MAX_WEB_CANDIDATES = 9;
+
+async function runTargetScan(
+  target: Parameters<typeof generateScanCandidates>[0],
+  maxCandidates: number = MAX_WEB_CANDIDATES,
+) {
+  const all = generateScanCandidates(target);
+  const candidates = all.slice(0, maxCandidates);
+  const windows = await getEntriesForPark(target.parkPageId, target.provider);
+  return matchCandidates(target, candidates, windows).map(serializeResult);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Target not found' }, { status: 404 });
     }
 
-    const results = await runScan(target, body.maxCandidates ?? 9);
+    const results = await runTargetScan(target, body.maxCandidates ?? 9);
 
     // Persist state (non-fatal if it fails)
     try {

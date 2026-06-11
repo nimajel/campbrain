@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ScanResultJSON } from '../../lib/scanner';
-import type { DailySiteStatus } from '../../../src/types/scanner';
+import type { ScanResultJSON, DailySiteStatus } from '../../../src/types/scanner';
 import type { Target } from '../../../src/config/schemas';
 import type { LatestScanSummary, AvailabilityHitRecord } from '../../lib/state';
 

@@ -219,7 +219,6 @@ describe('runScan — saved-search source', () => {
   it('store unavailability is caught and scan continues without crashing', async () => {
     vi.mocked(listAlertEnabledSavedSearches).mockRejectedValue(new Error('DB down'));
     const summary = await runScan({ notify: false, stateDir });
-    // Legacy Target path still ran (zero targets configured = zero results)
     expect(summary.totalNewHits).toBe(0);
     expect(matchSavedSearch).not.toHaveBeenCalled();
   });
@@ -246,10 +245,10 @@ describe('runScan — saved-search source', () => {
 });
 
 // ---------------------------------------------------------------------------
-// buildAvailabilityAlerts branching — saved-search vs legacy
+// buildAvailabilityAlerts — saved-search path
 // ---------------------------------------------------------------------------
 
-describe('buildAvailabilityAlerts — saved-search branch (via runScan notify)', () => {
+describe('buildAvailabilityAlerts — saved-search path (via runScan notify)', () => {
   let stateDir: string;
 
   beforeEach(() => {

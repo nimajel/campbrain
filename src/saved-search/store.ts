@@ -259,6 +259,14 @@ export async function deleteSavedSearch(id: string): Promise<void> {
   );
 }
 
+export async function enableSavedSearchAlert(id: string): Promise<void> {
+  const sql = getSql();
+  await sql.unsafe(
+    `UPDATE saved_searches SET alert_enabled = true, updated_at = $1 WHERE id = $2 AND alert_enabled = false`,
+    [new Date().toISOString(), id]
+  );
+}
+
 export async function listAlertEnabledSavedSearches(): Promise<SavedSearch[]> {
   const sql = getSql();
   const rows = await sql.unsafe<SavedSearchRow[]>(

@@ -343,3 +343,37 @@ describe('targetToSavedSearch - legacy passthrough', () => {
     expect(result.legacy['preferredSites']).toEqual(['Site A']);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 11. Decision C: promotion logic verified via targetToSavedSearch + legacy blob
+//
+// The promotion in migrateTargetsCommand is:
+//   if (mapped.legacy['enabled'] === true) → call enableSavedSearchAlert(id)
+//
+// We verify the condition is correct by checking the legacy blob — the mapper
+// tests in section 9 already prove alertEnabled stays false; section 11 proves
+// the blob carries the correct value that drives the promotion branching.
+// ---------------------------------------------------------------------------
+
+describe('targetToSavedSearch — promotion condition (Decision C)', () => {
+  it('legacy.enabled=true triggers promotion condition', () => {
+    const alert = makeAlert({ enabled: true });
+    const result = targetToSavedSearch(alert, TODAY) as MigratedSavedSearch;
+    // This is the exact condition evaluated by migrateTargetsCommand to decide
+    // whether to call enableSavedSearchAlert.
+    expect(result.legacy['enabled'] === true).toBe(true);
+  });
+
+  it('legacy.enabled=false does NOT trigger promotion condition', () => {
+    const alert = makeAlert({ enabled: false });
+    const result = targetToSavedSearch(alert, TODAY) as MigratedSavedSearch;
+    expect(result.legacy['enabled'] === true).toBe(false);
+  });
+
+  it('alertEnabled stays false after mapping regardless of legacy.enabled', () => {
+    const alertEnabled = makeAlert({ enabled: true });
+    const alertDisabled = makeAlert({ enabled: false });
+    expect(targetToSavedSearch(alertEnabled, TODAY)!.alertEnabled).toBe(false);
+    expect(targetToSavedSearch(alertDisabled, TODAY)!.alertEnabled).toBe(false);
+  });
+});

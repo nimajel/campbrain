@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import type { Alert } from '../../lib/alerts';
 import type { ParkCatalogEntry, CampgroundCatalogEntry, CatalogBookingRule } from '../../lib/catalog';
-import type { LatestScanState } from '../../lib/state';
 import {
   emptyForm,
   alertToForm,
@@ -16,86 +15,6 @@ import {
 import type { FormState } from '../../lib/alert-form';
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ScanResult {
-  candidate: { arrivalDate: string; endDate: string; nights: number };
-  hits: { siteName: string; availability: string }[];
-}
-
-interface ScanResponse {
-  alertId: string;
-  alertName: string;
-  results: ScanResult[];
-  matchCount: number;
-  error?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Inline scan panel (on alert card)
-// ---------------------------------------------------------------------------
-
-function ScanPanel({ alertId, alertName, onScanComplete, onScanStateChange }: { alertId: string; alertName: string; onScanComplete?: () => void; onScanStateChange?: (isScanning: boolean) => void }) {
-  const [state, setState] = useState<'idle' | 'scanning' | 'done'>('idle');
-  const [result, setResult] = useState<ScanResponse | null>(null);
-
-  async function runScan() {
-    setState('scanning');
-    onScanStateChange?.(true);
-    setResult(null);
-    try {
-      const res = await fetch(`/api/alerts/${alertId}/scan`, { method: 'POST' });
-      const data = (await res.json()) as ScanResponse;
-      setResult(data);
-      onScanComplete?.();
-    } catch (e) {
-      setResult({ alertId, alertName, results: [], matchCount: 0, error: String(e) });
-    }
-    setState('done');
-    onScanStateChange?.(false);
-  }
-
-  return (
-    <div>
-      <button className="btn btn-sm btn-ghost" onClick={() => { void runScan(); }} disabled={state === 'scanning'}>
-        {state === 'scanning' ? '⏳ Scanning…' : '🔍 Scan now'}
-      </button>
-      {state === 'done' && result && (
-        <div style={{ marginTop: 8, fontSize: 12 }}>
-          {result.error ? (
-            <span style={{ color: 'var(--red)' }}>{result.error}</span>
-          ) : result.matchCount > 0 ? (
-            <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-              🎯 {result.matchCount} match{result.matchCount !== 1 ? 'es' : ''}
-              {result.results.filter(r => r.hits.length > 0).slice(0, 2).map((r) =>
-                ` · ${r.candidate.arrivalDate} (${r.hits.map(h => h.siteName).join(', ')})`
-              ).join('')}
-            </span>
-          ) : (
-            <span style={{ color: 'var(--muted)' }}>No matches found</span>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Alert card
 // ---------------------------------------------------------------------------
 
@@ -104,19 +23,11 @@ function AlertCard({
   onEdit,
   onToggle,
   onDelete,
-  scanState,
-  onScanComplete,
-  isScanning,
-  onScanStateChange,
 }: {
   alert: Alert;
   onEdit: (a: Alert) => void;
   onToggle: (a: Alert) => void;
   onDelete: (a: Alert) => void;
-  scanState: LatestScanState;
-  onScanComplete?: () => void;
-  isScanning?: boolean;
-  onScanStateChange?: (isScanning: boolean) => void;
 }) {
   const dateLabel = (() => {
     switch (alert.dateMode) {
@@ -127,66 +38,18 @@ function AlertCard({
     }
   })();
 
-  const lastScan = scanState[alert.id];
-  const hasMatches = lastScan && lastScan.matchCount > 0;
-  const matchedDates = lastScan
-    ? lastScan.results
-        .filter(r => r.hits.length > 0)
-        .map(r => `${r.candidate.arrivalDate} (${r.hits.map(h => h.siteName).join(', ')})`)
-    : [];
-
   return (
     <div className="card" style={{ opacity: alert.enabled ? 1 : 0.6 }}>
       <div className="alert-header">
         <h3 style={{ margin: 0, flex: 1 }}>{alert.name}</h3>
         <span className={`chip ${alert.enabled ? 'chip-green' : 'chip-gray'}`}>
           <span className={`dot ${alert.enabled ? 'dot-green' : 'dot-gray'}`} style={{ marginRight: 0 }} />
-          {alert.enabled ? 'Active' : 'Disabled'}
+          {alert.enabled ? 'In calendar sync' : 'Not synced'}
         </span>
         <span className="badge badge-blue">{alert.provider}</span>
-        {alert.emailEnabled && <span className="badge badge-gray">📧 email</span>}
-        {alert.calendarEnabled && <span className="badge badge-gray">📅 cal</span>}
+        {alert.emailEnabled && <span className="badge badge-gray">email</span>}
+        {alert.calendarEnabled && <span className="badge badge-gray">cal</span>}
       </div>
-
-      {isScanning || lastScan ? (
-        <div style={{
-          padding: '10px 12px',
-          marginBottom: 12,
-          borderRadius: 6,
-          background: isScanning ? 'rgba(245,200,66,.08)' : (hasMatches ? 'rgba(34,197,94,.08)' : 'rgba(107,114,128,.06)'),
-          borderLeft: `3px solid ${isScanning ? 'var(--yellow)' : (hasMatches ? 'var(--green)' : 'var(--muted)')}`,
-          fontSize: 13,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              {isScanning ? (
-                <span style={{ color: 'var(--yellow)', fontWeight: 600 }}>⏳ Scan in Progress…</span>
-              ) : (
-                <>
-                  <span style={{ color: 'var(--muted)' }}>Last scan: </span>
-                  <span style={{ fontWeight: 500, color: 'var(--text)' }}>{relativeTime(lastScan!.scannedAt)}</span>
-                  {hasMatches && (
-                    <span style={{ color: 'var(--green)', fontWeight: 600, marginLeft: 8 }}>
-                      🎯 {lastScan!.matchCount} match{lastScan!.matchCount !== 1 ? 'es' : ''}
-                    </span>
-                  )}
-                  {!hasMatches && (
-                    <span style={{ color: 'var(--muted)', marginLeft: 8 }}>No matches</span>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-          {!isScanning && hasMatches && matchedDates.length > 0 && (
-            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
-              {matchedDates.slice(0, 2).map((d, i) => (
-                <div key={i}>{d}</div>
-              ))}
-              {matchedDates.length > 2 && <div>+ {matchedDates.length - 2} more</div>}
-            </div>
-          )}
-        </div>
-      ) : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
         <div className="kv-row"><span className="kv-key">Park</span><span className="kv-val">{alert.parkName}</span></div>
@@ -198,7 +61,6 @@ function AlertCard({
       </div>
 
       <div className="card-actions">
-        <ScanPanel alertId={alert.id} alertName={alert.name} onScanComplete={onScanComplete} onScanStateChange={onScanStateChange} />
         <button className="btn btn-sm btn-ghost" onClick={() => onEdit(alert)}>Edit</button>
         <button
           className={`btn btn-sm ${alert.enabled ? 'btn-danger' : 'btn-success'}`}
@@ -292,29 +154,25 @@ function AlertFormModal({
   initial: Alert | null;
   parks: ParkCatalogEntry[];
   onClose: () => void;
-  onSave: (payload: Record<string, unknown>, isNew: boolean, scanAfter: boolean) => Promise<string | null>;
+  onSave: (payload: Record<string, unknown>, isNew: boolean) => Promise<string | null>;
 }) {
   const [form, setForm] = useState<FormState>(
     initial ? alertToForm(initial, parks) : emptyForm()
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  // Track if user has manually edited the ID so we stop auto-generating
   const [idCustomized, setIdCustomized] = useState(!(!initial));
   const isNew = !initial;
 
-  // Derived catalog data
   const selectedPark: ParkCatalogEntry | null =
     parks.find((p) => p.parkPageId === form.selectedParkPageId) ?? null;
 
   const selectedCampground: CampgroundCatalogEntry | null =
     selectedPark?.campgrounds.find((c) => c.id === form.selectedCampgroundId) ?? null;
 
-  // Sites to show in the multiselect — prefer catalog sites, fall back to form's current sites
   const catalogSites = selectedCampground?.sites.map((s) => s.name) ?? [];
   const availableSites = catalogSites.length > 0 ? catalogSites : form.acceptableSites;
 
-  // Booking rule to display (read-only)
   const inferredRule: CatalogBookingRule | null =
     selectedCampground?.bookingRule ?? selectedPark?.defaultBookingRule ?? null;
   const ruleText = inferredRule
@@ -329,7 +187,6 @@ function AlertFormModal({
     setForm((f) => ({
       ...f,
       name,
-      // Auto-generate ID from name for new alerts unless user customized it
       ...(isNew && !idCustomized ? { id: slugify(name) } : {}),
     }));
   }
@@ -354,7 +211,7 @@ function AlertFormModal({
     }));
   }
 
-  async function submit(scanAfter: boolean) {
+  async function submit() {
     const errs = validateForm(form);
     if (errs.length > 0) {
       setError(errs[0]!.message);
@@ -363,7 +220,7 @@ function AlertFormModal({
     setSaving(true);
     setError('');
     try {
-      await onSave(formToPayload(form), isNew, scanAfter);
+      await onSave(formToPayload(form), isNew);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -380,16 +237,16 @@ function AlertFormModal({
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <div className="modal-header">
-          <h2 style={{ margin: 0 }}>{isNew ? 'New Camping Alert' : 'Edit Alert'}</h2>
+          <h2 style={{ margin: 0 }}>{isNew ? 'New Booking Window' : 'Edit Booking Window'}</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); void submit(false); }}>
+        <form onSubmit={(e) => { e.preventDefault(); void submit(); }}>
 
           {/* --- Alert name --- */}
           <div className="form-row" style={{ marginBottom: 20 }}>
             <label>
-              Alert name
+              Name
               <input
                 type="text" value={form.name}
                 onChange={(e) => onNameChange(e.target.value)}
@@ -536,7 +393,7 @@ function AlertFormModal({
               padding: '8px 12px', background: 'rgba(79,142,247,.06)',
               borderRadius: 6, borderLeft: '3px solid var(--accent)',
             }}>
-              📅 <strong style={{ color: 'var(--text)' }}>Booking window:</strong>{' '}
+              <strong style={{ color: 'var(--text)' }}>Booking window:</strong>{' '}
               {ruleText}
             </div>
           )}
@@ -546,14 +403,14 @@ function AlertFormModal({
             <>
               <div className="form-grid">
                 <SiteMultiselect
-                  label="Sites to watch (alert fires when any are available)"
+                  label="Sites to watch"
                   sites={availableSites}
                   selected={form.acceptableSites}
                   onChange={onAcceptableSitesChange}
                   placeholder={campgroundInCatalog ? 'No sites in catalog for this campground' : 'No sites available'}
                 />
                 <SiteMultiselect
-                  label="Preferred sites (optional — for priority ordering)"
+                  label="Preferred sites (optional)"
                   sites={form.acceptableSites}
                   selected={form.preferredSites}
                   onChange={(v) => set('preferredSites', v)}
@@ -569,11 +426,11 @@ function AlertFormModal({
           )}
 
           {/* --- Notifications --- */}
-          <div className="section-title">Notifications</div>
+          <div className="section-title">Sync</div>
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
             <label className="label-inline">
               <input type="checkbox" checked={form.enabled} onChange={(e) => set('enabled', e.target.checked)} />
-              Alert enabled
+              Include in calendar sync
             </label>
             <label className="label-inline">
               <input type="checkbox" checked={form.emailEnabled} onChange={(e) => set('emailEnabled', e.target.checked)} />
@@ -605,7 +462,7 @@ function AlertFormModal({
               <div className="form-grid">
                 <div className="form-row">
                   <label>
-                    Alert ID (slug)
+                    ID (slug)
                     <input
                       type="text" value={form.id}
                       onChange={(e) => { setIdCustomized(true); set('id', e.target.value); }}
@@ -703,19 +560,8 @@ function AlertFormModal({
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>
               Cancel
             </button>
-            {form.enabled && (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => void submit(true)}
-                disabled={saving}
-                title="Save the alert, then immediately run a scan"
-              >
-                {saving ? 'Saving…' : isNew ? 'Create & Scan' : 'Save & Scan'}
-              </button>
-            )}
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : isNew ? 'Create Alert' : 'Save changes'}
+              {saving ? 'Saving…' : isNew ? 'Create' : 'Save changes'}
             </button>
           </div>
         </form>
@@ -725,85 +571,14 @@ function AlertFormModal({
 }
 
 // ---------------------------------------------------------------------------
-// Scan-after-save banner
-// ---------------------------------------------------------------------------
-
-interface PostSaveScan {
-  alertId: string;
-  alertName: string;
-}
-
-function ScanAfterSaveBanner({ alertId, alertName, onDismiss, onScanComplete }: PostSaveScan & { onDismiss: () => void; onScanComplete?: () => void }) {
-  const [state, setState] = useState<'scanning' | 'done'>('scanning');
-  const [result, setResult] = useState<ScanResponse | null>(null);
-
-  // Trigger scan on mount
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch(`/api/alerts/${alertId}/scan`, { method: 'POST' });
-        const data = (await res.json()) as ScanResponse;
-        setResult(data);
-        onScanComplete?.();
-      } catch (e) {
-        setResult({ alertId, alertName, results: [], matchCount: 0, error: String(e) });
-      }
-      setState('done');
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onScanComplete]);
-
-  if (state === 'scanning') {
-    return (
-      <div className="card" style={{ borderColor: 'var(--accent)', marginBottom: 16 }}>
-        ⏳ Scanning <strong>{alertName}</strong>…
-      </div>
-    );
-  }
-
-  const matches = result ? result.matchCount : 0;
-  const hasError = result?.error;
-
-  return (
-    <div className="card" style={{ borderColor: hasError ? 'var(--red)' : matches > 0 ? 'var(--green)' : 'var(--border)', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          {hasError ? (
-            <span style={{ color: 'var(--red)' }}>Scan error for <strong>{alertName}</strong>: {hasError}</span>
-          ) : matches > 0 ? (
-            <span style={{ color: 'var(--green)', fontWeight: 600 }}>
-              🎯 Scan complete — {matches} match{matches !== 1 ? 'es' : ''} found for <strong>{alertName}</strong>!
-            </span>
-          ) : (
-            <span style={{ color: 'var(--muted)' }}>
-              Scan complete for <strong>{alertName}</strong> — no matches found.
-            </span>
-          )}
-        </div>
-        <button
-          className="btn btn-sm btn-ghost"
-          onClick={onDismiss}
-          style={{ flexShrink: 0 }}
-        >
-          Dismiss
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main client component
 // ---------------------------------------------------------------------------
 
-export default function AlertsClient({ initial, parks, scanState: initialScanState }: { initial: Alert[]; parks: ParkCatalogEntry[]; scanState: LatestScanState }) {
+export default function AlertsClient({ initial, parks }: { initial: Alert[]; parks: ParkCatalogEntry[] }) {
   const [alerts, setAlerts] = useState<Alert[]>(initial);
-  const [scanState, setScanState] = useState<LatestScanState>(initialScanState);
-  const [scanningAlertId, setScanningAlertId] = useState<string | null>(null);
   const [modalAlert, setModalAlert] = useState<Alert | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [pageError, setPageError] = useState('');
-  const [pendingScan, setPendingScan] = useState<PostSaveScan | null>(null);
 
   function openNew() {
     setModalAlert(null);
@@ -830,7 +605,6 @@ export default function AlertsClient({ initial, parks, scanState: initialScanSta
   async function handleSave(
     payload: Record<string, unknown>,
     isNew: boolean,
-    scanAfter: boolean
   ): Promise<string | null> {
     let savedId: string;
 
@@ -859,15 +633,7 @@ export default function AlertsClient({ initial, parks, scanState: initialScanSta
       }
     }
 
-    const updated = await refresh();
-
-    if (scanAfter) {
-      const saved = updated.find((a) => a.id === savedId);
-      if (saved) {
-        setPendingScan({ alertId: saved.id, alertName: saved.name });
-      }
-    }
-
+    await refresh();
     return savedId;
   }
 
@@ -884,7 +650,7 @@ export default function AlertsClient({ initial, parks, scanState: initialScanSta
   }
 
   async function handleDelete(a: Alert) {
-    if (!confirm(`Delete alert "${a.name}"?`)) return;
+    if (!confirm(`Delete booking window "${a.name}"?`)) return;
     setPageError('');
     const res = await fetch(`/api/alerts/${a.id}`, { method: 'DELETE' });
     if (!res.ok) {
@@ -895,30 +661,32 @@ export default function AlertsClient({ initial, parks, scanState: initialScanSta
     await refresh();
   }
 
-  const enabled = alerts.filter((a) => a.enabled).length;
-
-  async function refreshScanState() {
-    try {
-      const res = await fetch('/api/scan-state');
-      if (res.ok) {
-        const data = (await res.json()) as LatestScanState;
-        setScanState(data);
-      }
-    } catch (e) {
-      console.error('Failed to refresh scan state:', e);
-    }
-  }
+  const synced = alerts.filter((a) => a.enabled).length;
 
   return (
     <>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <h1 style={{ flex: 1 }}>Alerts</h1>
-          <button className="btn btn-primary" onClick={openNew}>+ New camping alert</button>
+          <button className="btn btn-primary" onClick={openNew}>+ New booking window</button>
         </div>
         <p className="page-subtitle">
-          {alerts.length} alert{alerts.length !== 1 ? 's' : ''} · {enabled} active
+          {alerts.length} booking window{alerts.length !== 1 ? 's' : ''} · {synced} in calendar sync
         </p>
+      </div>
+
+      <div style={{
+        padding: '10px 14px',
+        marginBottom: 20,
+        borderRadius: 6,
+        background: 'rgba(79,142,247,.06)',
+        borderLeft: '3px solid var(--accent)',
+        fontSize: 13,
+        color: 'var(--text)',
+      }}>
+        Availability alerts have moved to{' '}
+        <a href="/saved" style={{ color: 'var(--accent)', fontWeight: 600 }}>Saved Searches</a>.
+        This page manages booking-window reminders and calendar sync targets.
       </div>
 
       {pageError && (
@@ -927,20 +695,11 @@ export default function AlertsClient({ initial, parks, scanState: initialScanSta
         </div>
       )}
 
-      {pendingScan && (
-        <ScanAfterSaveBanner
-          alertId={pendingScan.alertId}
-          alertName={pendingScan.alertName}
-          onDismiss={() => setPendingScan(null)}
-          onScanComplete={() => { void refreshScanState(); }}
-        />
-      )}
-
       {alerts.length === 0 && (
         <div className="empty">
-          No alerts configured.{' '}
+          No booking windows configured.{' '}
           <button className="btn btn-ghost btn-sm" onClick={openNew}>
-            Create your first alert
+            Create your first booking window
           </button>
         </div>
       )}
@@ -952,10 +711,6 @@ export default function AlertsClient({ initial, parks, scanState: initialScanSta
           onEdit={openEdit}
           onToggle={handleToggle}
           onDelete={handleDelete}
-          scanState={scanState}
-          onScanComplete={() => { void refreshScanState(); }}
-          isScanning={scanningAlertId === a.id}
-          onScanStateChange={(isScanning) => setScanningAlertId(isScanning ? a.id : null)}
         />
       ))}
 

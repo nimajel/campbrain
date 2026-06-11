@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { listAlerts } from '../../config/alerts.js';
-import { upsertSavedSearch } from '../../saved-search/store.js';
+import { upsertSavedSearch, enableSavedSearchAlert } from '../../saved-search/store.js';
 import { initDb, endDb } from '../../cache/db.js';
 import type { Alert } from '../../config/alerts.js';
 import type { SavedSearch, SavedSearchDatePattern, SavedSearchFilters } from '../../saved-search/types.js';
@@ -184,15 +184,20 @@ export async function migrateTargetsCommand(): Promise<void> {
     }
 
     await upsertSavedSearch(mapped);
-    imported++;
 
-    if (alert.enabled) {
+    // Promotion pass (Decision C): if the legacy target was enabled, flip
+    // alert_enabled true so alerting continues after the legacy loop is removed.
+    // enableSavedSearchAlert is idempotent (only flips false→true).
+    if (mapped.legacy['enabled'] === true) {
+      await enableSavedSearchAlert(mapped.id);
       console.log(
-        `  [imported] "${alert.id}" — imported with alerts OFF (legacy target still active); enable on /saved after legacy retirement.`
+        `  [imported] "${alert.id}" — alerts ON (migrated from active legacy target)`
       );
     } else {
-      console.log(`  [imported] "${alert.id}"`);
+      console.log(`  [imported] "${alert.id}" — alerts OFF (legacy target was inactive)`);
     }
+
+    imported++;
   }
 
   console.log(

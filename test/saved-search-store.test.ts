@@ -50,7 +50,17 @@ vi.mock('../src/cache/db.js', () => {
       return Array.from(_rows.values()).filter((r) => r['alert_enabled'] === true);
     }
 
-    // UPDATE
+    // UPDATE — enable-alert variant: SET alert_enabled = true WHERE id = $2 AND alert_enabled = false
+    if (s.startsWith('UPDATE SAVED_SEARCHES') && s.includes('ALERT_ENABLED = TRUE')) {
+      const [, id] = values as [string, string];
+      const existing = _rows.get(id);
+      if (!existing || existing['alert_enabled'] === true) return [];
+      const updated = { ...existing, alert_enabled: true, updated_at: values[0] };
+      _rows.set(id, updated);
+      return [updated];
+    }
+
+    // UPDATE — full update: SET name=$1,...,updated_at=$6 WHERE id=$7
     if (s.startsWith('UPDATE SAVED_SEARCHES')) {
       const id = values[6] as string;
       const existing = _rows.get(id);
@@ -118,6 +128,7 @@ const {
   deleteSavedSearch,
   listAlertEnabledSavedSearches,
   upsertSavedSearch,
+  enableSavedSearchAlert,
 } = await import('../src/saved-search/store.js');
 
 // ---------------------------------------------------------------------------
@@ -371,5 +382,54 @@ describe('upsertSavedSearch', () => {
     // The legacy field must survive the round-trip.
     const fetchedLegacy = (fetched as Record<string, unknown>)['legacy'] as typeof legacy;
     expect(fetchedLegacy).toEqual(legacy);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// enableSavedSearchAlert (Decision C — idempotent false→true flip)
+// ---------------------------------------------------------------------------
+
+describe('enableSavedSearchAlert', () => {
+  beforeEach(() => {
+    _rows = new Map();
+  });
+
+  async function insertRow(id: string, alertEnabled: boolean): Promise<void> {
+    const now = new Date().toISOString();
+    await upsertSavedSearch({
+      id,
+      userId: null,
+      provider: 'california-parks',
+      name: 'Test',
+      scope: { region: null, parkPageIds: [] },
+      datePattern: { kind: 'any_weekend', horizonDays: 30 },
+      filters: { access: [], kinds: [], hide: [], minNights: 1 },
+      alertEnabled,
+      emailEnabled: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  it('flips alert_enabled from false to true', async () => {
+    await insertRow('flip-test', false);
+    await enableSavedSearchAlert('flip-test');
+    const fetched = await getSavedSearch('flip-test');
+    expect(fetched!.alertEnabled).toBe(true);
+  });
+
+  it('is idempotent — does not change a row already true', async () => {
+    await insertRow('already-true', true);
+    await enableSavedSearchAlert('already-true');
+    const fetched = await getSavedSearch('already-true');
+    expect(fetched!.alertEnabled).toBe(true);
+  });
+
+  it('does not flip other rows', async () => {
+    await insertRow('target-row', false);
+    await insertRow('other-row', false);
+    await enableSavedSearchAlert('target-row');
+    const other = await getSavedSearch('other-row');
+    expect(other!.alertEnabled).toBe(false);
   });
 });
