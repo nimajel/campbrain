@@ -32,13 +32,12 @@ program
 
 program
   .command('scan')
-  .description('Check availability for configured targets')
-  .option('--target <id>', 'Scan specific target by ID')
+  .description('Check availability for alert-enabled saved searches')
   .option('--debug', 'Save debug HTML for all scans')
   .option('--no-notify', 'Suppress all notifications')
   .action(async (options) => {
     try {
-      await scanCommand({ debug: options.debug, notify: options.notify, targetId: options.target });
+      await scanCommand({ debug: options.debug, notify: options.notify });
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : error);
       process.exit(1);
@@ -50,7 +49,6 @@ program
   .description('Run scheduled availability scans on an interval')
   .option('--interval-minutes <n>', 'Scan interval in minutes (min 15, default 60)', parseInt)
   .option('--no-scan-on-start', 'Wait for the first interval before scanning')
-  .option('--target <id>', 'Scan specific target by ID')
   .option('--debug', 'Save debug HTML for all scans')
   .option('--no-notify', 'Suppress all notifications')
   .action(async (options) => {
@@ -58,7 +56,6 @@ program
       await workerCommand({
         intervalMinutes: options.intervalMinutes,
         scanOnStart: options.scanOnStart,
-        targetId: options.target,
         debug: options.debug,
         notify: options.notify,
       });

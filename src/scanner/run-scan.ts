@@ -24,7 +24,6 @@ import type { CampRegion } from '../catalog/regions.js';
 // ---------------------------------------------------------------------------
 
 export interface RunScanOptions {
-  targetId?: string | undefined;
   debug?: boolean | undefined;
   notify?: boolean | undefined;
   stateDir?: string | undefined;
@@ -32,7 +31,6 @@ export interface RunScanOptions {
 
 export interface RunScanSummary {
   totalNewHits: number;
-  skippedCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,47 +92,44 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
 
   // ---------------------------------------------------------------------------
   // Saved-search source (alert_enabled=true only)
-  // Skipped when a targetId filter is active (saved searches have no legacy targetId).
   // ---------------------------------------------------------------------------
 
-  if (!options.targetId) {
-    let savedSearches: SavedSearch[] = [];
-    try {
-      savedSearches = await listAlertEnabledSavedSearches();
-    } catch (err: unknown) {
-      console.error(`Saved-search store unavailable: ${String(err)} — skipping saved-search source`);
-    }
+  let savedSearches: SavedSearch[] = [];
+  try {
+    savedSearches = await listAlertEnabledSavedSearches();
+  } catch (err: unknown) {
+    console.error(`Saved-search store unavailable: ${String(err)} — skipping saved-search source`);
+  }
 
-    if (savedSearches.length > 0) {
-      const parkRegionOf = buildParkRegionOf();
-      const existingBeforeLoop = readHitsState(stateDir);
+  if (savedSearches.length > 0) {
+    const parkRegionOf = buildParkRegionOf();
+    const existingBeforeLoop = readHitsState(stateDir);
 
-      for (const search of savedSearches) {
-        console.log(`Scanning saved search: ${search.name}`);
-        savedSearchesById.set(search.id, search);
+    for (const search of savedSearches) {
+      console.log(`Scanning saved search: ${search.name}`);
+      savedSearchesById.set(search.id, search);
 
-        let openings: Awaited<ReturnType<typeof matchSavedSearch>>;
-        try {
-          openings = await matchSavedSearch(search, {
-            searchAvailableStays,
-            getEntriesForPark,
-            parkRegionOf,
-          }, today);
-        } catch (err: unknown) {
-          console.error(`  Match failed for saved search "${search.name}": ${String(err)} — skipping`);
-          continue;
-        }
-
-        console.log(`  ${openings.length} opening(s) found`);
-
-        const hitRecords = openingsToHitRecords(openings, search.name, now);
-
-        const incomingKeys = new Set(hitRecords.map(hitKey));
-        const ssCheckedKeys = savedSearchCheckedKeys(existingBeforeLoop, search.id, incomingKeys);
-        for (const k of ssCheckedKeys) checkedKeys.add(k);
-
-        allIncoming.push(...hitRecords);
+      let openings: Awaited<ReturnType<typeof matchSavedSearch>>;
+      try {
+        openings = await matchSavedSearch(search, {
+          searchAvailableStays,
+          getEntriesForPark,
+          parkRegionOf,
+        }, today);
+      } catch (err: unknown) {
+        console.error(`  Match failed for saved search "${search.name}": ${String(err)} — skipping`);
+        continue;
       }
+
+      console.log(`  ${openings.length} opening(s) found`);
+
+      const hitRecords = openingsToHitRecords(openings, search.name, now);
+
+      const incomingKeys = new Set(hitRecords.map(hitKey));
+      const ssCheckedKeys = savedSearchCheckedKeys(existingBeforeLoop, search.id, incomingKeys);
+      for (const k of ssCheckedKeys) checkedKeys.add(k);
+
+      allIncoming.push(...hitRecords);
     }
   }
 
@@ -178,6 +173,5 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
 
   return {
     totalNewHits: toNotify.length,
-    skippedCount: 0,
   };
 }

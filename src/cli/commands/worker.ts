@@ -1,6 +1,6 @@
 import { runScan } from '../../scanner/run-scan.js';
 import { runProactiveScan } from '../../scanner/proactive-scanner.js';
-import { loadTargets } from '../../config/targets.js';
+import { listAlertEnabledSavedSearches } from '../../saved-search/store.js';
 import { describeScanCoverage } from '../../catalog/catalog-store.js';
 
 const MIN_INTERVAL_MINUTES = 15;
@@ -41,7 +41,6 @@ export interface WorkerOptions {
   intervalMinutes?: number;
   proactiveIntervalMinutes?: number;
   scanOnStart?: boolean;
-  targetId?: string;
   debug?: boolean;
   notify?: boolean;
 }
@@ -64,17 +63,18 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
     options.scanOnStart !== false &&
     process.env['CAMPBRAIN_SCAN_ON_START'] !== 'false';
 
-  const targets = loadTargets().filter(
-    (t) => options.targetId === undefined || t.id === options.targetId
-  );
+  let alertSearchCount = 0;
+  try {
+    const alertSearches = await listAlertEnabledSavedSearches();
+    alertSearchCount = alertSearches.length;
+  } catch {
+    // DB may not be ready at startup; the scan loop will retry
+  }
 
   console.log('\n🏕️  CampBrain Worker\n');
   console.log(`  Started:        ${timestamp()}`);
-  console.log(`  Alert scan:     every ${intervalMinutes} minute${intervalMinutes !== 1 ? 's' : ''} (${targets.length} target${targets.length !== 1 ? 's' : ''})`);
+  console.log(`  Alert scan:     every ${intervalMinutes} minute${intervalMinutes !== 1 ? 's' : ''} (${alertSearchCount} alert-enabled saved search${alertSearchCount !== 1 ? 'es' : ''})`);
   console.log(`  Cache refresh:  every ${proactiveIntervalMinutes} minute${proactiveIntervalMinutes !== 1 ? 's' : ''} (${describeScanCoverage()})`);
-  if (targets.length > 0) {
-    for (const t of targets) console.log(`    • ${t.name}`);
-  }
   console.log('');
 
   let scanCount = 0;
@@ -91,7 +91,6 @@ export async function workerCommand(options: WorkerOptions = {}): Promise<void> 
 
     try {
       const summary = await runScan({
-        targetId: options.targetId,
         debug: options.debug,
         notify: options.notify !== false,
       });

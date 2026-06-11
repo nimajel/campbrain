@@ -4,7 +4,6 @@ import { endDb } from '../../cache/db.js';
 export interface ScanCommandOptions {
   debug?: boolean;
   notify?: boolean;
-  targetId?: string;
 }
 
 export async function scanCommand(options: ScanCommandOptions = {}): Promise<void> {
@@ -15,7 +14,6 @@ export async function scanCommand(options: ScanCommandOptions = {}): Promise<voi
     summary = await runScan({
       debug: options.debug,
       notify: options.notify !== false,
-      targetId: options.targetId,
     });
   } finally {
     await endDb();

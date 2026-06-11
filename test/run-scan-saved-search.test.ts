@@ -18,11 +18,6 @@ vi.mock('../src/saved-search/match.js', () => ({
   todayUtc: () => new Date().toISOString().slice(0, 10),
 }));
 
-// Stub the legacy alerts config (no targets file needed)
-vi.mock('../src/config/alerts.js', () => ({
-  listAlerts: vi.fn(() => []),
-}));
-
 // Stub the catalog store (for parkRegionOf)
 vi.mock('../src/catalog/catalog-store.js', () => ({
   listCatalogParks: vi.fn(() => []),
@@ -237,11 +232,6 @@ describe('runScan — saved-search source', () => {
     expect(summary.totalNewHits).toBe(1);
   });
 
-  it('saved-search source is skipped when targetId is set', async () => {
-    vi.mocked(listAlertEnabledSavedSearches).mockResolvedValue([makeSavedSearch()]);
-    await runScan({ notify: false, stateDir, targetId: 'some-target' });
-    expect(listAlertEnabledSavedSearches).not.toHaveBeenCalled();
-  });
 });
 
 // ---------------------------------------------------------------------------
