@@ -10,6 +10,7 @@ type DefinitionJson = {
   scope: unknown;
   datePattern: unknown;
   filters: unknown;
+  legacy?: unknown;
 };
 
 type SavedSearchRow = {
@@ -44,18 +45,27 @@ function rowToSavedSearch(row: SavedSearchRow): SavedSearch | null {
     emailEnabled: row.email_enabled,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    legacy: def['legacy'],
   });
 
   if (!result.success) return null;
   return result.data;
 }
 
-function toDefinition(input: SavedSearchInput | Partial<SavedSearchInput>): DefinitionJson {
+function toDefinition(input: (SavedSearchInput | Partial<SavedSearchInput>) & { legacy?: unknown }): DefinitionJson {
   return {
     scope: input.scope,
     datePattern: input.datePattern,
     filters: input.filters,
+    ...(input.legacy !== undefined ? { legacy: input.legacy } : {}),
   };
+}
+
+// sql.json() requires JSONValue; cast through unknown to satisfy the type checker.
+// The definition object is always structurally valid JSON (all values come from
+// validated zod-parsed inputs that serialize cleanly).
+function definitionAsJson(def: DefinitionJson): Parameters<ReturnType<typeof getSql>['json']>[0] {
+  return def as unknown as Parameters<ReturnType<typeof getSql>['json']>[0];
 }
 
 // ---------------------------------------------------------------------------
@@ -129,8 +139,8 @@ export async function createSavedSearch(input: SavedSearchInput): Promise<SavedS
   await sql.unsafe<SavedSearchRow[]>(
     `INSERT INTO saved_searches
        (id, user_id, provider, name, definition, alert_enabled, email_enabled, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)`,
-    [row.id, row.user_id, row.provider, row.name, JSON.stringify(row.definition), row.alert_enabled, row.email_enabled, row.created_at, row.updated_at]
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [row.id, row.user_id, row.provider, row.name, sql.json(definitionAsJson(row.definition!)), row.alert_enabled, row.email_enabled, row.created_at, row.updated_at]
   );
 
   const saved = rowToSavedSearch(row);
@@ -163,10 +173,10 @@ export async function updateSavedSearch(
 
   await sql.unsafe<SavedSearchRow[]>(
     `UPDATE saved_searches
-     SET name = $1, definition = $2::jsonb, provider = $3,
+     SET name = $1, definition = $2, provider = $3,
          alert_enabled = $4, email_enabled = $5, updated_at = $6
      WHERE id = $7`,
-    [validatedMerged.name, JSON.stringify(definition), validatedMerged.provider, validatedMerged.alertEnabled, validatedMerged.emailEnabled, now, id]
+    [validatedMerged.name, sql.json(definitionAsJson(definition)), validatedMerged.provider, validatedMerged.alertEnabled, validatedMerged.emailEnabled, now, id]
   );
 
   const updated = rowToSavedSearch({
@@ -183,6 +193,56 @@ export async function updateSavedSearch(
 
   if (!updated) throw new Error('Failed to parse saved search after update');
   return updated;
+}
+
+export async function upsertSavedSearch(search: SavedSearch): Promise<SavedSearch> {
+  const validated = SavedSearchSchema.parse(search);
+  const definition = toDefinition({
+    scope: validated.scope,
+    datePattern: validated.datePattern,
+    filters: validated.filters,
+    legacy: validated.legacy,
+  });
+
+  const sql = getSql();
+  await sql.unsafe<SavedSearchRow[]>(
+    `INSERT INTO saved_searches
+       (id, user_id, provider, name, definition, alert_enabled, email_enabled, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (id) DO UPDATE SET
+       name = EXCLUDED.name,
+       provider = EXCLUDED.provider,
+       definition = EXCLUDED.definition,
+       alert_enabled = EXCLUDED.alert_enabled,
+       email_enabled = EXCLUDED.email_enabled,
+       updated_at = EXCLUDED.updated_at`,
+    [
+      validated.id,
+      validated.userId ?? null,
+      validated.provider,
+      validated.name,
+      sql.json(definitionAsJson(definition)),
+      validated.alertEnabled,
+      validated.emailEnabled,
+      validated.createdAt,
+      validated.updatedAt,
+    ]
+  );
+
+  const saved = rowToSavedSearch({
+    id: validated.id,
+    user_id: validated.userId ?? null,
+    provider: validated.provider,
+    name: validated.name,
+    definition,
+    alert_enabled: validated.alertEnabled ?? false,
+    email_enabled: validated.emailEnabled ?? true,
+    created_at: validated.createdAt,
+    updated_at: validated.updatedAt,
+  });
+
+  if (!saved) throw new Error('Failed to parse saved search after upsert');
+  return saved;
 }
 
 export async function deleteSavedSearch(id: string): Promise<void> {

@@ -39,6 +39,8 @@ export const SavedSearchSchema = z.object({
   emailEnabled: z.boolean().default(true),
   createdAt: z.string(),                // ISO 8601
   updatedAt: z.string(),
+  // Opaque blob preserved from legacy migration; inert in v1 scanner logic.
+  legacy: z.unknown().optional(),
 });
 
 export const SavedSearchInputSchema = SavedSearchSchema.omit({ id: true, createdAt: true, updatedAt: true });

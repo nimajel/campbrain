@@ -80,12 +80,29 @@ vi.mock('../src/cache/db.js', () => {
     return [];
   }
 
+  // Simulate sql.json(obj): wrap so dispatch can unwrap it.
+  // The real postgres library sends JSONB as a typed value; we model it as { __json: value }.
+  function jsonHelper(value: unknown) {
+    return { __json: value };
+  }
+
+  // Unwrap sql.json() wrappers so dispatch sees plain objects.
+  function unwrapJsonParams(params: unknown[]): unknown[] {
+    return params.map((p) => {
+      if (p !== null && typeof p === 'object' && '__json' in (p as Record<string, unknown>)) {
+        return (p as Record<string, unknown>)['__json'];
+      }
+      return p;
+    });
+  }
+
   const mockSql = Object.assign(
     (_strings: TemplateStringsArray, ..._values: unknown[]) => [] as Record<string, unknown>[],
     {
       unsafe(sqlStr: string, params: unknown[]) {
-        return dispatch(sqlStr, params);
+        return dispatch(sqlStr, unwrapJsonParams(params));
       },
+      json: jsonHelper,
     }
   );
 
@@ -100,6 +117,7 @@ const {
   updateSavedSearch,
   deleteSavedSearch,
   listAlertEnabledSavedSearches,
+  upsertSavedSearch,
 } = await import('../src/saved-search/store.js');
 
 // ---------------------------------------------------------------------------
@@ -255,5 +273,95 @@ describe('saved-search store', () => {
     // The corrupt row should be skipped; only the valid row is returned.
     expect(list.length).toBe(1);
     expect(list[0]?.id).toBe(valid.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. upsertSavedSearch
+// ---------------------------------------------------------------------------
+
+describe('upsertSavedSearch', () => {
+  beforeEach(() => {
+    _rows = new Map();
+  });
+
+  it('inserts a new row when the id does not exist', async () => {
+    const now = new Date().toISOString();
+    const search = {
+      id: 'fixed-id-001',
+      userId: null as null,
+      provider: 'california-parks' as const,
+      name: 'Insert via upsert',
+      scope: { region: null as null, parkPageIds: ['468'] },
+      datePattern: { kind: 'fixed_range' as const, from: '2026-07-01', to: '2026-09-30' },
+      filters: { access: [] as ('drive_in' | 'hike_in' | 'boat_in')[], kinds: [] as ('tent' | 'hookup' | 'cabin')[], hide: [] as ('group' | 'equestrian' | 'walk_up')[], minNights: 1 as const },
+      alertEnabled: false,
+      emailEnabled: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await upsertSavedSearch(search);
+    const fetched = await getSavedSearch('fixed-id-001');
+    expect(fetched).toBeDefined();
+    expect(fetched!.id).toBe('fixed-id-001');
+    expect(fetched!.name).toBe('Insert via upsert');
+  });
+
+  it('updates an existing row when the id already exists (idempotent re-run)', async () => {
+    const now = new Date().toISOString();
+    const search = {
+      id: 'fixed-id-002',
+      userId: null as null,
+      provider: 'california-parks' as const,
+      name: 'Original name',
+      scope: { region: null as null, parkPageIds: ['468'] },
+      datePattern: { kind: 'any_weekend' as const, horizonDays: 90 as number },
+      filters: { access: [] as ('drive_in' | 'hike_in' | 'boat_in')[], kinds: [] as ('tent' | 'hookup' | 'cabin')[], hide: [] as ('group' | 'equestrian' | 'walk_up')[], minNights: 1 as const },
+      alertEnabled: false,
+      emailEnabled: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await upsertSavedSearch(search);
+    // Re-run with same id but different name.
+    await upsertSavedSearch({ ...search, name: 'Updated name' });
+
+    const all = await listSavedSearches();
+    expect(all.length).toBe(1);
+    expect(all[0]!.name).toBe('Updated name');
+  });
+
+  it('preserves the legacy field through a write→read round-trip', async () => {
+    const now = new Date().toISOString();
+    const legacy = {
+      enabled: true,
+      acceptableSites: ['Site A', 'Site B'],
+      bookingRule: { type: 'rolling_months_before', monthsBefore: 6, releaseTime: '08:00', timezone: 'America/Los_Angeles' },
+      maxNights: 2,
+      people: 4,
+    };
+    const search = {
+      id: 'fixed-id-003',
+      userId: null as null,
+      provider: 'california-parks' as const,
+      name: 'Round-trip legacy',
+      scope: { region: null as null, parkPageIds: ['468'] },
+      datePattern: { kind: 'fixed_range' as const, from: '2026-07-01', to: '2026-09-30' },
+      filters: { access: [] as ('drive_in' | 'hike_in' | 'boat_in')[], kinds: [] as ('tent' | 'hookup' | 'cabin')[], hide: [] as ('group' | 'equestrian' | 'walk_up')[], minNights: 1 as const },
+      alertEnabled: false,
+      emailEnabled: true,
+      createdAt: now,
+      updatedAt: now,
+      legacy,
+    };
+
+    await upsertSavedSearch(search as Parameters<typeof upsertSavedSearch>[0]);
+    const fetched = await getSavedSearch('fixed-id-003');
+    expect(fetched).toBeDefined();
+    // The legacy field must survive the round-trip.
+    const fetchedLegacy = (fetched as Record<string, unknown>)['legacy'] as typeof legacy;
+    expect(fetchedLegacy).toEqual(legacy);
   });
 });
