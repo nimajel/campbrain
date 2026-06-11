@@ -41,8 +41,10 @@ export const SavedSearchSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const SavedSearchInputSchema = SavedSearchSchema.omit({ id: true, createdAt: true, updatedAt: true });
+
 export type SavedSearch = z.infer<typeof SavedSearchSchema>;
 export type SavedSearchScope = z.infer<typeof SavedSearchScopeSchema>;
 export type SavedSearchDatePattern = z.infer<typeof SavedSearchDatePatternSchema>;
 export type SavedSearchFilters = z.infer<typeof SavedSearchFiltersSchema>;
-export type SavedSearchInput = Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'>;
+export type SavedSearchInput = z.infer<typeof SavedSearchInputSchema>;

@@ -149,9 +149,9 @@ describe('saved-search store', () => {
     expect(fetched?.name).toBe(created.name);
   });
 
-  it('getSavedSearch returns null for unknown id', async () => {
+  it('getSavedSearch returns undefined for unknown id', async () => {
     const fetched = await getSavedSearch('nonexistent');
-    expect(fetched).toBeNull();
+    expect(fetched).toBeUndefined();
   });
 
   it('listSavedSearches returns all null-userId rows', async () => {
@@ -177,7 +177,7 @@ describe('saved-search store', () => {
     const created = await createSavedSearch(makeInput());
     await deleteSavedSearch(created.id);
     const fetched = await getSavedSearch(created.id);
-    expect(fetched).toBeNull();
+    expect(fetched).toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
@@ -207,7 +207,30 @@ describe('saved-search store', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 4. Corrupt JSONB row is skipped, not thrown
+  // 4. Write-path zod validation
+  // -------------------------------------------------------------------------
+
+  it('createSavedSearch rejects input with empty name', async () => {
+    await expect(createSavedSearch({ ...makeInput(), name: '' })).rejects.toThrow();
+  });
+
+  it('createSavedSearch rejects input with minNights out of range', async () => {
+    const bad = {
+      ...makeInput(),
+      filters: { ...makeInput().filters, minNights: 5 as unknown as 1 },
+    };
+    await expect(createSavedSearch(bad)).rejects.toThrow();
+  });
+
+  it('updateSavedSearch rejects a patch that produces an invalid merged object', async () => {
+    const created = await createSavedSearch(makeInput());
+    await expect(
+      updateSavedSearch(created.id, { name: '' })
+    ).rejects.toThrow();
+  });
+
+  // -------------------------------------------------------------------------
+  // 5. Corrupt JSONB row is skipped, not thrown
   // -------------------------------------------------------------------------
 
   it('listSavedSearches skips rows with invalid JSONB definitions', async () => {

@@ -1,5 +1,5 @@
 import { getSql } from '../cache/db.js';
-import { SavedSearchSchema } from './types.js';
+import { SavedSearchSchema, SavedSearchInputSchema } from './types.js';
 import type { SavedSearch, SavedSearchInput } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ export async function listSavedSearches(userId?: string | null): Promise<SavedSe
   return results;
 }
 
-export async function getSavedSearch(id: string): Promise<SavedSearch | null> {
+export async function getSavedSearch(id: string): Promise<SavedSearch | undefined> {
   const sql = getSql();
   const rows = await sql.unsafe<SavedSearchRow[]>(
     `SELECT id, user_id, provider, name, definition, alert_enabled, email_enabled,
@@ -104,22 +104,23 @@ export async function getSavedSearch(id: string): Promise<SavedSearch | null> {
     [id]
   );
   const row = rows[0];
-  if (!row) return null;
-  return rowToSavedSearch(row);
+  if (!row) return undefined;
+  return rowToSavedSearch(row) ?? undefined;
 }
 
 export async function createSavedSearch(input: SavedSearchInput): Promise<SavedSearch> {
+  const validated = SavedSearchInputSchema.parse(input);
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
   const row: SavedSearchRow = {
     id,
-    user_id: input.userId ?? null,
-    provider: input.provider ?? 'california-parks',
-    name: input.name,
-    definition: toDefinition(input),
-    alert_enabled: input.alertEnabled ?? false,
-    email_enabled: input.emailEnabled ?? true,
+    user_id: validated.userId ?? null,
+    provider: validated.provider ?? 'california-parks',
+    name: validated.name,
+    definition: toDefinition(validated),
+    alert_enabled: validated.alertEnabled ?? false,
+    email_enabled: validated.emailEnabled ?? true,
     created_at: now,
     updated_at: now,
   };
@@ -156,7 +157,8 @@ export async function updateSavedSearch(
     emailEnabled: patch.emailEnabled !== undefined ? patch.emailEnabled : existing.emailEnabled,
   };
 
-  const definition = toDefinition(merged);
+  const validatedMerged = SavedSearchInputSchema.parse(merged);
+  const definition = toDefinition(validatedMerged);
   const sql = getSql();
 
   await sql.unsafe<SavedSearchRow[]>(
@@ -164,17 +166,17 @@ export async function updateSavedSearch(
      SET name = $1, definition = $2::jsonb, provider = $3,
          alert_enabled = $4, email_enabled = $5, updated_at = $6
      WHERE id = $7`,
-    [merged.name, JSON.stringify(definition), merged.provider, merged.alertEnabled, merged.emailEnabled, now, id]
+    [validatedMerged.name, JSON.stringify(definition), validatedMerged.provider, validatedMerged.alertEnabled, validatedMerged.emailEnabled, now, id]
   );
 
   const updated = rowToSavedSearch({
     id,
-    user_id: merged.userId ?? null,
-    provider: merged.provider,
-    name: merged.name,
+    user_id: validatedMerged.userId ?? null,
+    provider: validatedMerged.provider,
+    name: validatedMerged.name,
     definition,
-    alert_enabled: merged.alertEnabled ?? false,
-    email_enabled: merged.emailEnabled ?? true,
+    alert_enabled: validatedMerged.alertEnabled ?? false,
+    email_enabled: validatedMerged.emailEnabled ?? true,
     created_at: existing.createdAt,
     updated_at: now,
   });
