@@ -93,7 +93,8 @@ export function writeLatestScan(
 
 export function hitKey(h: AvailabilityHitRecord): string {
   if (h.savedSearchId !== undefined) {
-    return `ss:${h.savedSearchId}|${h.parkPageId ?? ''}|${h.campgroundName ?? ''}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`;
+    if (!h.parkPageId) throw new Error(`hitKey: savedSearchId is set but parkPageId is missing (savedSearchId=${h.savedSearchId})`);
+    return `ss:${h.savedSearchId}|${h.parkPageId}|${h.campgroundName ?? ''}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`;
   }
   return `${h.targetId}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`;
 }

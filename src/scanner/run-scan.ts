@@ -1,7 +1,7 @@
 import path from 'path';
 import { listAlerts } from '../config/alerts.js';
 import { generateScanCandidates } from '../rules/scan-candidates.js';
-import { getEntriesForPark } from '../cache/availability-cache.js';
+import { getEntriesForPark, searchAvailableStays } from '../cache/availability-cache.js';
 import { matchCandidates } from './match-candidates.js';
 import { serializeResult } from '../types/scanner.js';
 import {
@@ -10,9 +10,15 @@ import {
   readHitsState,
   writeHitsState,
   resultsToHitRecords,
+  openingsToHitRecords,
   reconcileHits,
+  savedSearchCheckedKeys,
   hitKey,
 } from '../state/scan-state.js';
+import { listAlertEnabledSavedSearches } from '../saved-search/store.js';
+import { matchSavedSearch } from '../saved-search/match.js';
+import { listCatalogParks } from '../catalog/catalog-store.js';
+import { classifyRegion } from '../catalog/regions.js';
 import { ConsoleNotificationService } from '../notifications/console-notification-service.js';
 import { EmailNotificationService } from '../notifications/email-notification-service.js';
 import type { AvailabilityWindowEntry } from '../cache/types.js';
@@ -20,6 +26,8 @@ import type { ScanResult, ScanResultJSON } from '../types/scanner.js';
 import type { AvailabilityAlert } from '../notifications/notification-service.js';
 import type { AvailabilityHitRecord } from '../state/scan-state.js';
 import type { Alert } from '../config/alerts.js';
+import type { SavedSearch } from '../saved-search/types.js';
+import type { CampRegion } from '../catalog/regions.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +58,23 @@ export interface RunScanSummary {
 }
 
 // ---------------------------------------------------------------------------
+// parkRegionOf resolver — built once from the catalog for the full scan run
+// ---------------------------------------------------------------------------
+
+function buildParkRegionOf(): (parkPageId: string) => CampRegion | null {
+  const parks = listCatalogParks();
+  const regionMap = new Map<string, CampRegion | null>();
+  for (const park of parks) {
+    if (park.lat !== undefined && park.lon !== undefined) {
+      regionMap.set(park.parkPageId, classifyRegion(park.lat, park.lon));
+    } else {
+      regionMap.set(park.parkPageId, null);
+    }
+  }
+  return (parkPageId: string) => regionMap.get(parkPageId) ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -73,6 +98,20 @@ function buildAvailabilityAlerts(
   }
 
   return hits.flatMap((hit) => {
+    if (hit.savedSearchId !== undefined) {
+      // Saved-search hit: source names from the hit record itself
+      const item: AvailabilityAlert = {
+        hit,
+        parkName: hit.parkName ?? '',
+        campgroundName: hit.campgroundName ?? '',
+        sourceUrl: '',
+        checkedAt,
+      };
+      if (hit.availabilityAsOf !== undefined) item.availabilityAsOf = hit.availabilityAsOf;
+      return [item];
+    }
+
+    // Legacy Target hit
     const alert = alertsById.get(hit.targetId);
     if (!alert) return [];
     const result = resultByKey.get(hitKey(hit));
@@ -136,7 +175,12 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
   const allIncoming: AvailabilityHitRecord[] = [];
   const checkedKeys = new Set<string>();
   const alertsById = new Map<string, Alert>();
+  const savedSearchesById = new Map<string, SavedSearch>();
   const serializedById = new Map<string, ScanResultJSON[]>();
+
+  // ---------------------------------------------------------------------------
+  // Legacy Target loop
+  // ---------------------------------------------------------------------------
 
   for (const alert of alerts) {
     console.log(`Scanning: ${alert.name}`);
@@ -171,6 +215,64 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
     targetResults.push({ alert, results, newHitCount: 0 });
   }
 
+  // ---------------------------------------------------------------------------
+  // Saved-search source (alert_enabled=true only)
+  // Only runs when no targetId filter is active (saved searches don't have a
+  // legacy targetId to filter on).
+  // ---------------------------------------------------------------------------
+
+  if (!options.targetId) {
+    let savedSearches: SavedSearch[] = [];
+    try {
+      savedSearches = await listAlertEnabledSavedSearches();
+    } catch (err: unknown) {
+      console.error(`Saved-search store unavailable: ${String(err)} — skipping saved-search source`);
+    }
+
+    if (savedSearches.length > 0) {
+      // Build the region resolver once and share across all searches this run.
+      const parkRegionOf = buildParkRegionOf();
+      // Read existing hits once for the savedSearchCheckedKeys computation.
+      const existingBeforeLoop = readHitsState(stateDir);
+
+      for (const search of savedSearches) {
+        console.log(`Scanning saved search: ${search.name}`);
+        savedSearchesById.set(search.id, search);
+
+        let openings: Awaited<ReturnType<typeof matchSavedSearch>>;
+        try {
+          openings = await matchSavedSearch(search, {
+            searchAvailableStays,
+            getEntriesForPark,
+            parkRegionOf,
+          }, today);
+        } catch (err: unknown) {
+          console.error(`  Match failed for saved search "${search.name}": ${String(err)} — skipping`);
+          continue;
+        }
+
+        console.log(`  ${openings.length} opening(s) found`);
+
+        // Set targetName to the saved search name so email subjects are informative.
+        const hitRecords = openingsToHitRecords(openings, now).map((r) => ({
+          ...r,
+          targetName: search.name,
+        }));
+
+        // Merge per-search checkedKeys into the global set for reconcileHits.
+        const incomingKeys = new Set(hitRecords.map(hitKey));
+        const ssCheckedKeys = savedSearchCheckedKeys(existingBeforeLoop, search.id, incomingKeys);
+        for (const k of ssCheckedKeys) checkedKeys.add(k);
+
+        allIncoming.push(...hitRecords);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reconcile + notify
+  // ---------------------------------------------------------------------------
+
   const existing = readHitsState(stateDir);
   const { merged, toNotify } = reconcileHits(existing, allIncoming, checkedKeys, now, today);
   writeHitsState(stateDir, merged);
@@ -190,8 +292,19 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
     // Console is best-effort and never gates state.
     await new ConsoleNotificationService().notify(items);
 
-    const emailItems = items.filter((i) => alertsById.get(i.hit.targetId)?.emailEnabled);
-    const consoleOnlyItems = items.filter((i) => !alertsById.get(i.hit.targetId)?.emailEnabled);
+    // Email gating: legacy Alerts use alert.emailEnabled; saved searches use search.emailEnabled.
+    const emailItems = items.filter((i) => {
+      if (i.hit.savedSearchId !== undefined) {
+        return savedSearchesById.get(i.hit.savedSearchId)?.emailEnabled ?? false;
+      }
+      return alertsById.get(i.hit.targetId)?.emailEnabled ?? false;
+    });
+    const consoleOnlyItems = items.filter((i) => {
+      if (i.hit.savedSearchId !== undefined) {
+        return !(savedSearchesById.get(i.hit.savedSearchId)?.emailEnabled ?? false);
+      }
+      return !(alertsById.get(i.hit.targetId)?.emailEnabled ?? false);
+    });
 
     let emailResult: 'delivered' | 'skipped-unconfigured' | 'failed' = 'delivered';
     if (emailItems.length > 0) {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   hitKey,
   openingsToHitRecords,
@@ -171,5 +171,123 @@ describe('openingsToHitRecords', () => {
     const records = openingsToHitRecords(openings, now);
     expect(records).toHaveLength(3);
     expect(records.map((r) => r.siteName)).toEqual(['Site 1', 'Site 2', 'Site 3']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hitKey guard: throws when savedSearchId is set but parkPageId is missing
+// ---------------------------------------------------------------------------
+
+describe('hitKey guard — missing parkPageId', () => {
+  const ts = '2026-06-10T12:00:00.000Z';
+
+  it('throws a descriptive error when savedSearchId is set and parkPageId is absent', () => {
+    const record: AvailabilityHitRecord = {
+      targetId: '',
+      targetName: '',
+      savedSearchId: 'ss-abc',
+      // parkPageId intentionally omitted
+      siteName: 'Site 1',
+      arrivalDate: '2026-08-01',
+      departureDate: '2026-08-03',
+      nights: 2,
+      firstSeenAt: ts,
+      lastSeenAt: ts,
+    };
+    expect(() => hitKey(record)).toThrow(/parkPageId is missing/);
+  });
+
+  it('throws mentioning the savedSearchId', () => {
+    const record: AvailabilityHitRecord = {
+      targetId: '',
+      targetName: '',
+      savedSearchId: 'ss-xyz',
+      siteName: 'Site 1',
+      arrivalDate: '2026-08-01',
+      departureDate: '2026-08-03',
+      nights: 2,
+      firstSeenAt: ts,
+      lastSeenAt: ts,
+    };
+    expect(() => hitKey(record)).toThrow(/ss-xyz/);
+  });
+
+  it('does NOT throw when parkPageId is present', () => {
+    const record: AvailabilityHitRecord = {
+      targetId: '',
+      targetName: '',
+      savedSearchId: 'ss-abc',
+      parkPageId: 'park-1',
+      siteName: 'Site 1',
+      arrivalDate: '2026-08-01',
+      departureDate: '2026-08-03',
+      nights: 2,
+      firstSeenAt: ts,
+      lastSeenAt: ts,
+    };
+    expect(() => hitKey(record)).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// matchSavedSearch — getEntriesForPark called at most once per park
+// (tested via the match module directly)
+// ---------------------------------------------------------------------------
+
+describe('matchSavedSearch — per-park entries memoization', () => {
+  it('calls getEntriesForPark at most once per distinct parkPageId across all windows', async () => {
+    const { matchSavedSearch: match } = await import('../src/saved-search/match.js');
+    const { expandStayWindows: expand } = await import('../src/saved-search/match.js');
+    void expand; // used indirectly
+
+    const parkA = 'park-a';
+    const parkB = 'park-b';
+
+    // searchAvailableStays returns both parks on every call (two windows total)
+    const searchStays = vi.fn(async () => [
+      {
+        parkPageId: parkA,
+        parkName: 'Park A',
+        campgrounds: [{ name: 'CG', nightlyFee: null, bookingUrl: null, availableSites: ['Site 1'], walkUpSites: [] }],
+      },
+      {
+        parkPageId: parkB,
+        parkName: 'Park B',
+        campgrounds: [{ name: 'CG', nightlyFee: null, bookingUrl: null, availableSites: ['Site 2'], walkUpSites: [] }],
+      },
+    ]);
+    const getEntries = vi.fn(async (_parkPageId: string) => [] as import('../src/cache/types.js').AvailabilityWindowEntry[]);
+    const regionOf = vi.fn(() => null);
+
+    // Use a fixed_range search that produces two windows (from Jul 1 to Jul 3, minNights=1 → 2 windows)
+    const search: import('../src/saved-search/types.js').SavedSearch = {
+      id: 'ss-memo',
+      userId: null,
+      provider: 'california-parks',
+      name: 'Memo Test',
+      scope: { region: null, parkPageIds: [] },
+      datePattern: { kind: 'fixed_range', from: '2026-07-01', to: '2026-07-03' },
+      filters: { access: [], kinds: [], hide: [], minNights: 1 },
+      alertEnabled: true,
+      emailEnabled: false,
+      createdAt: '2026-06-01T00:00:00.000Z',
+      updatedAt: '2026-06-01T00:00:00.000Z',
+    };
+
+    await match(search, {
+      searchAvailableStays: searchStays,
+      getEntriesForPark: getEntries,
+      parkRegionOf: regionOf,
+    }, '2026-06-10');
+
+    // Two windows: 07-01 and 07-02; each returns both parks.
+    // Without memoization: 4 calls (2 windows × 2 parks).
+    // With memoization: exactly 2 calls (once per park).
+    const calledIds = getEntries.mock.calls.map((c) => c[0]);
+    expect(calledIds).toContain(parkA);
+    expect(calledIds).toContain(parkB);
+    expect(calledIds.filter((id) => id === parkA)).toHaveLength(1);
+    expect(calledIds.filter((id) => id === parkB)).toHaveLength(1);
+    expect(getEntries).toHaveBeenCalledTimes(2);
   });
 });

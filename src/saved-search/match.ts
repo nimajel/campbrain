@@ -121,6 +121,15 @@ export async function matchSavedSearch(
   const { searchAvailableStays: searchStays, parkRegionOf, getEntriesForPark } = deps;
   const { filters, scope } = search;
 
+  // Memo: at most one getEntriesForPark call per parkPageId per invocation.
+  const entriesCache = new Map<string, Promise<AvailabilityWindowEntry[]>>();
+  function cachedGetEntries(parkPageId: string): Promise<AvailabilityWindowEntry[]> {
+    if (!entriesCache.has(parkPageId)) {
+      entriesCache.set(parkPageId, getEntriesForPark(parkPageId));
+    }
+    return entriesCache.get(parkPageId)!;
+  }
+
   const openings: SavedSearchOpening[] = [];
 
   for (const window of windows) {
@@ -138,7 +147,7 @@ export async function matchSavedSearch(
       if (!parkPassesScope(park.parkPageId, scope, parkRegionOf)) continue;
 
       const dates = stayDates(window);
-      const entries: AvailabilityWindowEntry[] = await getEntriesForPark(park.parkPageId);
+      const entries: AvailabilityWindowEntry[] = await cachedGetEntries(park.parkPageId);
       const availabilityAsOf = oldestCoveringScan(entries, dates);
 
       for (const cg of park.campgrounds) {
