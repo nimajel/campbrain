@@ -26,7 +26,7 @@ Nav membership is based on `web/app/components/nav-links.ts` (7 nav links: `/exp
 
 - `/catalog`, `/scan`, `/targets`, `/windows` are not in the nav and are not linked from any core surface. They may be pruned in the planned surface consolidation.
 - `/targets` is a lower-level predecessor to `/alerts`; both read from `data/targets.json` via `loadTargets()` / `listAlertsWeb()`. If `/alerts` is the canonical CRUD surface, `/targets` is redundant.
-- `/scan` overlaps with the old alert scan trigger in `/alerts` (now removed); it operates on raw `Target` objects. `POST /api/alerts/[id]/scan` has been deleted; `/scan` is likely broken.
+- `/scan` overlaps with the old alert scan trigger in `/alerts` (now removed); it operates on raw `Target` objects via `POST /api/scan` (a preview-only cache-backed scan that does not write hit state or notify). Verified working post-retirement; `POST /api/alerts/[id]/scan` was the route that was deleted.
 - `/windows` uses `getBookingWindows()` from `web/lib/windows.ts` and `loadTargets()`. It is useful for the reservation-window engine but has no inbound links.
 - Routes consumed by possibly-legacy pages: `/api/scan` (by `/scan`), `/api/targets` (by `/targets`), `/api/alerts` (by `/alerts`) — see [api.md](../api.md).
 
