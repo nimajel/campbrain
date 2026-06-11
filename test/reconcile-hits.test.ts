@@ -88,25 +88,25 @@ describe('reconcileHits', () => {
   });
 });
 
-describe('hits state v2 migration', () => {
+describe('hits state migration', () => {
   let dir: string;
   afterEach(() => { if (dir) fs.rmSync(dir, { recursive: true, force: true }); });
 
-  it('backfills notifiedAt on legacy v1 files', () => {
+  it('v1→v3: backfills notifiedAt on legacy files and upgrades version', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'campbrain-hits-'));
     const legacy = { hits: [makeHit()] }; // no version, no notifiedAt
     fs.writeFileSync(path.join(dir, 'availability-hits.json'), JSON.stringify(legacy), 'utf-8');
     const state = readHitsState(dir);
-    expect(state.version).toBe(2);
+    expect(state.version).toBe(3);
     expect(state.hits[0]!.notifiedAt).toBe(state.hits[0]!.lastSeenAt);
   });
 
-  it('leaves v2 files unmodified', () => {
+  it('v2→v3: records load unchanged, notifiedAt is NOT injected', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'campbrain-hits-'));
-    const v2: HitsState = { version: 2, hits: [makeHit()] }; // intentionally no notifiedAt
-    writeHitsState(dir, v2);
+    const v2 = { version: 2, hits: [makeHit()] }; // intentionally no notifiedAt
+    fs.writeFileSync(path.join(dir, 'availability-hits.json'), JSON.stringify(v2, null, 2), 'utf-8');
     const state = readHitsState(dir);
-    expect(state.version).toBe(2);
+    expect(state.version).toBe(3);
     expect(state.hits[0]!.notifiedAt).toBeUndefined();
   });
 });

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import FindCampsitesClient from './FindCampsitesClient';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,9 @@ export default function FindCampsitesPage() {
           Search available campsites across California
         </p>
       </div>
-      <FindCampsitesClient />
+      <Suspense>
+        <FindCampsitesClient />
+      </Suspense>
     </>
   );
 }

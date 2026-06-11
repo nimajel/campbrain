@@ -1,5 +1,5 @@
 import { listAlertsWeb } from '../../lib/alerts';
-import { getActiveOpenings } from '../../lib/state';
+import { getActiveOpenings, hitKey } from '../../lib/state';
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -40,11 +40,23 @@ export default function RecentOpenings({ limit }: { limit?: number }) {
             <tbody>
               {shown.map((h) => {
                 const alert = alertsById.get(h.targetId);
+                const parkCampground =
+                  h.savedSearchId && h.parkName
+                    ? `${h.parkName}${h.campgroundName ? ` · ${h.campgroundName}` : ''}`
+                    : alert
+                    ? `${alert.parkName} · ${alert.campgroundName}`
+                    : '—';
                 return (
-                  <tr key={`${h.targetId}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`}>
-                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{h.targetName}</td>
+                  <tr key={hitKey(h)}>
+                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>
+                      {h.savedSearchId ? (
+                        <a href="/saved">{h.targetName}</a>
+                      ) : (
+                        h.targetName
+                      )}
+                    </td>
                     <td style={{ fontSize: 12 }}>
-                      {alert ? `${alert.parkName} · ${alert.campgroundName}` : '—'}
+                      {parkCampground}
                     </td>
                     <td><span className="badge badge-match">{h.siteName}</span></td>
                     <td style={{ fontSize: 12 }}>

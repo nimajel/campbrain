@@ -10,6 +10,8 @@ import {
   hitKey,
 } from '../../src/state/scan-state';
 
+export { hitKey } from '../../src/state/scan-state';
+
 export type {
   LatestScanSummary,
   LatestScanState,

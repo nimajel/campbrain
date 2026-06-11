@@ -14,6 +14,7 @@ import {
 import type {
   LatestScanSummary,
   AvailabilityHitRecord,
+  HitsState,
 } from '../src/state/scan-state.js';
 import type { ScanResultJSON } from '../src/types/scanner.js';
 
@@ -140,7 +141,7 @@ describe('writeLatestScan / readLatestScanState', () => {
 
 describe('readHitsState', () => {
   it('returns empty hits array when state file does not exist', () => {
-    expect(readHitsState(dir)).toEqual({ version: 2, hits: [] });
+    expect(readHitsState(dir)).toEqual({ version: 3, hits: [] });
   });
 });
 
@@ -150,6 +151,48 @@ describe('writeHitsState / readHitsState', () => {
     writeHitsState(dir, { hits: [hit] });
     const state = readHitsState(dir);
     expect(state.hits).toHaveLength(1);
+    expect(state.hits[0]).toEqual(hit);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v3 migration
+// ---------------------------------------------------------------------------
+
+describe('hits state v3 migration', () => {
+  it('returns version 3 when state file does not exist', () => {
+    expect(readHitsState(dir).version).toBe(3);
+  });
+
+  it('v2 file loads as version 3 with records unchanged (no notifiedAt rewrite)', () => {
+    const hit = makeHitRecord({ notifiedAt: '2026-05-28T12:05:00.000Z' });
+    const v2: HitsState = { version: 2, hits: [hit] };
+    writeFileSync(join(dir, 'availability-hits.json'), JSON.stringify(v2), 'utf-8');
+    const state = readHitsState(dir);
+    expect(state.version).toBe(3);
+    expect(state.hits[0]!.notifiedAt).toBe('2026-05-28T12:05:00.000Z');
+    expect(state.hits[0]!.siteName).toBe(hit.siteName);
+  });
+
+  it('v2 file with no notifiedAt does NOT get one injected (no burst)', () => {
+    const hit = makeHitRecord();
+    const v2: HitsState = { version: 2, hits: [hit] };
+    writeFileSync(join(dir, 'availability-hits.json'), JSON.stringify(v2), 'utf-8');
+    const state = readHitsState(dir);
+    expect(state.hits[0]!.notifiedAt).toBeUndefined();
+  });
+
+  it('v3 file round-trips without modification', () => {
+    const hit = makeHitRecord({
+      savedSearchId: 'ss-abc',
+      parkPageId: 'park-1',
+      parkName: 'Park 1',
+      campgroundName: 'Main CG',
+      notifiedAt: '2026-05-28T12:00:00.000Z',
+    });
+    writeHitsState(dir, { version: 3, hits: [hit] });
+    const state = readHitsState(dir);
+    expect(state.version).toBe(3);
     expect(state.hits[0]).toEqual(hit);
   });
 });

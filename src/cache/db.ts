@@ -177,6 +177,31 @@ export async function initDb(): Promise<void> {
   await db`CREATE INDEX IF NOT EXISTS idx_scan_windows_end ON scan_windows(window_end)`;
   await db`CREATE INDEX IF NOT EXISTS idx_sites_park ON sites(provider_id, park_page_id)`;
 
+  await db`
+    CREATE TABLE IF NOT EXISTS saved_searches (
+      id           TEXT PRIMARY KEY,
+      user_id      TEXT,
+      provider     TEXT NOT NULL DEFAULT 'california-parks'
+                     REFERENCES providers(provider_id),
+      name         TEXT NOT NULL,
+      definition   JSONB NOT NULL,
+      alert_enabled BOOLEAN NOT NULL DEFAULT false,
+      email_enabled BOOLEAN NOT NULL DEFAULT true,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
+  await db`
+    CREATE INDEX IF NOT EXISTS idx_saved_searches_user
+      ON saved_searches(user_id)
+  `;
+
+  await db`
+    CREATE INDEX IF NOT EXISTS idx_saved_searches_alert_enabled
+      ON saved_searches(alert_enabled) WHERE alert_enabled = true
+  `;
+
   await db.unsafe(MV_DEFINITION);
 
   await db`

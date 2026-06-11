@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore.js';
 import type { Target } from '../config/schemas.js';
 import type { ScanCandidate } from '../types/scanner.js';
+import { weekendArrivals } from './weekend-arrivals.js';
 
 dayjs.extend(isSameOrBefore);
 
@@ -114,38 +115,33 @@ function generateWeekendRange(target: Target): ScanCandidate[] {
 
 export function generateNextAvailableWeekend(target: Target, today?: string): ScanCandidate[] {
   const { nextWeeksCount = 12, minNights, maxNights } = target;
-  const base = today ? dayjs(today) : dayjs();
-  const candidates: ScanCandidate[] = [];
-  let current = base.add(1, 'day');
-  let weeksFound = 0;
+  const todayStr = today ?? dayjs().format('YYYY-MM-DD');
+  const horizonDays = nextWeeksCount * 7;
 
-  while (weeksFound < nextWeeksCount) {
-    const dow = current.day();
+  // Get all Fri/Sat arrival dates in chronological order (minNights=1 to include Sat arrivals;
+  // we apply our own gate below so that the caller's minNights/maxNights are respected exactly).
+  const arrivals = weekendArrivals(todayStr, horizonDays, 1);
+  const candidates: ScanCandidate[] = [];
+
+  for (const { arrivalDate } of arrivals) {
+    const dow = dayjs(arrivalDate).day();
 
     if (dow === 5) {
-      // Friday arrivals: minNights to maxNights
+      // Friday: emit one candidate per night count from minNights to maxNights
       for (let n = minNights; n <= maxNights; n++) {
         candidates.push({
-          arrivalDate: current.format('YYYY-MM-DD'),
+          arrivalDate,
           nights: n,
-          endDate: current.add(n, 'day').format('YYYY-MM-DD'),
+          endDate: dayjs(arrivalDate).add(n, 'day').format('YYYY-MM-DD'),
         });
       }
-
-      // Saturday arrivals: 1N (Sat-Sun) if allowed by minNights
-      if (minNights <= 1) {
-        const saturday = current.add(1, 'day');
-        candidates.push({
-          arrivalDate: saturday.format('YYYY-MM-DD'),
-          nights: 1,
-          endDate: saturday.add(1, 'day').format('YYYY-MM-DD'),
-        });
-      }
-
-      weeksFound++;
-      current = current.add(7, 'day'); // jump to next Friday
-    } else {
-      current = current.add(1, 'day');
+    } else if (dow === 6 && minNights <= 1) {
+      // Saturday: always 1N (Sat→Sun); skip when minNights > 1
+      candidates.push({
+        arrivalDate,
+        nights: 1,
+        endDate: dayjs(arrivalDate).add(1, 'day').format('YYYY-MM-DD'),
+      });
     }
   }
 

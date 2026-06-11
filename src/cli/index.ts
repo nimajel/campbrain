@@ -11,6 +11,7 @@ import { dbInitCommand } from './commands/db-init.js';
 import { dbMigrateCommand } from './commands/db-migrate.js';
 import { dbBackfillTypesCommand } from './commands/db-backfill-types.js';
 import { notifyTestCommand } from './commands/notify-test.js';
+import { migrateTargetsCommand } from './commands/migrate-targets.js';
 
 program
   .name('campbrain')
@@ -201,6 +202,13 @@ dbCmd.command('backfill-types')
   .description('Classify existing sites rows by name and set type columns')
   .action(async () => {
     try { await dbBackfillTypesCommand(); }
+    catch (e) { console.error(e); process.exit(1); }
+  });
+
+dbCmd.command('migrate-targets')
+  .description('Migrate data/targets.json → saved_searches table (idempotent)')
+  .action(async () => {
+    try { await migrateTargetsCommand(); }
     catch (e) { console.error(e); process.exit(1); }
   });
 
