@@ -1,4 +1,5 @@
 import { getAvailableSitesForStay } from '../cache/availability-cache.js';
+import { oldestCoveringScan } from '../cache/freshness.js';
 import type { AvailabilityWindowEntry } from '../cache/types.js';
 import { classifySite } from '../catalog/site-classifier.js';
 import type { Target } from '../config/schemas.js';
@@ -12,18 +13,6 @@ function stayDates(arrivalDate: string, nights: number): string[] {
     d.setDate(d.getDate() + 1);
   }
   return dates;
-}
-
-/** Oldest scannedAt among windows overlapping the stay — most conservative freshness. */
-function oldestCoveringScan(
-  windows: AvailabilityWindowEntry[],
-  dates: string[],
-): string | undefined {
-  const covering = windows.filter((w) =>
-    dates.some((d) => d >= w.windowStart && d <= w.windowEnd)
-  );
-  if (covering.length === 0) return undefined;
-  return covering.map((w) => w.scannedAt).sort()[0];
 }
 
 /**
