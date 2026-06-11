@@ -118,16 +118,29 @@ export function generateNextAvailableWeekend(target: Target, today?: string): Sc
   const todayStr = today ?? dayjs().format('YYYY-MM-DD');
   const horizonDays = nextWeeksCount * 7;
 
+  // Get all Fri/Sat arrival dates in chronological order (minNights=1 to include Sat arrivals;
+  // we apply our own gate below so that the caller's minNights/maxNights are respected exactly).
+  const arrivals = weekendArrivals(todayStr, horizonDays, 1);
   const candidates: ScanCandidate[] = [];
 
-  for (let n = minNights; n <= maxNights; n++) {
-    const clampedMin = Math.max(1, Math.min(3, n)) as 1 | 2 | 3;
-    const arrivals = weekendArrivals(todayStr, horizonDays, clampedMin);
-    for (const { arrivalDate, nights } of arrivals) {
+  for (const { arrivalDate } of arrivals) {
+    const dow = dayjs(arrivalDate).day();
+
+    if (dow === 5) {
+      // Friday: emit one candidate per night count from minNights to maxNights
+      for (let n = minNights; n <= maxNights; n++) {
+        candidates.push({
+          arrivalDate,
+          nights: n,
+          endDate: dayjs(arrivalDate).add(n, 'day').format('YYYY-MM-DD'),
+        });
+      }
+    } else if (dow === 6 && minNights <= 1) {
+      // Saturday: always 1N (Sat→Sun); skip when minNights > 1
       candidates.push({
         arrivalDate,
-        nights,
-        endDate: dayjs(arrivalDate).add(nights, 'day').format('YYYY-MM-DD'),
+        nights: 1,
+        endDate: dayjs(arrivalDate).add(1, 'day').format('YYYY-MM-DD'),
       });
     }
   }

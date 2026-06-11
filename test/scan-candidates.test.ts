@@ -250,3 +250,65 @@ describe('generateNextAvailableWeekend export', () => {
     expect(typeof generateNextAvailableWeekend).toBe('function');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Ordering invariant: date-primary emission
+// ---------------------------------------------------------------------------
+
+describe('generateNextAvailableWeekend — date-primary ordering', () => {
+  // today = Thursday 2026-05-28 → next Friday = 2026-05-29, Saturday = 2026-05-30
+  const TODAY = '2026-05-28';
+
+  it('emits candidates[0] and candidates[1] as the SAME arrival date with nights 1 then 2', () => {
+    const target = makeTarget({
+      dateMode: 'next_available_weekend',
+      minNights: 1,
+      maxNights: 2,
+      nextWeeksCount: 2,
+    });
+    const candidates = generateNextAvailableWeekend(target, TODAY);
+    // Date-primary: first arrival date (Fri 2026-05-29) with all night variants before moving on
+    expect(candidates[0]?.arrivalDate).toBe('2026-05-29');
+    expect(candidates[0]?.nights).toBe(1);
+    expect(candidates[1]?.arrivalDate).toBe('2026-05-29');
+    expect(candidates[1]?.nights).toBe(2);
+  });
+
+  it('emits Sat 1N immediately after all Fri variants for the same weekend', () => {
+    const target = makeTarget({
+      dateMode: 'next_available_weekend',
+      minNights: 1,
+      maxNights: 2,
+      nextWeeksCount: 2,
+    });
+    const candidates = generateNextAvailableWeekend(target, TODAY);
+    // After Fri 1N and Fri 2N, next should be Sat 1N (not the next week's Fri)
+    expect(candidates[2]?.arrivalDate).toBe('2026-05-30');
+    expect(candidates[2]?.nights).toBe(1);
+  });
+
+  it('produces no duplicates with maxNights=4', () => {
+    const target = makeTarget({
+      dateMode: 'next_available_weekend',
+      minNights: 1,
+      maxNights: 4,
+      nextWeeksCount: 1,
+    });
+    const candidates = generateNextAvailableWeekend(target, TODAY);
+    const keys = candidates.map((c) => `${c.arrivalDate}/${c.nights}`);
+    const unique = new Set(keys);
+    expect(unique.size).toBe(keys.length);
+  });
+
+  it('emits a Fri/4N candidate when maxNights=4', () => {
+    const target = makeTarget({
+      dateMode: 'next_available_weekend',
+      minNights: 1,
+      maxNights: 4,
+      nextWeeksCount: 1,
+    });
+    const candidates = generateNextAvailableWeekend(target, TODAY);
+    const keys = candidates.map((c) => `${c.arrivalDate}/${c.nights}`);
+    expect(keys).toContain('2026-05-29/4');
+  });
+});
