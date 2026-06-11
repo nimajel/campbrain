@@ -1,15 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dayjs from 'dayjs';
 import SiteFilterPanel from '../components/SiteFilterPanel';
 import ProviderBadge from '../../components/ProviderBadge';
+import SaveSearchModal from '../../components/SaveSearchModal';
 import { injectBookingDates } from '../../lib/booking-url';
 import { ALL_REGIONS, REGION_LABELS } from '../../lib/regions';
 import { EMPTY_TAXONOMY, taxonomyToParams } from '../../lib/site-taxonomy';
 import type { TaxonomyState } from '../../lib/site-taxonomy';
 import type { CampRegion } from '../../lib/regions';
 import type { SearchApiResponse, SearchParkResponse } from '../api/search/route';
+import { suggestSearchName } from '../../lib/saved-search-display';
+import type { SiteAccess, SiteKind, HideTarget } from '../../../src/cache/availability-cache.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -199,17 +203,75 @@ function ParkCard({
 }
 
 // ---------------------------------------------------------------------------
+// SavedSearchBanner
+// ---------------------------------------------------------------------------
+
+function SavedSearchBanner({ id }: { id: string }) {
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/saved-searches/${encodeURIComponent(id)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ savedSearch: { name: string } }>) : null))
+      .then((json) => {
+        if (json) setName(json.savedSearch.name);
+      })
+      .catch(() => null);
+  }, [id]);
+
+  if (!name) return null;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 14px',
+        background: 'var(--accent-soft)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        marginBottom: 16,
+        fontSize: 13,
+      }}
+    >
+      <span style={{ color: 'var(--muted)' }}>Showing:</span>
+      <strong>{name}</strong>
+      <a href={`/saved`} style={{ marginLeft: 'auto', fontSize: 12 }}>
+        Edit this search
+      </a>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 export default function FindCampsitesClient() {
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [selectedRegion, setSelectedRegion] = useState<CampRegion | null>(null);
-  const [taxonomy, setTaxonomy] = useState<TaxonomyState>(EMPTY_TAXONOMY);
+  const searchParams = useSearchParams();
+
+  // Read URL params for initial state (supports savedSearch= round-trip)
+  const initFrom = searchParams.get('from') ?? '';
+  const initTo = searchParams.get('to') ?? '';
+  const initRegion = (searchParams.get('region') as CampRegion | null) ?? null;
+  const initAccess = searchParams.get('access')?.split(',').filter(Boolean) as SiteAccess[] ?? [];
+  const initKinds = searchParams.get('kinds')?.split(',').filter(Boolean) as SiteKind[] ?? [];
+  const initHide = searchParams.get('hide')?.split(',').filter(Boolean) as HideTarget[] ?? [];
+  const savedSearchId = searchParams.get('savedSearch');
+
+  const [checkIn, setCheckIn] = useState(initFrom);
+  const [checkOut, setCheckOut] = useState(initTo);
+  const [selectedRegion, setSelectedRegion] = useState<CampRegion | null>(initRegion);
+  const [taxonomy, setTaxonomy] = useState<TaxonomyState>({
+    access: initAccess,
+    kinds: initKinds,
+    hide: initHide,
+  });
   const [data, setData] = useState<SearchApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
 
   const nights = checkIn && checkOut ? dayjs(checkOut).diff(dayjs(checkIn), 'day') : 0;
   const showWalkUp = !taxonomy.hide.includes('walk_up');
@@ -255,8 +317,41 @@ export default function FindCampsitesClient() {
   const walkUpOnlyParks = data?.parks.filter((p) => p.totalAvailable === 0) ?? [];
   const totalAvailable = bookableParks.reduce((n, p) => n + p.totalAvailable, 0);
 
+  // Minights from taxonomy (not in TaxonomyState; kept for saved-search prefill only)
+  const minNightsParam = searchParams.get('minNights');
+  const minNightsValue: 1 | 2 | 3 =
+    minNightsParam === '2' ? 2 : minNightsParam === '3' ? 3 : 1;
+
+  function handleSaved(saved: { name: string }) {
+    setSaveToast(`"${saved.name}" saved!`);
+    setTimeout(() => setSaveToast(null), 3000);
+  }
+
   return (
     <div>
+      {/* Saved-search banner */}
+      {savedSearchId && <SavedSearchBanner id={savedSearchId} />}
+
+      {/* Toast confirmation */}
+      {saveToast && (
+        <div
+          style={{
+            padding: '8px 14px',
+            background: 'var(--accent-soft)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            marginBottom: 16,
+            fontSize: 13,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span>{saveToast}</span>
+          <a href="/saved" style={{ fontSize: 12 }}>View saved searches</a>
+        </div>
+      )}
+
       {/* Search form */}
       <div className="card" style={{ marginBottom: 20 }}>
         {/* Dates row */}
@@ -343,6 +438,17 @@ export default function FindCampsitesClient() {
 
         {/* Site filters */}
         <SiteFilterPanel state={taxonomy} onChange={setTaxonomy} />
+
+        {/* Save this search */}
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={() => setSaveModalOpen(true)}
+          >
+            Save this search
+          </button>
+        </div>
       </div>
 
       {/* Empty states — guarded by !loading to avoid overlap with spinner */}
@@ -466,6 +572,23 @@ export default function FindCampsitesClient() {
           )}
         </>
       )}
+
+      {/* Save search modal */}
+      <SaveSearchModal
+        open={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        prefill={{
+          name: suggestSearchName(selectedRegion, checkIn, checkOut),
+          region: selectedRegion,
+          from: checkIn,
+          to: checkOut,
+          access: taxonomy.access,
+          kinds: taxonomy.kinds,
+          hide: taxonomy.hide,
+          minNights: minNightsValue,
+        }}
+        onSaved={handleSaved}
+      />
     </div>
   );
 }
