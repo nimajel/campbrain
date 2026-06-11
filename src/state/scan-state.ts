@@ -104,7 +104,7 @@ export function readHitsState(stateDir: string): HitsState {
   try {
     const state = JSON.parse(fs.readFileSync(p, 'utf-8')) as HitsState;
     if (!state.version) {
-      // v1→v2 migration: legacy records predate notifiedAt, so treat them as
+      // v1→v3 migration: legacy records predate notifiedAt, so treat them as
       // already notified to avoid a re-notification burst on first run.
       return {
         version: 3,

@@ -103,8 +103,8 @@ describe('hits state migration', () => {
 
   it('v2→v3: records load unchanged, notifiedAt is NOT injected', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'campbrain-hits-'));
-    const v2: HitsState = { version: 2, hits: [makeHit()] }; // intentionally no notifiedAt
-    writeHitsState(dir, v2);
+    const v2 = { version: 2, hits: [makeHit()] }; // intentionally no notifiedAt
+    fs.writeFileSync(path.join(dir, 'availability-hits.json'), JSON.stringify(v2, null, 2), 'utf-8');
     const state = readHitsState(dir);
     expect(state.version).toBe(3);
     expect(state.hits[0]!.notifiedAt).toBeUndefined();
