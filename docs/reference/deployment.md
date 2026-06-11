@@ -57,7 +57,12 @@ Required / used keys:
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID for Calendar sync |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `GOOGLE_REDIRECT_URI` | OAuth redirect URI |
-| `CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES` | Scanner re-scan interval in minutes (optional, default 120) |
+| `CAMPBRAIN_PROACTIVE_INTERVAL_MINUTES` | Proactive park-scan interval in minutes — how often the worker rescans all parks into the Postgres cache (optional, default 120, minimum 15) |
+| `CAMPBRAIN_SCAN_INTERVAL_MINUTES` | Alert-scan interval in minutes — how often the worker checks saved targets against the cache and fires notifications (optional, default 60, minimum 15) |
+| `CAMPBRAIN_SCAN_ON_START` | Set to `false` to skip the alert scan on worker startup; any other value (or absent) runs a scan immediately (optional, default: scan on start) |
+| `RESEND_API_KEY` | Resend API key for email alert notifications — required together with `ALERT_EMAIL_TO` and `ALERT_EMAIL_FROM`; if any of the three are absent the email step is silently skipped |
+| `ALERT_EMAIL_TO` | Recipient address for campsite availability alert emails (required for email notifications) |
+| `ALERT_EMAIL_FROM` | Sender address used by the Resend email service for alert emails — must be a domain verified in your Resend account (required for email notifications) |
 
 Do not commit `.env` to source control.
 
