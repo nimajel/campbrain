@@ -44,7 +44,7 @@ export async function PATCH(
     if (message.toLowerCase().includes('not found')) {
       return NextResponse.json({ error: message }, { status: 404 });
     }
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

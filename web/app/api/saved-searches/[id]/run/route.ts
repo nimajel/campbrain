@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dayjs from 'dayjs';
 import { getSavedSearch, buildParkRegionOf } from '../../../../../lib/saved-searches.js';
 import { searchAvailableStays, getEntriesForPark } from '../../../../../lib/availability-cache.js';
-import { matchSavedSearch } from '../../../../../../src/saved-search/match.js';
+import { matchSavedSearch, todayUtc } from '../../../../../../src/saved-search/match.js';
 import type { SavedSearchOpening } from '../../../../../../src/saved-search/match.js';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +17,8 @@ export async function POST(
       return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
     }
 
-    const today = dayjs().format('YYYY-MM-DD');
+    // Must match run-scan.ts's UTC-anchored today to avoid date divergence between 17:00–00:00 PDT.
+    const today = todayUtc();
     const parkRegionOf = buildParkRegionOf();
 
     const openings = await matchSavedSearch(

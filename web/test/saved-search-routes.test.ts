@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Mock next/server before importing routes.
@@ -83,6 +83,8 @@ const mockMatchSavedSearch = vi.fn(async () => []);
 
 vi.mock('../../src/saved-search/match.js', () => ({
   matchSavedSearch: (...args: unknown[]) => mockMatchSavedSearch(...args),
+  // todayUtc is imported by the /run route; return the real UTC date so the route works
+  todayUtc: () => new Date().toISOString().slice(0, 10),
 }));
 
 // ---------------------------------------------------------------------------
@@ -205,12 +207,14 @@ describe('POST /api/saved-searches', () => {
     expect(typeof body.error).toBe('string');
   });
 
-  it('returns 400 when the store throws a generic error', async () => {
-    mockCreateSavedSearch.mockRejectedValue(new Error('bad input'));
+  it('returns 500 when the store throws a generic (non-Zod) error', async () => {
+    mockCreateSavedSearch.mockRejectedValue(new Error('DB connection failed'));
     const req = makeReq('http://localhost/api/saved-searches', { method: 'POST', body: {} });
     const handler = collectionPOST as RouteHandler<MockNextRequest>;
     const res = await handler(req);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
+    const body = await res.json() as { error: string };
+    expect(body.error).toContain('DB connection failed');
   });
 });
 
@@ -300,6 +304,17 @@ describe('PATCH /api/saved-searches/[id]', () => {
     const res = await handler(req, makeParams('ss-1'));
     expect(res.status).toBe(404);
   });
+
+  it('returns 500 when update throws a generic (non-Zod, non-not-found) error', async () => {
+    mockGetSavedSearch.mockResolvedValue(makeSearch());
+    mockUpdateSavedSearch.mockRejectedValue(new Error('DB connection failed'));
+    const req = makeReq('http://localhost/api/saved-searches/ss-1', { method: 'PATCH', body: { name: 'x' } });
+    const handler = itemPATCH as RouteHandler<MockNextRequest, { params: Promise<{ id: string }> }>;
+    const res = await handler(req, makeParams('ss-1'));
+    expect(res.status).toBe(500);
+    const body = await res.json() as { error: string };
+    expect(body.error).toContain('DB connection failed');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -386,5 +401,21 @@ describe('POST /api/saved-searches/[id]/run', () => {
     expect(res.status).toBe(500);
     const body = await res.json() as { error: string };
     expect(body.error).toContain('cache unavailable');
+  });
+
+  it('passes a UTC-anchored today to matchSavedSearch (no dayjs local-time divergence)', async () => {
+    mockGetSavedSearch.mockResolvedValue(makeSearch());
+    mockMatchSavedSearch.mockResolvedValue([]);
+
+    const req = makeReq('http://localhost/api/saved-searches/ss-1/run', { method: 'POST' });
+    const handler = runPOST as RouteHandler<MockNextRequest, { params: Promise<{ id: string }> }>;
+    await handler(req, makeParams('ss-1'));
+
+    expect(mockMatchSavedSearch).toHaveBeenCalledOnce();
+    const calledToday = mockMatchSavedSearch.mock.calls[0][2] as string;
+    // Must be a valid YYYY-MM-DD string
+    expect(calledToday).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Must match what new Date().toISOString().slice(0, 10) returns (UTC date)
+    expect(calledToday).toBe(new Date().toISOString().slice(0, 10));
   });
 });

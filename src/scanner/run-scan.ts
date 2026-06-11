@@ -16,7 +16,7 @@ import {
   hitKey,
 } from '../state/scan-state.js';
 import { listAlertEnabledSavedSearches } from '../saved-search/store.js';
-import { matchSavedSearch } from '../saved-search/match.js';
+import { matchSavedSearch, todayUtc } from '../saved-search/match.js';
 import { listCatalogParks } from '../catalog/catalog-store.js';
 import { classifyRegion } from '../catalog/regions.js';
 import { ConsoleNotificationService } from '../notifications/console-notification-service.js';
@@ -170,7 +170,7 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
   }
 
   const now = new Date().toISOString();
-  const today = now.slice(0, 10);
+  const today = todayUtc();
 
   const allIncoming: AvailabilityHitRecord[] = [];
   const checkedKeys = new Set<string>();

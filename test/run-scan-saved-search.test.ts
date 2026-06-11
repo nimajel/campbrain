@@ -15,6 +15,7 @@ vi.mock('../src/saved-search/store.js', () => ({
 // Stub the saved-search matcher
 vi.mock('../src/saved-search/match.js', () => ({
   matchSavedSearch: vi.fn(async () => []),
+  todayUtc: () => new Date().toISOString().slice(0, 10),
 }));
 
 // Stub the legacy alerts config (no targets file needed)

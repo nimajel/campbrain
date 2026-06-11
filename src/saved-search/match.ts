@@ -9,6 +9,15 @@ import type {
   SearchParkResult,
 } from '../cache/availability-cache.js';
 
+// ---------------------------------------------------------------------------
+// todayUtc — UTC-anchored date string shared with run-scan.ts.
+// Both callers must use this so the date never diverges between 17:00–00:00 PDT.
+// ---------------------------------------------------------------------------
+
+export function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export type { SavedSearch };
 
 // ---------------------------------------------------------------------------
