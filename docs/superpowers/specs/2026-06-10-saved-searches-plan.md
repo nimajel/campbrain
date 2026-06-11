@@ -1,7 +1,7 @@
 # User-Defined Saved Searches — Implementation Plan
 
 **Date:** 2026-06-10
-**Status:** Ready to execute.
+**Status:** Implemented (all phases complete, merged to main 2026-06-10).
 **Owner at plan time:** planner
 **Spec:** [2026-06-10-saved-searches-design.md](2026-06-10-saved-searches-design.md) — read it fully before starting any phase. This plan does not restate decisions; it orders the spec's file-level change map into verifiable steps.
 

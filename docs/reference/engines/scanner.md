@@ -29,9 +29,12 @@ Maintain a fresh 180-day availability grid for every eligible park across all co
 | Path | Role |
 |---|---|
 | `src/scanner/proactive-scanner.ts` | `runProactiveScan()` — main orchestrator |
-| `src/scanner/run-scan.ts` | `runScan()` — alert-based (target-specific) scan for configured alerts |
+| `src/scanner/run-scan.ts` | `runScan()` — alert-based scan; sources saved searches only (legacy Target loop removed) |
+| `src/saved-search/match.ts` | `matchSavedSearch()` — expands a saved search into openings via the cache read path |
+| `src/saved-search/store.ts` | `listAlertEnabledSavedSearches()` + full CRUD |
 | `src/cli/commands/worker.ts` | `workerCommand()` — schedules both scan types; enforces min interval of 15 min |
-| `src/rules/scan-candidates.ts` | `generateScanCandidates()` — generates date candidates for alert-based scans |
+| `src/rules/weekend-arrivals.ts` | Shared pure Fri/Sat arrival generator (used by both the matcher and legacy scan-candidates) |
+| `src/cache/freshness.ts` | `oldestCoveringScan()` — shared freshness helper |
 | `src/utils/concurrency.ts` | `runWithConcurrency()` — sliding-window worker pool |
 
 ---
@@ -95,7 +98,9 @@ After all windows are written and eviction completes, `refreshMaterializedView()
 
 ### Alert-based scan (`runScan`)
 
-Separate from the proactive cache scan. Reads from configured alerts in `src/config/alerts.ts`, generates date candidates per alert via `generateScanCandidates()`, then calls the provider's `scan()` method (which fetches live — not from the Postgres cache). Results are compared against the prior hits state; new hits trigger email/console notifications.
+Separate from the proactive cache scan. Sources **alert-enabled saved searches** (`listAlertEnabledSavedSearches()` from `src/saved-search/store.ts`). For each saved search, `matchSavedSearch()` expands the date pattern into stay windows and queries the Postgres cache (not live provider fetches). Openings are compared against the prior hits state (v3, `src/state/scan-state.ts`); new openings trigger email/console notifications via the existing Resend pipeline.
+
+The legacy Target loop (`listAlerts → generateScanCandidates → matchCandidates → resultsToHitRecords`) was removed in Phase 9. `data/targets.json` targets are no longer an alert source; they remain on disk for the booking-window / calendar-sync use cases only.
 
 ---
 

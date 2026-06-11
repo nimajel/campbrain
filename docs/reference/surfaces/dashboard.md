@@ -16,9 +16,9 @@ Landing page; shows active alert rows, recent availability hits, and latest scan
 
 | Function | Source | Provides |
 |---|---|---|
-| `listAlertsWeb()` | `web/lib/alerts.ts` (reads `data/targets.json`) | `Alert[]` — all configured alerts |
-| `getLatestScanState()` | `web/lib/state.ts` (reads `.campbrain/state/latest-scan.json`) | `LatestScanState` — per-alert last scan summary keyed by alert ID |
-| `getHitsState()` | `web/lib/state.ts` (reads `.campbrain/state/hits.json`) | `HitsState` — all recorded availability hit records |
+| `listAlertsWeb()` | `web/lib/alerts.ts` (reads `data/targets.json`) | `Alert[]` — booking-window targets (for the Alerts section; no longer the alert-scan source) |
+| `getLatestScanState()` | `web/lib/state.ts` (reads `.campbrain/state/latest-scan-results.json`) | `LatestScanState` — per-target last scan summary keyed by target ID |
+| `getHitsState()` | `web/lib/state.ts` (reads `.campbrain/state/availability-hits.json`) | `HitsState` v3 — all recorded availability hit records (saved-search and legacy) |
 
 These are direct file reads — the dashboard does **not** call `/api/state` or any API route.
 
@@ -37,6 +37,14 @@ These are direct file reads — the dashboard does **not** call `/api/state` or 
 - Scan summary row: last scan relative time, match count in green if > 0, else "N candidates, no matches".
 - If no scan summary exists for the alert: "Not scanned yet".
 
+**RecentOpenings** (`web/app/components/RecentOpenings.tsx`):
+
+- Reads `HitsState` v3 from `.campbrain/state/availability-hits.json` via `getHitsState()`.
+- Renders the top-N hit records sorted descending by `firstSeenAt`.
+- For saved-search hits (`h.savedSearchId` set): displays `h.parkName · h.campgroundName` from the record itself and links to `/saved`.
+- For legacy Target hits: falls back to the alert lookup for park/campground names.
+- Shown on the dashboard when `recentHits.length > 0`.
+
 **Relative time** — `relativeTime(iso)` formats the age of a timestamp into `"just now"`, `"Nm ago"`, `"Nh ago"`, `"Nd ago"` strings. Defined inline in `page.tsx`.
 
 **Output states:**
@@ -47,7 +55,7 @@ These are direct file reads — the dashboard does **not** call `/api/state` or 
 
 **Persisted shapes** used: `Alert` (from `src/config/alerts`), `LatestScanSummary`, `HitsState`, `AvailabilityHitRecord` — see [data-model.md](../data-model.md) for the canonical definitions.
 
-> Future: The dashboard currently reads from flat JSON state files in `.campbrain/state/`. When the system moves to Postgres-backed alerts and scan state, this page would switch to `async` server component functions querying the DB (analogous to how `/map` uses `listParksFromDb()`). The `/api/state` route exists as a precursor for this.
+> Note: The dashboard reads from flat JSON state files in `.campbrain/state/` for scan results and hit records. Saved searches (the new alert source) are in Postgres, but the hit records they produce are still written to the flat state file by `runScan`. `/api/state` exists as a supporting route but is not called directly by this page.
 
 ---
 

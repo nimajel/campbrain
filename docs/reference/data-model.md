@@ -251,6 +251,54 @@ Map pin-lighting (`getParkAvailabilityCounts`) and explore search (`searchAvaila
 
 ---
 
+---
+
+### `saved_searches`
+
+```sql
+CREATE TABLE IF NOT EXISTS saved_searches (
+  id            TEXT PRIMARY KEY,                 -- uuid (crypto.randomUUID)
+  user_id       TEXT,                             -- nullable; multi-user-ready, no FK yet
+  provider      TEXT NOT NULL DEFAULT 'california-parks'
+                  REFERENCES providers(provider_id),
+  name          TEXT NOT NULL,
+  definition    JSONB NOT NULL,                   -- { scope, datePattern, filters }
+  alert_enabled BOOLEAN NOT NULL DEFAULT false,
+  email_enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_searches_user
+  ON saved_searches(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_alert_enabled
+  ON saved_searches(alert_enabled) WHERE alert_enabled = true;
+```
+
+`definition` JSONB shape (validated by zod at the application boundary):
+```ts
+{
+  scope: {
+    region: 'north-coast' | 'bay-area' | 'sierra' | 'central-coast' | 'socal' | null,
+    parkPageIds: string[]   // XOR with region; both empty = all parks
+  },
+  datePattern:
+    | { kind: 'fixed_range', from: string, to: string }    // YYYY-MM-DD
+    | { kind: 'any_weekend', horizonDays: number },         // 1–180
+  filters: {
+    access: ('drive_in' | 'hike_in' | 'boat_in')[],
+    kinds: ('tent' | 'hookup' | 'cabin')[],
+    hide: ('group' | 'equestrian' | 'walk_up')[],
+    minNights: 1 | 2 | 3
+  },
+  legacy?: { ... }   // losslessly preserved fields from migrated Target rows
+}
+```
+
+Reads/writes go through `src/saved-search/store.ts` (mirrors the `availability-cache.ts` boundary). The `alert_enabled` partial index keeps `listAlertEnabledSavedSearches()` fast. The `saved_searches` table is created idempotently by `initDb()` (`npm run db:init`). `npm run db:migrate-targets` promotes `data/targets.json` rows into this table (idempotent; flips `alert_enabled = true` for previously-active targets).
+
+---
+
 ## Dependencies
 
 - [engines/cache.md](engines/cache.md) — the read/write layer that owns all queries against this schema

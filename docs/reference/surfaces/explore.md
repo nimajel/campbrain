@@ -22,6 +22,9 @@ Date-range availability search across all California (and Rec.gov) campgrounds, 
 | Nights (computed) | Derived as `dayjs(checkOut).diff(dayjs(checkIn), 'day')` — displayed, not user-entered. |
 | Region chips | `CampRegion` slugs from `web/lib/regions.ts`; sent as `region` param; "All" sets to `null`. |
 | Site filters | Taxonomy pill groups (Access / Site kind / Hide) from `web/lib/site-taxonomy.ts`. All groups are sent server-side as `access`/`kinds`/`hide` params. Day-use sites are excluded server-side at all times (not a user filter). |
+| Save this search | Button in the filter bar; opens `SaveSearchModal` (`web/components/SaveSearchModal.tsx`). Captures live state (region, dates, filters) into a `SavedSearchInput` and `POST`s to `/api/saved-searches`. On success: shows a toast; adds the search to `/saved`. |
+
+**Saved-search round-trip:** When the page is loaded with `?savedSearch=<id>` (e.g. from the Run button on `/saved`), a `SavedSearchBanner` component fetches the search name and shows "Showing: <name>" with an "Edit" link. The filter state is pre-populated from the URL params.
 
 **Taxonomy params** (all optional CSV; authoritative definitions in `web/lib/site-taxonomy.ts`):
 - `access`: `drive_in`, `hike_in`, `boat_in` — empty = all

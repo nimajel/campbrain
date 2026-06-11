@@ -1,7 +1,7 @@
 # User-Defined Saved Searches — Design
 
 **Date:** 2026-06-10
-**Status:** Designed (not yet planned). Hand to **planner**.
+**Status:** Implemented (Phases 0–9 complete, merged to main 2026-06-10).
 **Owner at design time:** architect
 **Parent specs / required reading:**
   - [2026-06-02-find-campsites-design.md](2026-06-02-find-campsites-design.md) — `/explore` search/cache read model (`searchAvailableStays`, taxonomy filters)

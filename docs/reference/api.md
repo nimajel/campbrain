@@ -121,28 +121,48 @@ For request/response shapes that reference database types, see [data-model.md](d
 
 ---
 
+---
+
+## Saved-searches routes
+
+All under `web/app/api/saved-searches/`. JSON in/out; zod-validated via `src/saved-search/store.ts`. `dynamic = 'force-dynamic'`.
+
+| Method & path | Purpose |
+|---|---|
+| `GET /api/saved-searches` | List all saved searches (`userId = null` in single-user mode) → `{ savedSearches: SavedSearch[] }` |
+| `POST /api/saved-searches` | Create a saved search from `SavedSearchInput` → `201 { savedSearch }` |
+| `GET /api/saved-searches/[id]` | Read a single saved search → `{ savedSearch }` or `404` |
+| `PATCH /api/saved-searches/[id]` | Partial update (`Partial<SavedSearchInput>`) → `{ savedSearch }` |
+| `DELETE /api/saved-searches/[id]` | Delete → `204` |
+| `POST /api/saved-searches/[id]/run` | Live match against cache — same matcher the scanner uses → `{ openings: SavedSearchOpening[] }` |
+
+Validation errors → `400`; not-found → `404`; unexpected → `500`.
+
+**Consumed by:** `/saved` page (list/delete/toggle), `/explore` `SaveSearchModal` (create), per-card Run button (navigates to `/explore` or `/map` prefilled).
+
+---
+
 ## Other / possibly-legacy routes
 
-These routes exist in the codebase and are served. They may be pruned during the planned surface consolidation. They are listed here for inventory, not deep-documented.
+These routes exist in the codebase and are served. They are listed here for inventory, not deep-documented.
 
 | Route | Method(s) | One-line purpose |
 |---|---|---|
-| `GET/POST /api/alerts` | GET, POST | List alerts; create a new alert |
-| `GET/PUT/DELETE /api/alerts/[id]` | GET, PUT, DELETE | Read, update, or delete a single alert |
-| `POST /api/alerts/[id]/scan` | POST | Trigger an immediate scan for a specific alert |
-| `POST /api/alerts/[id]/disable` | POST | Disable an alert |
-| `POST /api/alerts/[id]/enable` | POST | Enable a disabled alert |
-| `GET /api/scan` | — | (see `POST /api/scan` below) |
-| `POST /api/scan` | POST | Trigger an on-demand scan for a target (legacy scan API) |
+| `GET/POST /api/alerts` | GET, POST | List booking-window targets; create a new target |
+| `GET/PUT/DELETE /api/alerts/[id]` | GET, PUT, DELETE | Read, update, or delete a single booking-window target |
+| `POST /api/alerts/[id]/disable` | POST | Disable a target (influences calendar-sync fallback) |
+| `POST /api/alerts/[id]/enable` | POST | Enable a disabled target |
 | `GET /api/state` | GET | Returns latest scan state + hits state from file (`getLatestScanState`, `getHitsState`) |
-| `GET /api/scan-state` | GET | Returns latest scan state only (`getLatestScanState`) — possibly superseded by `/api/state` |
+| `GET /api/scan-state` | GET | Returns latest scan state only (`getLatestScanState`) |
 | `GET /api/status` | GET | Returns setup status (Postgres, catalog, token file checks) |
 | `GET /api/catalog` | GET | Lists all parks from catalog JSON |
 | `GET /api/catalog/discover` | GET | Triggers a catalog discovery run |
 | `GET /api/catalog/parks` | GET | Lists all parks with campground detail |
 | `GET/PUT/DELETE /api/catalog/parks/[parkPageId]` | GET, PUT, DELETE | Read/update/delete a catalog park entry |
-| `GET/POST /api/targets` | GET, POST | List or create scan targets |
+| `GET/POST /api/targets` | GET, POST | List or create booking-window targets |
 | `GET/PUT/DELETE /api/targets/[id]` | GET, PUT, DELETE | Read, update, or delete a target |
+
+Note: `POST /api/alerts/[id]/scan` has been **deleted** (Phase 9 retirement). Scan affordances are now on `/api/saved-searches/[id]/run`.
 
 ---
 

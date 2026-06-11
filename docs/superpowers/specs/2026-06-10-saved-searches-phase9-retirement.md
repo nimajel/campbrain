@@ -1,7 +1,7 @@
 # Saved Searches — Phase 9 Legacy-Target Retirement (Spec Addendum)
 
 **Date:** 2026-06-10
-**Status:** Designed. Hand to **planner** (one-pass implementation).
+**Status:** Implemented (merged to main 2026-06-10, commit da2722f + beb9357).
 **Owner at design time:** architect
 **Parent specs / required reading:**
   - [2026-06-10-saved-searches-design.md](2026-06-10-saved-searches-design.md) — esp. "File-level change map → Retired (after verification)" and the migration table.

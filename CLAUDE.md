@@ -47,6 +47,7 @@ Fully operational two-tier system:
 - Stores per-site per-day availability grid in Postgres (`scan_windows` + `availability`)
 - ~2,000 scan windows total (88 parks × ~23 windows per 180-day scan)
 - Full scan takes ~11 minutes on startup, then every 2 hours thereafter
+- Alert scan (`npm run scan`) now runs **only** alert-enabled saved searches (legacy Target alert loop removed)
 
 **2. Web UI** (`npm run dev` → `http://localhost:3001`)
 
@@ -60,6 +61,7 @@ Fully operational two-tier system:
 - Fallback panel with alternate-date suggestions when no bookable sites found in the requested window
 - Book buttons inject exact check-in date + nights into ReserveCalifornia URL
 - Walk-up / first-come sites (e.g. hike/bike) shown with a **walk-up** badge, no Book button, excluded from available-site counts
+- "Save this search" button captures live filter state → `SaveSearchModal` → `POST /api/saved-searches`; `?savedSearch=<id>` URL param shows a "Showing: <name>" banner when returning from `/saved`
 
 *`/map` — interactive park map (Leaflet / OpenStreetMap)*
 - All 88 parks as pins; click a pin to open a per-park availability panel
@@ -70,6 +72,18 @@ Fully operational two-tier system:
 - Walk-up sites shown with badge in panel, excluded from bookable counts and pin-lighting
 - Park finder type-ahead search (top-right overlay) replaces the old all-parks dropdown
 - Backed by `/api/map/catalog`, `/api/map/availability?parkPageId=…&from=…&to=…`, and `/api/map/availability/summary`
+
+*`/saved` — Saved Searches index*
+- Lists all user-defined saved searches as cards (name, scope summary, date-pattern summary, filter chips, alert status dot)
+- Per-card actions: Run (navigates to `/explore` prefilled for `fixed_range`, or `/map` with `weekendsOnly=true` for `any_weekend`), Edit, Alert on/off toggle, Delete
+- Empty state with prompt to create from `/explore`
+- Backed by `GET /api/saved-searches`; mutations via `PATCH` / `DELETE /api/saved-searches/[id]`
+
+*`/alerts` — Booking Window / Calendar Sync manager*
+- Manages `data/targets.json` Target entries for booking-window reminders and `sync-calendar`
+- No longer shows Scan-now or last-scan affordances (scan role moved to saved searches)
+- Status chip now reads "In calendar sync / Not synced"; page-level notice links to `/saved`
+- CRUD + enable/disable routes still work; booking-window and calendar role unchanged
 
 Provider:
 - California State Parks / ReserveCalifornia
@@ -106,34 +120,46 @@ Reservation rules:
 
 ```
 src/
-  cli/              CLI commands (worker, scan, db, etc.)
-  config/           Configuration loading and validation
+  cli/              CLI commands (worker, scan, db, migrate-targets, notify-test, etc.)
+  config/           Configuration loading and validation (Target/Alert schema — booking windows)
   providers/        Provider adapters (California Parks parser + URL builder)
-  rules/            Reservation window logic
-  scanner/          Proactive availability scanner
-  catalog/          Park/campground metadata loading
+  rules/            Reservation window logic; weekend-arrivals.ts (shared pure Fri/Sat generator)
+  scanner/          Proactive availability scanner + run-scan.ts (saved-search alert runner)
+  catalog/          Park/campground metadata loading; regions.ts (CampRegion classifier — canonical)
   cache/            Postgres-backed availability cache
-    db.ts           Schema init + rebuildMaterializedView
+    db.ts           Schema init + rebuildMaterializedView (includes saved_searches table)
     availability-cache.ts  All read/write queries
+    freshness.ts    Shared oldestCoveringScan helper
     types.ts        Shared types (AvailabilityWindowEntry, AvailableStay, etc.)
+  saved-search/     Saved search domain
+    types.ts        Zod schemas + inferred types (SavedSearch, SavedSearchInput, etc.)
+    store.ts        Postgres CRUD (listSavedSearches, createSavedSearch, …, listAlertEnabledSavedSearches)
+    match.ts        expandStayWindows, matchSavedSearch, todayUtc
+  state/            Alert scan state
+    scan-state.ts   HitsState v3 (saved-search-aware); reconcileHits, savedSearchCheckedKeys, openingsToHitRecords
   utils/            Shared utilities (concurrency, etc.)
 
 web/
   app/
-    explore/        "Find Campsites" page + FindCampsitesClient
+    explore/        "Find Campsites" page + FindCampsitesClient (Save-this-search button + SaveSearchModal)
+    saved/          Saved searches index page + SavedSearchesClient
+    alerts/         Booking-window / calendar-sync manager (scan affordances removed)
     map/            Interactive map page (MapClient, LeafletMap)
     api/            API routes
       search/       GET available stays (filters, region, date range)
+      saved-searches/ CRUD + [id]/run — saved search REST API
       map/          catalog, availability, summary
-    components/     Shared React components (SiteFilterPanel, ParkMapPopover)
+    components/     Shared React components (SiteFilterPanel, ParkMapPopover, RecentOpenings, NavBar)
   components/
+    SaveSearchModal.tsx  Create-from-current-filters modal (used on /explore)
     ui/             Component library — 14 typed primitives (Badge, Button, Chip, StatusDot, SiteChip, EmptyState, Card, StatCard, PageHeader, SectionTitle, KVList, Input, Toggle, Modal); barrel export index.ts; co-located *.stories.tsx
   .storybook/       Storybook 9 config (main.ts, preview.tsx)
   lib/              Client-safe utilities (available-display, site-filters, booking-url, catalog, availability-cache re-exports)
+                    regions.ts re-exports CampRegion from src/catalog/regions.ts
 
 data/
   catalog/          CA parks seed data (california-parks.json) — 200 parks total, 88 with campground data
-  targets.json      Alert / saved-target definitions (read by web/lib/alerts.ts)
+  targets.json      Booking-window / calendar-sync targets (read by upcoming, sync-calendar, /alerts; NOT the alert scanner)
 
 .campbrain/
   logs/             Debug logs
@@ -162,16 +188,17 @@ CampBrain has a defined team of Claude Code subagents. The roster lives in
 ### Three Engines
 
 1. **Trip Target Engine** — What do I want?
-   - Currently: filter controls on the web pages
-   - Later: user-defined saved searches
+   - Persisted as **saved searches** in the `saved_searches` Postgres table
+   - Created from `/explore` filter state via "Save this search" (`SaveSearchModal`); managed on `/saved`
+   - Two date patterns: `fixed_range` (explicit from/to) and `any_weekend` (rolling horizon)
 
 2. **Reservation Window Engine** — When should I act?
    - Calculates 6-month booking window + 8 AM release time
-   - Drives `npm run upcoming` output
+   - Drives `npm run upcoming` output; managed via `/alerts` (booking-window targets in `data/targets.json`)
 
 3. **Availability Scanner Engine** — Is anything available now?
-   - Proactive: background 8-day window scan of all parks
-   - Reactive: alert scanner for specific saved targets (future)
+   - Proactive: background 8-day window scan of all parks (all parks, not target-specific)
+   - Reactive: `npm run scan` / `npm run worker` scans **alert-enabled saved searches** only; legacy Target alert loop removed
 
 Provider-specific logic stays isolated behind adapters. Do not mix parsing logic into CLI or business logic.
 
@@ -181,7 +208,7 @@ Provider-specific logic stays isolated behind adapters. Do not mix parsing logic
 
 **Key design**: The scanner stores a full per-site per-day availability grid in Postgres. Any night-count query (1N, 2N, 3N…) is answered at read time from the stored grid — no extra fetches needed. Code reads/writes through `src/cache/availability-cache.ts`; the schema lives in `src/cache/db.ts` (`initDb`).
 
-**Tables** (provider-scoped on `provider_id = 'california-parks'`):
+**Tables** (provider-scoped on `provider_id = 'california-parks'` unless noted):
 - `providers`, `parks` — identity
 - `campgrounds` — name, `campground_id`, `nightly_fee`, `booking_url`
 - `sites` — `site_id` (serial), unique per (provider, park, campground, site_name); six typed classification columns set at upsert time:
@@ -193,6 +220,7 @@ Provider-specific logic stays isolated behind adapters. Do not mix parsing logic
   - `is_day_use boolean NOT NULL DEFAULT false` — excluded from every user-facing surface
 - `scan_windows` — one row per `(park_page_id, window_start)`; an 8-day window with `scanned_at` + `source_url`
 - `availability` — `(site_id, date, status)` where status ∈ available | unavailable | unknown
+- `saved_searches` — provider-scoped; `id` (uuid PK), `user_id` (nullable), `provider` FK, `name`, `definition` JSONB (`{ scope, datePattern, filters }`), `alert_enabled`, `email_enabled`, `created_at`, `updated_at`; two indexes: by `user_id` and partial on `alert_enabled = true`
 
 **Site classifier** — `src/catalog/site-classifier.ts` is the single source of truth for all classification regexes. `classifySite(siteName, campgroundName, recGovCampsiteType?)` sets all six columns at upsert time and on conflict (so reclassification heals existing rows). CA parks are classified by name patterns; Rec.gov sites prefer the `campsite_type` field from the month-availability payload. Use `npm run db:backfill-types` to classify existing rows by name after a schema change.
 
@@ -219,7 +247,9 @@ Provider-specific logic stays isolated behind adapters. Do not mix parsing logic
 
 Staleness drives re-scan selection via `findStaleWindows`; expired windows are pruned by `evictExpired`.
 
-**What is NOT in Postgres**: Alert definitions live in `data/targets.json`; alert scan results and availability hits live in `.campbrain/state/latest-scan-results.json` and `.campbrain/state/availability-hits.json` (read by the dashboard via `web/lib/state.ts` and `web/lib/alerts.ts`). See [docs/reference/surfaces/dashboard.md](docs/reference/surfaces/dashboard.md).
+**Hit state** (`src/state/scan-state.ts`) — `HitsState` is at version 3. Records for saved-search hits carry `savedSearchId`, `parkPageId`, `parkName`, `campgroundName`; hit keys are prefixed `ss:<savedSearchId>|…` to prevent collisions with any legacy Target keys. The `savedSearchCheckedKeys` helper scopes the "checked" set to a single saved search. Versions 1 and 2 are migrated forward on first read (v1 adds default `notifiedAt`; v2→v3 loads unchanged since v3 only adds optional fields).
+
+**What is NOT in Postgres**: Booking-window targets live in `data/targets.json` (read by `npm run upcoming`, `sync-calendar`, and the `/alerts` UI — NOT the alert scanner). Alert scan results and availability hits live in `.campbrain/state/latest-scan-results.json` and `.campbrain/state/availability-hits.json` (read by the dashboard via `web/lib/state.ts`). Saved searches — the alert-scan source — ARE in Postgres (`saved_searches` table). See [docs/reference/surfaces/dashboard.md](docs/reference/surfaces/dashboard.md).
 
 ---
 
@@ -238,32 +268,33 @@ The original <200ms filter-toggle budget was measured against the pre-API client
 Setup (run once / when schema changes):
 ```
 docker compose up -d          # Start local Postgres
-npm run db:init               # Create tables + materialized view (idempotent)
+npm run db:init               # Create tables + materialized view (idempotent; includes saved_searches)
 npm run db:rebuild-mv         # Drop + recreate mv_available_stays (use after MV schema changes)
 npm run db:backfill-types     # Classify existing sites rows by name (run once after schema migration)
 npm run db:migrate            # Migrate legacy JSON cache → Postgres (one-time)
+npm run db:migrate-targets    # Promote data/targets.json → saved_searches (idempotent; flips alert_enabled for previously-active targets)
 ```
 
 Development:
 ```
 npm run worker                # Start proactive scanner (runs immediately + every 2h)
 npm run dev                   # Start Next.js dev server (port 3001)
-npm run scan                  # One-off availability scan
+npm run scan                  # One-off scan: alert-enabled saved searches only
 npm run cache:refresh         # Refresh materialized view
 npm run catalog:refresh       # Discover / update CA state park catalog
 npm run catalog:refresh -- --provider=recreation-gov  # Seed Rec.gov catalog (requires RIDB_API_KEY in .env)
 npm run catalog:list          # List catalog entries
 npm run upcoming              # Print upcoming booking windows for configured targets
 npm run sync-calendar         # Sync booking windows to Google Calendar
+npm run notify-test           # Send a test notification email
 npm run storybook             # Component catalog (Storybook 9, port 6006)
 npm run typecheck             # TypeScript check
-npm test                      # Vitest suite (421 tests)
+npm test                      # Vitest suite
 npm run verify                # typecheck + test + upcoming + scan + web build
 ```
 
 Planned:
-- `npm run scan --target <name>` — Alert-based target scanning
-- `npm run notify-test` — Send test notification
+- SMS / Slack notification channels
 
 ---
 
@@ -343,11 +374,11 @@ Before committing:
 - [x] Interactive park map with distance + availability filtering
 - [x] Walk-up site detection + badging (hike/bike excluded from bookable counts)
 - [x] Map Book-link date injection (correct arrival date + nights on ReserveCalifornia)
-- [~] Alert scanner for saved targets (email via Resend wired up; saved-target matching WIP)
+- [x] Alert scanner for saved targets (saved searches in Postgres; email via Resend; hit-state v3; legacy Target alert loop retired)
 - [~] Google Calendar sync for booking-window reminders (`sync-calendar` exists)
 - [x] Recreation.gov provider adapter (proactive scan + ProviderBadge UI; catalog populated via `npm run catalog:refresh -- --provider=recreation-gov` once RIDB_API_KEY is set)
 - [x] UI component library + Storybook catalog (14 primitives in `web/components/ui/`; Storybook 9 on :6006)
-- [ ] User-defined saved searches
+- [x] User-defined saved searches (`saved_searches` table; `/saved` surface; create-from-filters on `/explore`; CRUD REST API; scanner-wired)
 - [ ] Lottery window calculator (Yosemite, Death Valley, etc.)
 - [ ] SMS / Slack notifications
 
