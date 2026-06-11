@@ -26,8 +26,8 @@ function makeLegacyRecord(overrides: Partial<AvailabilityHitRecord> = {}): Avail
 
 function makeSavedSearchRecord(overrides: Partial<AvailabilityHitRecord> = {}): AvailabilityHitRecord {
   return {
-    targetId: '',
-    targetName: '',
+    targetId: 'ss:ss-123',
+    targetName: 'Saved Search 123',
     savedSearchId: 'ss-123',
     parkPageId: 'park-a',
     campgroundName: 'Main Campground',
@@ -114,7 +114,7 @@ describe('openingsToHitRecords', () => {
 
   it('maps every opening field onto the record', () => {
     const opening = makeOpening();
-    const records = openingsToHitRecords([opening], now);
+    const records = openingsToHitRecords([opening], 'Park A Search', now);
     expect(records).toHaveLength(1);
     const r = records[0]!;
     expect(r.savedSearchId).toBe('ss-123');
@@ -133,33 +133,53 @@ describe('openingsToHitRecords', () => {
 
   it('sets firstSeenAt and lastSeenAt to now', () => {
     const opening = makeOpening();
-    const records = openingsToHitRecords([opening], '2026-07-01T08:00:00.000Z');
+    const records = openingsToHitRecords([opening], 'Park A Search', '2026-07-01T08:00:00.000Z');
     expect(records[0]?.firstSeenAt).toBe('2026-07-01T08:00:00.000Z');
     expect(records[0]?.lastSeenAt).toBe('2026-07-01T08:00:00.000Z');
   });
 
   it('handles null bookingUrl', () => {
     const opening = makeOpening({ bookingUrl: null });
-    const records = openingsToHitRecords([opening], now);
+    const records = openingsToHitRecords([opening], 'Park A Search', now);
     expect(records[0]?.bookingUrl).toBeUndefined();
   });
 
   it('handles absent availabilityAsOf', () => {
     const { availabilityAsOf: _, ...rest } = makeOpening();
     const opening: SavedSearchOpening = { ...rest, bookingUrl: null };
-    const records = openingsToHitRecords([opening], now);
+    const records = openingsToHitRecords([opening], 'Park A Search', now);
     expect(records[0]?.availabilityAsOf).toBeUndefined();
   });
 
   it('produces a hit key with ss: prefix', () => {
     const opening = makeOpening();
-    const records = openingsToHitRecords([opening], now);
+    const records = openingsToHitRecords([opening], 'Park A Search', now);
     const key = hitKey(records[0]!);
     expect(key.startsWith('ss:')).toBe(true);
   });
 
   it('returns empty array for empty openings list', () => {
-    expect(openingsToHitRecords([], now)).toHaveLength(0);
+    expect(openingsToHitRecords([], 'Any Search', now)).toHaveLength(0);
+  });
+
+  it('sets targetId to ss:<savedSearchId>', () => {
+    const opening = makeOpening({ savedSearchId: 'ss-xyz' });
+    const [r] = openingsToHitRecords([opening], 'My Search', now);
+    expect(r!.targetId).toBe('ss:ss-xyz');
+  });
+
+  it('sets targetName to the provided savedSearchName', () => {
+    const opening = makeOpening();
+    const [r] = openingsToHitRecords([opening], 'Coastal Weekend Trip', now);
+    expect(r!.targetName).toBe('Coastal Weekend Trip');
+  });
+
+  it('targetId is never empty string', () => {
+    const openings = [makeOpening({ savedSearchId: 'ss-a' }), makeOpening({ savedSearchId: 'ss-b' })];
+    const records = openingsToHitRecords(openings, 'Search', now);
+    for (const r of records) {
+      expect(r.targetId).not.toBe('');
+    }
   });
 
   it('converts multiple openings', () => {
@@ -168,7 +188,7 @@ describe('openingsToHitRecords', () => {
       makeOpening({ siteName: 'Site 2' }),
       makeOpening({ siteName: 'Site 3' }),
     ];
-    const records = openingsToHitRecords(openings, now);
+    const records = openingsToHitRecords(openings, 'Park A Search', now);
     expect(records).toHaveLength(3);
     expect(records.map((r) => r.siteName)).toEqual(['Site 1', 'Site 2', 'Site 3']);
   });

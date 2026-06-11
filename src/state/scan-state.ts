@@ -20,6 +20,13 @@ export interface LatestScanSummary {
 export type LatestScanState = Record<string, LatestScanSummary>;
 
 export interface AvailabilityHitRecord {
+  /**
+   * Identity key for the source that produced this hit.
+   * - Legacy Target hits: the Alert id (resolvable via alertsById).
+   * - Saved-search hits: `ss:<savedSearchId>` — NOT resolvable via alertsById.
+   *   Readers that need to look up the source must branch on `savedSearchId`
+   *   first (see buildAvailabilityAlerts in run-scan.ts).
+   */
   targetId: string;
   targetName: string;
   // Optional fields set when this record originates from a saved search
@@ -284,12 +291,13 @@ export function savedSearchCheckedKeys(
 
 export function openingsToHitRecords(
   openings: SavedSearchOpening[],
+  savedSearchName: string,
   now: string = new Date().toISOString()
 ): AvailabilityHitRecord[] {
   return openings.map((o) => {
     const record: AvailabilityHitRecord = {
-      targetId: '',
-      targetName: '',
+      targetId: `ss:${o.savedSearchId}`,
+      targetName: savedSearchName,
       savedSearchId: o.savedSearchId,
       parkPageId: o.parkPageId,
       parkName: o.parkName,

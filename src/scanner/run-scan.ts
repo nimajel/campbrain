@@ -253,11 +253,7 @@ export async function runScan(options: RunScanOptions = {}): Promise<RunScanSumm
 
         console.log(`  ${openings.length} opening(s) found`);
 
-        // Set targetName to the saved search name so email subjects are informative.
-        const hitRecords = openingsToHitRecords(openings, now).map((r) => ({
-          ...r,
-          targetName: search.name,
-        }));
+        const hitRecords = openingsToHitRecords(openings, search.name, now);
 
         // Merge per-search checkedKeys into the global set for reconcileHits.
         const incomingKeys = new Set(hitRecords.map(hitKey));

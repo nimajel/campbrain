@@ -1,5 +1,5 @@
 import { listAlertsWeb } from '../../lib/alerts';
-import { getActiveOpenings } from '../../lib/state';
+import { getActiveOpenings, hitKey } from '../../lib/state';
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -47,7 +47,7 @@ export default function RecentOpenings({ limit }: { limit?: number }) {
                     ? `${alert.parkName} · ${alert.campgroundName}`
                     : '—';
                 return (
-                  <tr key={`${h.targetId}|${h.siteName}|${h.arrivalDate}|${h.departureDate}`}>
+                  <tr key={hitKey(h)}>
                     <td style={{ color: 'var(--muted)', fontSize: 12 }}>
                       {h.savedSearchId ? (
                         <a href="/saved">{h.targetName}</a>

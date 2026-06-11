@@ -29,8 +29,8 @@ function makeOpening(overrides: Partial<SavedSearchOpening> = {}): SavedSearchOp
 
 function makeExistingRecord(overrides: Partial<AvailabilityHitRecord> = {}): AvailabilityHitRecord {
   return {
-    targetId: '',
-    targetName: '',
+    targetId: 'ss:ss-abc',
+    targetName: 'Test Search',
     savedSearchId: 'ss-abc',
     parkPageId: 'park-1',
     parkName: 'Park One',
@@ -52,7 +52,7 @@ function makeExistingRecord(overrides: Partial<AvailabilityHitRecord> = {}): Ava
 describe('savedSearchCheckedKeys', () => {
   it('returns just the incoming keys when there are no existing records for this search', () => {
     const existing: HitsState = { version: 3, hits: [] };
-    const incoming = openingsToHitRecords([makeOpening()], NOW);
+    const incoming = openingsToHitRecords([makeOpening()], 'Test Search', NOW);
     const incomingKeys = new Set(incoming.map(hitKey));
     const checked = savedSearchCheckedKeys(existing, 'ss-abc', incomingKeys);
     expect(checked).toEqual(incomingKeys);
@@ -95,7 +95,7 @@ describe('savedSearchCheckedKeys', () => {
   it('unions stored and incoming keys', () => {
     const storedRecord = makeExistingRecord({ siteName: 'Site A', notifiedAt: NOW });
     const newOpening = makeOpening({ siteName: 'Site B' });
-    const incoming = openingsToHitRecords([newOpening], NOW);
+    const incoming = openingsToHitRecords([newOpening], 'Test Search', NOW);
     const incomingKeys = new Set(incoming.map(hitKey));
     const existing: HitsState = { version: 3, hits: [storedRecord] };
     const checked = savedSearchCheckedKeys(existing, 'ss-abc', incomingKeys);
@@ -111,7 +111,7 @@ describe('savedSearchCheckedKeys', () => {
 describe('reconcileHits integration with saved-search openings', () => {
   it('new opening → in toNotify', () => {
     const opening = makeOpening();
-    const incoming = openingsToHitRecords([opening], NOW);
+    const incoming = openingsToHitRecords([opening], 'Test Search', NOW);
     const incomingKeys = new Set(incoming.map(hitKey));
     const checked = savedSearchCheckedKeys({ version: 3, hits: [] }, 'ss-abc', incomingKeys);
     const { merged, toNotify } = reconcileHits({ version: 3, hits: [] }, incoming, checked, NOW, TODAY);
@@ -121,7 +121,7 @@ describe('reconcileHits integration with saved-search openings', () => {
 
   it('same opening on second run → NOT re-notified', () => {
     const opening = makeOpening();
-    const firstRun = openingsToHitRecords([opening], '2026-06-09T12:00:00.000Z');
+    const firstRun = openingsToHitRecords([opening], 'Test Search', '2026-06-09T12:00:00.000Z');
     const firstKeys = new Set(firstRun.map(hitKey));
     const firstChecked = savedSearchCheckedKeys({ version: 3, hits: [] }, 'ss-abc', firstKeys);
     const { merged: afterFirst } = reconcileHits({ version: 3, hits: [] }, firstRun, firstChecked, '2026-06-09T12:00:00.000Z', TODAY);
@@ -132,7 +132,7 @@ describe('reconcileHits integration with saved-search openings', () => {
       hits: afterFirst.hits.map((h) => ({ ...h, notifiedAt: '2026-06-09T12:05:00.000Z' })),
     };
 
-    const secondRun = openingsToHitRecords([opening], NOW);
+    const secondRun = openingsToHitRecords([opening], 'Test Search', NOW);
     const secondKeys = new Set(secondRun.map(hitKey));
     const secondChecked = savedSearchCheckedKeys(notified, 'ss-abc', secondKeys);
     const { toNotify } = reconcileHits(notified, secondRun, secondChecked, NOW, TODAY);
@@ -141,7 +141,7 @@ describe('reconcileHits integration with saved-search openings', () => {
 
   it('opening disappears → disappearedAt set, not notified', () => {
     const opening = makeOpening();
-    const firstRun = openingsToHitRecords([opening], '2026-06-09T12:00:00.000Z');
+    const firstRun = openingsToHitRecords([opening], 'Test Search', '2026-06-09T12:00:00.000Z');
     const firstKeys = new Set(firstRun.map(hitKey));
     const firstChecked = savedSearchCheckedKeys({ version: 3, hits: [] }, 'ss-abc', firstKeys);
     const { merged: afterFirst } = reconcileHits({ version: 3, hits: [] }, firstRun, firstChecked, '2026-06-09T12:00:00.000Z', TODAY);
@@ -167,7 +167,7 @@ describe('reconcileHits integration with saved-search openings', () => {
     });
     const existing: HitsState = { version: 3, hits: [disappeared] };
 
-    const incoming = openingsToHitRecords([opening], NOW);
+    const incoming = openingsToHitRecords([opening], 'Test Search', NOW);
     const incomingKeys = new Set(incoming.map(hitKey));
     const checked = savedSearchCheckedKeys(existing, 'ss-abc', incomingKeys);
     const { merged, toNotify } = reconcileHits(existing, incoming, checked, NOW, TODAY);
