@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Modal from './ui/Modal';
 import Toggle from './ui/Toggle';
 import type { SavedSearch, SavedSearchInput } from '../../src/saved-search/types.js';
-import type { CampRegion } from '../../src/catalog/regions.js';
-import type { SiteAccess, SiteKind, HideTarget } from '../../src/cache/availability-cache.js';
+import type { CampRegion } from '../lib/regions';
+import type { SiteAccess, SiteKind, HideTarget } from '../lib/availability-cache';
 
 // ---------------------------------------------------------------------------
 // Props

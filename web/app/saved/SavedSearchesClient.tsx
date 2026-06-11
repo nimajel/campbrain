@@ -48,30 +48,47 @@ function SearchCard({
 }) {
   const [deleting, setDeleting] = useState(false);
   const [togglingAlert, setTogglingAlert] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function handleDelete() {
     if (!confirm(`Delete "${search.name}"?`)) return;
     setDeleting(true);
+    setActionError(null);
     try {
-      await fetch(`/api/saved-searches/${encodeURIComponent(search.id)}`, { method: 'DELETE' });
+      const res = await fetch(`/api/saved-searches/${encodeURIComponent(search.id)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: string };
+        setActionError(json.error ?? `Delete failed (${res.status}) — try again`);
+        setDeleting(false);
+        return;
+      }
       onDeleted(search.id);
     } catch {
+      setActionError('Delete failed — try again');
       setDeleting(false);
     }
   }
 
   async function handleAlertToggle() {
     setTogglingAlert(true);
+    setActionError(null);
     try {
       const res = await fetch(`/api/saved-searches/${encodeURIComponent(search.id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alertEnabled: !search.alertEnabled }),
       });
-      if (res.ok) {
-        const json = (await res.json()) as { savedSearch: SavedSearch };
-        onAlertToggled(json.savedSearch);
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: string };
+        setActionError(json.error ?? `Update failed (${res.status}) — try again`);
+        return;
       }
+      const json = (await res.json()) as { savedSearch: SavedSearch };
+      onAlertToggled(json.savedSearch);
+    } catch {
+      setActionError('Update failed — try again');
     } finally {
       setTogglingAlert(false);
     }
@@ -140,6 +157,10 @@ function SearchCard({
           {deleting ? 'Deleting…' : 'Delete'}
         </button>
       </div>
+
+      {actionError && (
+        <p style={{ fontSize: 12, color: 'var(--red)', margin: '6px 0 0' }}>{actionError}</p>
+      )}
     </Card>
   );
 }

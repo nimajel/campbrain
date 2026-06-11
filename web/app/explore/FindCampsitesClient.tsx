@@ -13,7 +13,7 @@ import type { TaxonomyState } from '../../lib/site-taxonomy';
 import type { CampRegion } from '../../lib/regions';
 import type { SearchApiResponse, SearchParkResponse } from '../api/search/route';
 import { suggestSearchName } from '../../lib/saved-search-display';
-import type { SiteAccess, SiteKind, HideTarget } from '../../../src/cache/availability-cache.js';
+import type { SiteAccess, SiteKind, HideTarget } from '../../lib/availability-cache';
 
 // ---------------------------------------------------------------------------
 // Helpers
