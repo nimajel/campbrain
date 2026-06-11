@@ -40,7 +40,7 @@ export interface AvailabilityHitRecord {
 }
 
 export interface HitsState {
-  version?: number; // 2 = notifiedAt-aware records
+  version?: number; // 3 = saved-search-aware records (adds optional opening fields)
   hits: AvailabilityHitRecord[];
 }
 
@@ -100,26 +100,31 @@ export function hitKey(h: AvailabilityHitRecord): string {
 
 export function readHitsState(stateDir: string): HitsState {
   const p = hitsPath(stateDir);
-  if (!fs.existsSync(p)) return { version: 2, hits: [] };
+  if (!fs.existsSync(p)) return { version: 3, hits: [] };
   try {
     const state = JSON.parse(fs.readFileSync(p, 'utf-8')) as HitsState;
-    if (state.version !== 2) {
-      // One-time v1→v2 migration: legacy records predate notifiedAt, so treat
-      // them as already notified to avoid a re-notification burst on first run.
+    if (!state.version) {
+      // v1→v2 migration: legacy records predate notifiedAt, so treat them as
+      // already notified to avoid a re-notification burst on first run.
       return {
-        version: 2,
+        version: 3,
         hits: state.hits.map((h) => (h.notifiedAt ? h : { ...h, notifiedAt: h.lastSeenAt })),
       };
     }
+    if (state.version === 2) {
+      // v2→v3: records load unchanged — v3 only adds optional opening fields
+      // that are simply absent on old records; no notifiedAt rewrite needed.
+      return { version: 3, hits: state.hits };
+    }
     return state;
   } catch {
-    return { version: 2, hits: [] };
+    return { version: 3, hits: [] };
   }
 }
 
 export function writeHitsState(stateDir: string, state: HitsState): void {
   ensureStateDir(stateDir);
-  const out: HitsState = { version: 2, hits: state.hits };
+  const out: HitsState = { version: 3, hits: state.hits };
   fs.writeFileSync(hitsPath(stateDir), JSON.stringify(out, null, 2) + '\n', 'utf-8');
 }
 
@@ -194,7 +199,7 @@ export function reconcileHits(
   });
 
   return {
-    merged: { version: 2, hits },
+    merged: { version: 3, hits },
     toNotify: hits.filter((h) => toNotifyKeys.has(hitKey(h))),
   };
 }
@@ -248,6 +253,28 @@ export function buildScanSummary(
     matchCount: results.filter((r) => r.hits.length > 0).length,
     results,
   };
+}
+
+// ---------------------------------------------------------------------------
+// savedSearchCheckedKeys
+//
+// For a saved-search run, "checked" = keys of currently-stored hits for this
+// saved search (whose window was re-evaluated this run) ∪ incoming keys.
+// This preserves disappear→reappear semantics without enumerating the catalog.
+// ---------------------------------------------------------------------------
+
+export function savedSearchCheckedKeys(
+  existing: HitsState,
+  savedSearchId: string,
+  incomingKeys: Set<string>,
+): Set<string> {
+  const checked = new Set(incomingKeys);
+  for (const h of existing.hits) {
+    if (h.savedSearchId === savedSearchId) {
+      checked.add(hitKey(h));
+    }
+  }
+  return checked;
 }
 
 // ---------------------------------------------------------------------------
