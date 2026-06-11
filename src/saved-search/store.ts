@@ -156,7 +156,7 @@ export async function updateSavedSearch(
   if (!existing) throw new Error(`SavedSearch "${id}" not found`);
 
   const now = new Date().toISOString();
-  const merged: SavedSearchInput = {
+  const merged: SavedSearchInput & { legacy?: unknown } = {
     userId: patch.userId !== undefined ? patch.userId : existing.userId,
     provider: patch.provider ?? existing.provider,
     name: patch.name ?? existing.name,
@@ -165,6 +165,8 @@ export async function updateSavedSearch(
     filters: patch.filters ?? existing.filters,
     alertEnabled: patch.alertEnabled !== undefined ? patch.alertEnabled : existing.alertEnabled,
     emailEnabled: patch.emailEnabled !== undefined ? patch.emailEnabled : existing.emailEnabled,
+    // Carry legacy through: patch may update it explicitly, otherwise preserve the existing blob.
+    legacy: patch.legacy !== undefined ? patch.legacy : existing.legacy,
   };
 
   const validatedMerged = SavedSearchInputSchema.parse(merged);
@@ -205,6 +207,10 @@ export async function upsertSavedSearch(search: SavedSearch): Promise<SavedSearc
   });
 
   const sql = getSql();
+  // NOTE: user_id is intentionally excluded from the ON CONFLICT update set.
+  // Migration always runs in single-user mode (user_id IS NULL); the insert
+  // already sets user_id on the initial row, and a re-run should never
+  // reassign ownership. Future multi-user support must revisit this constraint.
   await sql.unsafe<SavedSearchRow[]>(
     `INSERT INTO saved_searches
        (id, user_id, provider, name, definition, alert_enabled, email_enabled, created_at, updated_at)

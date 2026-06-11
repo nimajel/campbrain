@@ -247,6 +247,14 @@ describe('saved-search store', () => {
     ).rejects.toThrow();
   });
 
+  it('updateSavedSearch preserves the legacy blob when an unrelated field (name) is patched', async () => {
+    const legacy = { acceptableSites: ['Site 1', 'Site 2'], maxNights: 3 };
+    const created = await createSavedSearch({ ...makeInput(), legacy });
+    const updated = await updateSavedSearch(created.id, { name: 'Renamed' });
+    expect(updated.name).toBe('Renamed');
+    expect((updated as Record<string, unknown>)['legacy']).toEqual(legacy);
+  });
+
   // -------------------------------------------------------------------------
   // 5. Corrupt JSONB row is skipped, not thrown
   // -------------------------------------------------------------------------
