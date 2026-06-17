@@ -19,11 +19,18 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // Allow webpack to resolve .js imports as .ts files
   // This is needed because src/ uses ESM-style .js extensions pointing to .ts sources
-  webpack(config) {
+  webpack(config, { dev }) {
     config.resolve.extensionAlias = {
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
       '.mjs': ['.mts', '.mjs'],
     };
+    // A stale .next/cache/webpack/*-production cache can poison the build:
+    // webpack-runtime.js resolves chunks at ./NNN.js while they are emitted to
+    // ./chunks/NNN.js, so pages 500 under `next start` even though build exits 0.
+    // Disable the persistent cache for production builds (dev keeps its cache).
+    if (config.cache && !dev) {
+      config.cache = Object.freeze({ type: 'memory' });
+    }
     return config;
   },
 };
