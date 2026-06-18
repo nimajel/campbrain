@@ -9,6 +9,10 @@ export function createAuth(db: Db, env: {
   GOOGLE_CLIENT_SECRET: string;
   WEB_ORIGIN: string;
 }) {
+  // Staging/prod: web (Pages) and API (Worker) are different origins, so the session
+  // cookie must be SameSite=None; Secure. Over http://localhost (wrangler dev) browsers
+  // reject Secure cookies, so fall back to a same-origin-friendly Lax cookie there.
+  const secureCookies = env.BETTER_AUTH_URL.startsWith("https://");
   return betterAuth({
     database: drizzleAdapter(db, {
       provider: "pg",
@@ -21,9 +25,10 @@ export function createAuth(db: Db, env: {
       google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET },
     },
     advanced: {
-      // Web (Pages) and API (Worker) are different origins in staging → the session
-      // cookie must be SameSite=None; Secure to survive the cross-site round-trip.
-      defaultCookieAttributes: { sameSite: "none", secure: true },
+      defaultCookieAttributes: {
+        sameSite: secureCookies ? "none" : "lax",
+        secure: secureCookies,
+      },
     },
   });
 }
