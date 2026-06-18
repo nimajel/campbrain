@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, boolean, date, timestamp, numeric, jsonb,
-  primaryKey, foreignKey, unique, index, uniqueIndex,
+  primaryKey, foreignKey, unique, index, uniqueIndex, check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -70,6 +70,7 @@ export const availability = pgTable("availability", {
   primaryKey({ columns: [t.siteId, t.date] }),
   index("idx_availability_date").on(t.date),
   index("idx_availability_available").on(t.date).where(sql`status = 'available'`),
+  check("availability_status_check", sql`status IN ('available', 'unavailable', 'unknown')`),
 ]);
 
 export const savedSearches = pgTable("saved_searches", {
