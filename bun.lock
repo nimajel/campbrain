@@ -29,6 +29,17 @@
         "wrangler": "^3.90.0",
       },
     },
+    "packages/api-client": {
+      "name": "@campbrain/api-client",
+      "version": "0.0.0",
+      "dependencies": {
+        "@campbrain/api": "workspace:*",
+        "@trpc/client": "^11.0.0",
+      },
+      "devDependencies": {
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/config": {
       "name": "@campbrain/config",
       "version": "0.0.0",
@@ -54,6 +65,16 @@
         "vitest": "^2.1.0",
       },
     },
+    "packages/types": {
+      "name": "@campbrain/types",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "^3.24.0",
+      },
+      "devDependencies": {
+        "typescript": "^5.7.0",
+      },
+    },
   },
   "packages": {
     "@better-auth/core": ["@better-auth/core@1.6.19", "", { "dependencies": { "@opentelemetry/semantic-conventions": "^1.39.0", "@standard-schema/spec": "^1.1.0", "zod": "^4.3.6" }, "peerDependencies": { "@better-auth/utils": "0.4.2", "@better-fetch/fetch": "1.3.1", "@cloudflare/workers-types": ">=4", "@opentelemetry/api": "^1.9.0", "better-call": "1.3.6", "jose": "^6.1.0", "kysely": "^0.28.5 || ^0.29.0", "nanostores": "^1.0.1" }, "optionalPeers": ["@cloudflare/workers-types", "@opentelemetry/api"] }, "sha512-ddE3Y9MoQ8t32QSO5Y8mV7pmnDAv5LdJjX1SPWUH6JUUmuOc7YEy3B5JfXZIJbRaXFdnAitN7pHPVa5u/dYAZA=="],
@@ -76,9 +97,13 @@
 
     "@campbrain/api": ["@campbrain/api@workspace:apps/api"],
 
+    "@campbrain/api-client": ["@campbrain/api-client@workspace:packages/api-client"],
+
     "@campbrain/config": ["@campbrain/config@workspace:packages/config"],
 
     "@campbrain/db": ["@campbrain/db@workspace:packages/db"],
+
+    "@campbrain/types": ["@campbrain/types@workspace:packages/types"],
 
     "@cloudflare/kv-asset-handler": ["@cloudflare/kv-asset-handler@0.3.4", "", { "dependencies": { "mime": "^3.0.0" } }, "sha512-YLPHc8yASwjNkmcDMQMY35yiWjoKAKnhUbPRszBRS0YgH+IXtsMp61j+yTcnCE3oO2DgP0U3iejLC8FTtKDC8Q=="],
 
@@ -269,6 +294,8 @@
     "@sentry/core": ["@sentry/core@8.55.2", "", {}, "sha512-YlEBwybUcOQ/KjMHDmof1vwweVnBtBxYlQp7DE3fOdtW4pqqdHWTnTntQs4VgYfxzjJYgtkd9LHlGtg8qy+JVQ=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
+
+    "@trpc/client": ["@trpc/client@11.18.0", "", { "peerDependencies": { "@trpc/server": "11.18.0", "typescript": ">=5.7.2" }, "bin": { "intent": "bin/intent.js" } }, "sha512-wOqeg3Fvl25V1ZisQhUD3K8G60ZJDlSGJNSyeXrLH24xAo5w6GSR2Kzb1cSNY9Y+IQ2YZvYGZstBU+V/ulo/ow=="],
 
     "@trpc/server": ["@trpc/server@11.18.0", "", { "peerDependencies": { "typescript": ">=5.7.2" }, "bin": { "intent": "bin/intent.js" } }, "sha512-JAvXOuNTxgXjIDfQaOvDq1j66LMNfDJUH1IU7Slfn8EvRv2EkH6ehu3A7zpYhjO0syHHiYg77v2lG2JFJgvw7Q=="],
 
