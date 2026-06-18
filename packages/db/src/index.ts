@@ -1,5 +1,5 @@
 export * as schema from "./schema";
 export * from "./schema";
-export { createDb, type Db } from "./client";
+export { createDb, closeDb, type Db } from "./client";
 export { refreshAvailableStays } from "./mv";
 export * from "./auth-schema";

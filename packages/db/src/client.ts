@@ -8,3 +8,7 @@ export function createDb(databaseUrl: string): Db {
   const pool = new Pool({ connectionString: databaseUrl });
   return drizzle(pool, { schema });
 }
+
+export function closeDb(db: Db): Promise<void> {
+  return (db as Db & { $client: Pool }).$client.end();
+}

@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import { cors } from "hono/cors";
 import { trpcServer } from "@hono/trpc-server";
-import { createDb } from "@campbrain/db";
-import { createAuth } from "./auth";
+import { createDb, closeDb, type Db } from "@campbrain/db";
+import { createAuth, type Auth } from "./auth";
 import { appRouter } from "./trpc/router";
 import { createContext } from "./trpc/context";
 
@@ -16,27 +16,40 @@ type Bindings = {
   SENTRY_DSN?: string;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+type Variables = { db: Db; auth: Auth };
+
+type Env = { Bindings: Bindings; Variables: Variables };
+
+const app = new Hono<Env>();
 
 app.use("*", (c, next) =>
   cors({ origin: c.env.WEB_ORIGIN, credentials: true })(c, next));
 
 app.get("/health", (c) => c.json({ ok: true }));
 
-app.on(["GET", "POST"], "/api/auth/*", (c) => {
+// Build a per-request db + auth, share them across the API routes, and close the
+// Neon WebSocket pool after the response so connections are not leaked under load.
+async function withDbAuth(c: Context<Env>, next: Next) {
   const db = createDb(c.env.DATABASE_URL);
-  const auth = createAuth(db, c.env);
-  return auth.handler(c.req.raw);
-});
+  c.set("db", db);
+  c.set("auth", createAuth(db, c.env));
+  try {
+    await next();
+  } finally {
+    c.executionCtx.waitUntil(closeDb(db));
+  }
+}
 
-app.use("/trpc/*", async (c, next) => {
-  const db = createDb(c.env.DATABASE_URL);
-  const auth = createAuth(db, c.env);
-  return trpcServer({
+app.use("/api/auth/*", withDbAuth);
+app.use("/trpc/*", withDbAuth);
+
+app.on(["GET", "POST"], "/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
+
+app.use("/trpc/*", (c, next) =>
+  trpcServer({
     router: appRouter,
     createContext: (opts) =>
-      createContext({ db, auth, headers: opts.req.headers }),
-  })(c, next);
-});
+      createContext({ db: c.get("db"), auth: c.get("auth"), headers: opts.req.headers }),
+  })(c, next));
 
 export default app;
