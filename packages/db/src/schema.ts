@@ -1,0 +1,93 @@
+import {
+  pgTable, text, serial, integer, boolean, date, timestamp, numeric, jsonb,
+  primaryKey, foreignKey, unique, index, uniqueIndex,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+export const providers = pgTable("providers", {
+  providerId: text("provider_id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  baseUrl: text("base_url"),
+});
+
+export const parks = pgTable("parks", {
+  providerId: text("provider_id").notNull().references(() => providers.providerId),
+  parkPageId: text("park_page_id").notNull(),
+  parkName: text("park_name").notNull(),
+}, (t) => [primaryKey({ columns: [t.providerId, t.parkPageId] })]);
+
+export const campgrounds = pgTable("campgrounds", {
+  providerId: text("provider_id").notNull(),
+  parkPageId: text("park_page_id").notNull(),
+  campgroundName: text("campground_name").notNull(),
+  campgroundId: text("campground_id").notNull(),
+  nightlyFee: numeric("nightly_fee", { precision: 8, scale: 2 }),
+  bookingUrl: text("booking_url"),
+}, (t) => [
+  primaryKey({ columns: [t.providerId, t.parkPageId, t.campgroundName] }),
+  foreignKey({ columns: [t.providerId, t.parkPageId], foreignColumns: [parks.providerId, parks.parkPageId] }),
+]);
+
+export const sites = pgTable("sites", {
+  siteId: serial("site_id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  parkPageId: text("park_page_id").notNull(),
+  campgroundName: text("campground_name").notNull(),
+  siteName: text("site_name").notNull(),
+  access: text("access").notNull().default("drive_in"),
+  siteKind: text("site_kind"),
+  isGroup: boolean("is_group").notNull().default(false),
+  isEquestrian: boolean("is_equestrian").notNull().default(false),
+  isWalkUp: boolean("is_walk_up").notNull().default(false),
+  isDayUse: boolean("is_day_use").notNull().default(false),
+}, (t) => [
+  unique().on(t.providerId, t.parkPageId, t.campgroundName, t.siteName),
+  foreignKey({
+    columns: [t.providerId, t.parkPageId, t.campgroundName],
+    foreignColumns: [campgrounds.providerId, campgrounds.parkPageId, campgrounds.campgroundName],
+  }),
+  index("idx_sites_park").on(t.providerId, t.parkPageId),
+]);
+
+export const scanWindows = pgTable("scan_windows", {
+  providerId: text("provider_id").notNull(),
+  parkPageId: text("park_page_id").notNull(),
+  windowStart: date("window_start").notNull(),
+  windowEnd: date("window_end").notNull(),
+  scannedAt: timestamp("scanned_at", { withTimezone: true }).notNull(),
+  sourceUrl: text("source_url").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.providerId, t.parkPageId, t.windowStart] }),
+  foreignKey({ columns: [t.providerId, t.parkPageId], foreignColumns: [parks.providerId, parks.parkPageId] }),
+  index("idx_scan_windows_end").on(t.windowEnd),
+]);
+
+export const availability = pgTable("availability", {
+  siteId: integer("site_id").notNull().references(() => sites.siteId, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  status: text("status").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.siteId, t.date] }),
+  index("idx_availability_date").on(t.date),
+  index("idx_availability_available").on(t.date).where(sql`status = 'available'`),
+]);
+
+export const savedSearches = pgTable("saved_searches", {
+  id: text("id").primaryKey(),
+  userId: text("user_id"),
+  provider: text("provider").notNull().default("california-parks").references(() => providers.providerId),
+  name: text("name").notNull(),
+  definition: jsonb("definition").notNull(),
+  alertEnabled: boolean("alert_enabled").notNull().default(false),
+  emailEnabled: boolean("email_enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_saved_searches_user").on(t.userId),
+  index("idx_saved_searches_alert_enabled").on(t.alertEnabled).where(sql`alert_enabled = true`),
+]);
+
+export const accessAllowlist = pgTable("access_allowlist", {
+  email: text("email").primaryKey(),
+  addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+});
