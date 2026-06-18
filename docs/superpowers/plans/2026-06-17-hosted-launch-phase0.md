@@ -344,9 +344,13 @@ git commit -m "feat(config): server + web env schemas"
 ```ts
 import {
   pgTable, text, serial, integer, boolean, date, timestamp, numeric, jsonb,
-  primaryKey, foreignKey, unique, index, uniqueIndex,
+  primaryKey, foreignKey, unique, index, uniqueIndex, check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+
+// NOTE: drizzle-orm 0.38 requires the ARRAY-return form for table extra-config
+// callbacks: `(t) => [ ... ]` (not the object form shown below). Convert each
+// table's callback to an array of the same constraints during implementation.
 
 export const providers = pgTable("providers", {
   providerId: text("provider_id").primaryKey(),
@@ -414,6 +418,7 @@ export const availability = pgTable("availability", {
   pk: primaryKey({ columns: [t.siteId, t.date] }),
   dateIdx: index("idx_availability_date").on(t.date),
   availIdx: index("idx_availability_available").on(t.date).where(sql`status = 'available'`),
+  statusCheck: check("availability_status_check", sql`status IN ('available', 'unavailable', 'unknown')`),
 }));
 
 export const savedSearches = pgTable("saved_searches", {
