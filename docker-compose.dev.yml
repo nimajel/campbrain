@@ -1,0 +1,12 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: campbrain-dev-pg
+    environment:
+      POSTGRES_USER: campbrain
+      POSTGRES_PASSWORD: campbrain_dev_password
+      POSTGRES_DB: campbrain
+    ports: ["5432:5432"]
+    volumes: ["campbrain_dev_pgdata:/var/lib/postgresql/data"]
+volumes:
+  campbrain_dev_pgdata:
