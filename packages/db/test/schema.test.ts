@@ -22,6 +22,6 @@ describe("schema migration", () => {
 
   it("creates the access_allowlist table", async () => {
     const rows = await sql`SELECT to_regclass('public.access_allowlist') AS t`;
-    expect(rows[0].t).toBe("access_allowlist");
+    expect(rows[0]?.t).toBe("access_allowlist");
   });
 });
