@@ -1,50 +1,20 @@
 {
   "name": "campbrain",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "cli": "tsx src/cli/index.ts",
-    "dev": "npm --prefix web run dev",
-    "storybook": "npm --prefix web run storybook",
-    "scan": "tsx src/cli/index.ts scan",
-    "worker": "tsx src/cli/index.ts worker",
-    "upcoming": "tsx src/cli/index.ts upcoming",
-    "notify-test": "tsx src/cli/index.ts notify-test",
-    "sync-calendar": "tsx src/cli/index.ts sync-calendar",
-    "cache:refresh": "tsx src/cli/index.ts cache-refresh",
-    "cache:refresh:recgov": "tsx src/cli/index.ts cache-refresh --provider=recreation-gov",
-    "cache:refresh:ca": "tsx src/cli/index.ts cache-refresh --provider=california-parks",
-    "catalog:refresh": "tsx src/cli/index.ts catalog refresh",
-    "catalog:list": "tsx src/cli/index.ts catalog list",
-    "db:init": "tsx src/cli/index.ts db init",
-    "db:migrate": "tsx src/cli/index.ts db migrate",
-    "db:rebuild-mv": "tsx src/cli/index.ts db rebuild-mv",
-    "db:backfill-types": "tsx src/cli/index.ts db backfill-types",
-    "db:migrate-targets": "tsx src/cli/index.ts db migrate-targets",
-    "typecheck": "tsc --noEmit && npm --prefix web exec -- tsc --noEmit",
-    "test": "vitest run",
-    "verify": "npm run typecheck && npm test && npm run upcoming && npm run scan && npm --prefix web run build"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "private": true,
   "type": "module",
-  "dependencies": {
-    "cheerio": "^1.2.0",
-    "commander": "^14.0.3",
-    "dayjs": "^1.11.21",
-    "dotenv": "^17.4.2",
-    "googleapis": "^173.0.0",
-    "node-cron": "^4.2.1",
-    "postgres": "^3.4.9",
-    "resend": "^6.12.4",
-    "tsx": "^4.22.3",
-    "typescript": "^6.0.3",
-    "zod": "^4.4.3"
+  "packageManager": "bun@1.1.38",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:migrate": "bun --filter @campbrain/db migrate"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "vitest": "^4.1.7"
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
   }
 }

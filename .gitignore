@@ -16,3 +16,9 @@ web/*.tsbuildinfo
 web/.campbrain/
 .superpowers/
 web/storybook-static/
+
+# Turborepo / Bun monorepo
+.output
+.turbo
+.dev.vars
+.wrangler
