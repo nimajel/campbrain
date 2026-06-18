@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { NeonDatabase } from "drizzle-orm/neon-serverless";
+import type { Db } from "./client";
 
 export const MV_CREATE_SQL = `
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_available_stays AS
@@ -38,6 +38,6 @@ export const MV_INDEX_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_mv_available_stays_date ON mv_available_stays(arrival_date)`,
 ];
 
-export async function refreshAvailableStays(db: NeonDatabase<Record<string, never>>): Promise<void> {
+export async function refreshAvailableStays(db: Db): Promise<void> {
   await db.execute(sql`REFRESH MATERIALIZED VIEW CONCURRENTLY mv_available_stays`);
 }

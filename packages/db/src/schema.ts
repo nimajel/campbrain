@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, boolean, date, timestamp, numeric, jsonb,
-  primaryKey, foreignKey, unique, index, uniqueIndex, check,
+  primaryKey, foreignKey, unique, index, check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
