@@ -1,0 +1,8 @@
+name = "campbrain-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-27"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+WEB_ORIGIN = "http://localhost:5173"
+BETTER_AUTH_URL = "http://localhost:8787"
