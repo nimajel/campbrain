@@ -7,6 +7,7 @@ describe("parseServerEnv", () => {
       DATABASE_URL: "postgres://u:p@host/db",
       BETTER_AUTH_SECRET: "x".repeat(32),
       BETTER_AUTH_URL: "https://api.example.com",
+      WEB_ORIGIN: "https://app.example.com",
       GOOGLE_CLIENT_ID: "gid",
       GOOGLE_CLIENT_SECRET: "gsecret",
     });

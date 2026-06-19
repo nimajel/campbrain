@@ -4,6 +4,7 @@ export const serverEnvSchema = z.object({
   DATABASE_URL: z.string().url().or(z.string().startsWith("postgres")),
   BETTER_AUTH_SECRET: z.string().min(32),
   BETTER_AUTH_URL: z.string().url(),
+  WEB_ORIGIN: z.string().url(),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   SENTRY_DSN: z.string().optional(),
