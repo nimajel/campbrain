@@ -1,3 +1,4 @@
 import { createApiClient } from "@campbrain/api-client";
+import { apiUrl } from "./env";
 
-export const api = createApiClient(import.meta.env.VITE_API_URL);
+export const api = createApiClient(apiUrl);
