@@ -6,3 +6,5 @@ export * from "./utils/dates";
 export * from "./rules/weekend-arrivals";
 export * from "./availability/types";
 export * from "./availability/freshness";
+export * from "./availability/windows";
+export * from "./availability/stays";
