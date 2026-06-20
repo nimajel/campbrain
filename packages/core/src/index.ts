@@ -8,3 +8,6 @@ export * from "./availability/types";
 export * from "./availability/freshness";
 export * from "./availability/windows";
 export * from "./availability/stays";
+export * from "./providers/availability-provider";
+export * from "./providers/california-parks-parser";
+export * from "./providers/california-parks-provider";
