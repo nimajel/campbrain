@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { siteMatchesMinStay } from './stays';
+import { siteMatchesMinStay, firstMatchingArrival, getAvailableSitesForStay } from './stays';
+import type { AvailabilityWindowEntry } from './types';
 
 const opts = (o: Partial<Parameters<typeof siteMatchesMinStay>[1]> = {}) => ({
   minNights: 2 as 1 | 2 | 3,
@@ -39,8 +40,6 @@ describe('siteMatchesMinStay', () => {
   });
 });
 
-import { firstMatchingArrival } from './stays';
-
 describe('firstMatchingArrival', () => {
   it('returns the first valid arrival date', () => {
     expect(firstMatchingArrival(['2026-06-12', '2026-06-13', '2026-06-14'], { minNights: 2 }))
@@ -58,9 +57,6 @@ describe('firstMatchingArrival', () => {
     expect(firstMatchingArrival(['2026-06-12', '2026-06-15'], { minNights: 2 })).toBeNull();
   });
 });
-
-import { getAvailableSitesForStay } from './stays';
-import type { AvailabilityWindowEntry } from './types';
 
 describe('getAvailableSitesForStay', () => {
   const makeWindow = (windowStart: string, windowEnd: string): AvailabilityWindowEntry => ({
@@ -151,5 +147,50 @@ describe('getAvailableSitesForStay', () => {
     expect(results).toHaveLength(1);
     // After merging, Site A has both 07-10 and 07-11 as available
     expect(results[0]!.availableSites).toEqual(['Site A']);
+  });
+
+  it('includes the campground in results even when no sites qualify', () => {
+    // Window covers 2026-07-09..2026-07-16; all sites are unavailable on a required night
+    const windows = [makeWindow('2026-07-09', '2026-07-16')];
+    // Arrival 2026-07-10 for 2 nights requires 07-10 and 07-11 to be available.
+    // makeWindow gives Site A all-available but Site B unavailable on 07-11.
+    // Build a window where ALL sites fail: Site A unavailable on 07-11, Site B unavailable on 07-10.
+    const windowAllUnavailable: AvailabilityWindowEntry = {
+      parkPageId: 'park-1',
+      parkName: 'Test Park',
+      windowStart: '2026-07-09',
+      windowEnd: '2026-07-16',
+      scannedAt: new Date().toISOString(),
+      sourceUrl: 'https://example.com',
+      campgrounds: [
+        {
+          id: 'cg-1',
+          name: 'Main Campground',
+          nightlyFee: 35,
+          bookingUrl: 'https://reservecalifornia.com/test',
+          sites: [
+            {
+              name: 'Site A',
+              dates: {
+                '2026-07-10': 'available',
+                '2026-07-11': 'unavailable',
+              },
+            },
+            {
+              name: 'Site B',
+              dates: {
+                '2026-07-10': 'unavailable',
+                '2026-07-11': 'available',
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const results = getAvailableSitesForStay([windowAllUnavailable], '2026-07-10', 2);
+    // The campground is still present in results — it is never omitted even when empty
+    expect(results).toHaveLength(1);
+    expect(results[0]!.campgroundName).toBe('Main Campground');
+    expect(results[0]!.availableSites).toEqual([]);
   });
 });
