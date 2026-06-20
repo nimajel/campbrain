@@ -1,8 +1,16 @@
 # CampBrain — Hosted Launch Design (Cloudflare-native rewrite)
 
 **Date:** 2026-06-17
-**Status:** approved (design) — pending implementation plan
+**Status:** Phase 0 SHIPPED + deployed 2026-06-19 (live: https://campbrain-api.jelvehn.workers.dev); Phases 1–3 pending
 **Owner:** ritolaya
+
+> **As-built deployment note (Phase 0):** the owner has no custom domain, so the planned
+> "Cloudflare Pages (web) + separate Worker (api)" split — which would need a shared parent
+> domain for first-party cookies — was replaced by a **single Worker that serves both the
+> built Vite SPA (via `[assets]`) and the API, on one origin.** Same-origin ⇒ first-party
+> `SameSite=Lax` cookies (no custom domain needed; `SameSite=None` caused an OAuth
+> `state_mismatch` via browser third-party-cookie blocking). Pages is not used. If a custom
+> domain is added later, the Pages+Worker split (or `app.`/`api.` subdomains) can be revisited.
 
 > **Supersedes** the earlier draft of this file (a Vercel + Next.js + Neon + Railway
 > *migration*). After choosing a standard stack, this is a **Cloudflare-native rewrite**
