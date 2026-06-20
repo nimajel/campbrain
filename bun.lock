@@ -99,10 +99,8 @@
       "name": "@campbrain/core",
       "version": "0.0.0",
       "dependencies": {
-        "@campbrain/types": "workspace:*",
         "cheerio": "^1.0.0",
         "dayjs": "^1.11.13",
-        "zod": "^3.24.0",
       },
       "devDependencies": {
         "typescript": "^5.7.0",
