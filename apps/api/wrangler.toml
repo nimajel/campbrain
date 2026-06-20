@@ -4,7 +4,17 @@ compatibility_date = "2024-11-27"
 compatibility_flags = ["nodejs_compat"]
 
 # Staging values used by `wrangler deploy`. Local `wrangler dev` overrides these
-# with localhost via apps/api/.dev.vars (gitignored).
+# with localhost via apps/api/.dev.vars (gitignored). The SPA is served from this
+# same Worker (see [assets]), so WEB_ORIGIN == the Worker origin (same-origin =
+# first-party cookies, no custom domain needed).
 [vars]
-WEB_ORIGIN = "https://campbrain-web.pages.dev"
+WEB_ORIGIN = "https://campbrain-api.jelvehn.workers.dev"
 BETTER_AUTH_URL = "https://campbrain-api.jelvehn.workers.dev"
+
+# Serve the built Vite SPA (apps/web/dist) from this Worker. Non-asset, non-API
+# routes fall through to the Worker, which serves index.html via the ASSETS binding
+# (SPA client-side routing).
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"

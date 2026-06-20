@@ -14,6 +14,7 @@ type Bindings = {
   GOOGLE_CLIENT_SECRET: string;
   WEB_ORIGIN: string;
   SENTRY_DSN?: string;
+  ASSETS: Fetcher;
 };
 
 type Variables = { db: Db; auth: Auth };
@@ -51,5 +52,10 @@ app.use("/trpc/*", (c, next) =>
     createContext: (opts) =>
       createContext({ db: c.get("db"), auth: c.get("auth"), headers: opts.req.headers }),
   })(c, next));
+
+// Everything else: serve the built SPA from the ASSETS binding. With
+// not_found_handling = "single-page-application", unknown paths return index.html
+// so client-side routing works.
+app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
 export default app;
