@@ -4,3 +4,5 @@ export * from "./catalog/types";
 export * from "./utils/concurrency";
 export * from "./utils/dates";
 export * from "./rules/weekend-arrivals";
+export * from "./availability/types";
+export * from "./availability/freshness";
