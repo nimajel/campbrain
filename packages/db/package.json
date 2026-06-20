@@ -7,6 +7,7 @@
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "bun run src/migrate.ts",
+    "seed:allowlist": "bun run src/seed-allowlist.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
