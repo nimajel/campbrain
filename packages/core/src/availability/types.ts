@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Availability cache — v2
 //
-// One entry = one park × one 14-day window.
+// One entry = one park × one 8-day window.
 // Stores raw per-site per-day availability so any night-count query can be
 // answered at read time without additional fetches.
 // ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ export interface AvailabilityWindowEntry {
   parkName: string;
   /** First date in the window, inclusive (YYYY-MM-DD) */
   windowStart: string;
-  /** Last date in the window, inclusive (YYYY-MM-DD = windowStart + 13 days) */
+  /** Last date in the window, inclusive (YYYY-MM-DD = windowStart + 7 days) */
   windowEnd: string;
   scannedAt: string;
   sourceUrl: string;
