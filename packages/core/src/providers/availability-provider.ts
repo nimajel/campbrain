@@ -28,10 +28,6 @@ export interface AvailabilityProvider {
   generateCacheWindows(rangeStart: string, rangeEnd: string): CacheWindow[];
 
   /**
-   * Fetch a single cache window and return a populated AvailabilityWindowEntry,
-   * or null if the fetch failed (caller will retry on next scan cycle).
-   */
-  /**
    * Returns:
    *   AvailabilityWindowEntry  — success, data written to cache
    *   'unsupported'            — permanent: this park has no availability endpoint (400/404);

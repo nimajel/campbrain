@@ -5,7 +5,7 @@ import {
 } from './california-parks-parser';
 
 // ---------------------------------------------------------------------------
-// Synthetic HTML helpers — no fs/node imports, no fixture files
+// Helpers that build synthetic HTML inline — no file reading, no fixtures
 // ---------------------------------------------------------------------------
 
 function makeCampgroundHtml(opts: {
@@ -50,7 +50,7 @@ function makeCampgroundHtml(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// parseAllAvailability — happy path
+// parseAllAvailability — basic cases
 // ---------------------------------------------------------------------------
 
 describe('parseAllAvailability', () => {
@@ -178,6 +178,27 @@ describe('parseAllAvailability', () => {
       </body></html>`;
     const result = parseAllAvailability(html);
     expect(result[0]!.sites[0]!.dates['2026-08-14']).toBe('available');
+  });
+
+  it('classifies fa-times span (FontAwesome 4 X icon) as unavailable', () => {
+    // Use a neutral td class so only the span class drives classification
+    const html = `
+      <html><body>
+      <section class="card">
+        <header class="card-header">
+          <h4>Times Icon Camp</h4>
+          <a href="${BOOKING_URL}">Book</a>
+        </header>
+        <table>
+          <thead><tr><th>Unit</th><th>8/14/2026</th></tr></thead>
+          <tbody>
+            <tr><td class="unit-name">Site 1</td><td class="generic"><span class="fa-times"></span></td></tr>
+          </tbody>
+        </table>
+      </section>
+      </body></html>`;
+    const result = parseAllAvailability(html);
+    expect(result[0]!.sites[0]!.dates['2026-08-14']).toBe('unavailable');
   });
 });
 

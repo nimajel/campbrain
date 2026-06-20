@@ -76,7 +76,9 @@ describe('CaliforniaParksProvider.generateCacheWindows', () => {
 
   it('includes the rangeEnd date in the last window', () => {
     const windows = provider.generateCacheWindows('2026-08-14', '2026-08-22');
-    // 2026-08-22 >= 2026-08-14 so first window includes it; step to 2026-08-22 which also <= rangeEnd
+    // The loop runs while current <= rangeEnd. After window 1 (starts 2026-08-14), current steps
+    // to 2026-08-22 which equals rangeEnd, so a second window is generated (2026-08-22→2026-08-29,
+    // extending past rangeEnd). Then current steps to 2026-08-30 > rangeEnd and the loop stops.
     expect(windows.length).toBeGreaterThanOrEqual(2);
     expect(windows[0]).toEqual({ windowStart: '2026-08-14', windowEnd: '2026-08-21' });
     expect(windows[1]).toEqual({ windowStart: '2026-08-22', windowEnd: '2026-08-29' });

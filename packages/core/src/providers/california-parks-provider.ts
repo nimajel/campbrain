@@ -102,6 +102,7 @@ export class CaliforniaParksProvider implements AvailabilityProvider {
   }
 }
 
+// `endDate` is accepted because the proactiveScanWindow probe loop passes it; the URL only needs arrival_date + length.
 export function buildAvailabilityUrl(
   pageId: string,
   candidate: { arrivalDate: string; nights: number; endDate?: string }
