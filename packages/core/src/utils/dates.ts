@@ -20,7 +20,7 @@ export function getWeekendDatesInRange(
   while (current.isSameOrBefore(end)) {
     const dayOfWeek = current.day(); // 0 = Sunday, 6 = Saturday
     if (dayOfWeek === 5 || dayOfWeek === 6) {
-      // Saturday or Sunday
+      // Friday or Saturday
       weekends.push(current.format('YYYY-MM-DD'));
     }
     current = current.add(1, 'day');

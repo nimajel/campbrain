@@ -11,7 +11,7 @@ describe("runWithConcurrency", () => {
     });
     const results = await runWithConcurrency(tasks, 2);
     expect(results.map((r) => (r.status === "fulfilled" ? r.value : null))).toEqual([0, 1, 2]);
-    expect(order.length).toBe(3);
+    expect(order).toEqual([1, 2, 0]);
   });
 
   it("returns empty array for empty input", async () => {
