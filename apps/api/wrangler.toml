@@ -3,6 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2024-11-27"
 compatibility_flags = ["nodejs_compat"]
 
+# Staging values used by `wrangler deploy`. Local `wrangler dev` overrides these
+# with localhost via apps/api/.dev.vars (gitignored).
 [vars]
-WEB_ORIGIN = "http://localhost:5173"
-BETTER_AUTH_URL = "http://localhost:8787"
+WEB_ORIGIN = "https://campbrain-web.pages.dev"
+BETTER_AUTH_URL = "https://campbrain-api.jelvehn.workers.dev"
