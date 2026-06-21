@@ -15,6 +15,13 @@
       "when": 1781813271496,
       "tag": "0001_left_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782083555091,
+      "tag": "0002_keen_venom",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, boolean, date, timestamp, numeric, jsonb,
-  primaryKey, foreignKey, unique, index, check,
+  doublePrecision, primaryKey, foreignKey, unique, index, check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -14,6 +14,8 @@ export const parks = pgTable("parks", {
   providerId: text("provider_id").notNull().references(() => providers.providerId),
   parkPageId: text("park_page_id").notNull(),
   parkName: text("park_name").notNull(),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
 }, (t) => [primaryKey({ columns: [t.providerId, t.parkPageId] })]);
 
 export const campgrounds = pgTable("campgrounds", {
