@@ -51,10 +51,13 @@ describe("getParkAvailabilityCounts (integration)", async () => {
   it.skipIf(!hasDb)("hides walk-up when requested", async () => {
     const p = find(await getParkAvailabilityCounts(env!.db, { hide: ["walk_up"] }));
     expect(p!.walkUpCount).toBe(0);
+    expect(p!.siteCount).toBe(1);
   });
   it.skipIf(!hasDb)("min-stay 2 keeps the 2-consecutive-night bookable site", async () => {
     const p = find(await getParkAvailabilityCounts(env!.db, { minNights: 2 }));
     expect(p!.siteCount).toBe(1);
+    expect(p!.walkUpCount).toBe(0);
+    expect(p!.soonestDate).toBe("2999-02-01");
   });
   it.skipIf(!hasDb)("access filter with no matches returns no park row", async () => {
     const p = find(await getParkAvailabilityCounts(env!.db, { access: ["boat_in"] }));
