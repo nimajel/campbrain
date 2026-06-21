@@ -11,6 +11,7 @@ export interface QueryDb {
 export async function rows<T = Record<string, unknown>>(db: QueryDb, query: SQL): Promise<T[]> {
   const result = await db.execute(query);
   if (Array.isArray(result)) return result as T[];
+  if (result == null || typeof result !== "object") return [];
   const maybe = (result as { rows?: unknown }).rows;
   return (Array.isArray(maybe) ? maybe : []) as T[];
 }

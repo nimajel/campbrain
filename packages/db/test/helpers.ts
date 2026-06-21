@@ -17,12 +17,13 @@ export function createTestDb() {
 
 /** True if the local/CI Postgres is reachable; used to skip integration tests in DB-less CI. */
 export async function dbReachable(): Promise<boolean> {
+  const client = postgres(testDbUrl(), { max: 1, onnotice: () => {}, connect_timeout: 2 });
   try {
-    const client = postgres(testDbUrl(), { max: 1, onnotice: () => {}, connect_timeout: 2 });
     await client`SELECT 1`;
-    await client.end();
     return true;
   } catch {
     return false;
+  } finally {
+    await client.end({ timeout: 1 }).catch(() => {});
   }
 }
