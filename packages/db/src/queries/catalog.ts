@@ -15,13 +15,14 @@ export interface CatalogPark {
 export async function getCatalogParks(db: QueryDb): Promise<CatalogPark[]> {
   const result = await rows<{
     provider_id: string; park_page_id: string; park_name: string;
-    latitude: number | null; longitude: number | null;
+    latitude: string | null; longitude: string | null;
     campground_name: string; site_count: number;
   }>(
     db,
     sql`SELECT p.provider_id, p.park_page_id, p.park_name, p.latitude, p.longitude,
                s.campground_name, COUNT(s.site_id)::int AS site_count
         FROM parks p
+        -- INNER JOIN: parks with no sites are excluded (no pins to show)
         JOIN sites s ON s.provider_id = p.provider_id AND s.park_page_id = p.park_page_id
         GROUP BY p.provider_id, p.park_page_id, p.park_name, p.latitude, p.longitude, s.campground_name
         ORDER BY p.park_name, s.campground_name`,
