@@ -4,6 +4,11 @@ import type { SiteAccess, SiteKind } from "@campbrain/core";
 export type { SiteAccess, SiteKind };
 export type HideTarget = "group" | "equestrian" | "walk_up";
 
+/** Parameterized Postgres text[] literal of (already-validated) values, e.g. ARRAY['a','b']::text[]. */
+export function sqlTextArray(values: string[]): SQL {
+  return sql`ARRAY[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]`;
+}
+
 export interface AvailabilityClauseOptions {
   from?: string | null;
   to?: string | null;
@@ -47,10 +52,10 @@ export function buildAvailabilityClauses(opts: AvailabilityClauseOptions): Avail
   if (to) conds.push(sql`a.date <= ${to}::date`);
 
   const accessArr = pgEnumArray(access, ACCESS_VALUES);
-  if (accessArr) conds.push(sql`s.access = ANY(${accessArr})`);
+  if (accessArr) conds.push(sql`s.access = ANY(${sqlTextArray(accessArr)})`);
 
   const kindArr = pgEnumArray(kinds, KIND_VALUES);
-  if (kindArr) conds.push(sql`s.site_kind = ANY(${kindArr})`);
+  if (kindArr) conds.push(sql`s.site_kind = ANY(${sqlTextArray(kindArr)})`);
 
   let excludeWalkUp = false;
   for (const h of hide) {
