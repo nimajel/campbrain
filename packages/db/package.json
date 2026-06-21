@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@campbrain/core": "workspace:*",
     "drizzle-orm": "^0.38.0",
     "@neondatabase/serverless": "^0.10.0",
     "postgres": "^3.4.5"

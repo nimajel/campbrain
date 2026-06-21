@@ -111,6 +111,7 @@
       "name": "@campbrain/db",
       "version": "0.0.0",
       "dependencies": {
+        "@campbrain/core": "workspace:*",
         "@neondatabase/serverless": "^0.10.0",
         "drizzle-orm": "^0.38.0",
         "postgres": "^3.4.5",
