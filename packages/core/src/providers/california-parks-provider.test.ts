@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildAvailabilityUrl, CaliforniaParksProvider } from './california-parks-provider';
 
 // ---------------------------------------------------------------------------
@@ -82,5 +82,64 @@ describe('CaliforniaParksProvider.generateCacheWindows', () => {
     expect(windows.length).toBeGreaterThanOrEqual(2);
     expect(windows[0]).toEqual({ windowStart: '2026-08-14', windowEnd: '2026-08-21' });
     expect(windows[1]).toEqual({ windowStart: '2026-08-22', windowEnd: '2026-08-29' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// proactiveScanWindow — onUnexpectedHtml hook
+// ---------------------------------------------------------------------------
+
+describe('proactiveScanWindow onUnexpectedHtml', () => {
+  const UNEXPECTED_HTML = '<html><body><h1>Under Maintenance</h1></body></html>';
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('calls onUnexpectedHtml and returns null when fetch returns an unexpected page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(UNEXPECTED_HTML, { status: 200 }))
+    );
+
+    const spy = vi.fn<(html: string, ctx: { parkPageId: string; arrivalDate: string; url: string }) => Promise<void>>(async () => {});
+    const provider = new CaliforniaParksProvider();
+    const result = await provider.proactiveScanWindow(
+      '468',
+      { windowStart: '2026-08-14', windowEnd: '2026-08-21' },
+      'Test Park',
+      [],
+      { onUnexpectedHtml: spy }
+    );
+
+    expect(result).toBeNull();
+    expect(spy).toHaveBeenCalledOnce();
+    const firstCall = spy.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const htmlArg = firstCall?.[0];
+    const ctxArg = firstCall?.[1];
+    expect(htmlArg).toBe(UNEXPECTED_HTML);
+    expect(ctxArg).toMatchObject({
+      parkPageId: '468',
+      arrivalDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      url: expect.stringContaining('parks.ca.gov'),
+    });
+  });
+
+  it('returns null without throwing when no onUnexpectedHtml callback is provided', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(UNEXPECTED_HTML, { status: 200 }))
+    );
+
+    const provider = new CaliforniaParksProvider();
+    const result = await provider.proactiveScanWindow(
+      '468',
+      { windowStart: '2026-08-14', windowEnd: '2026-08-21' },
+      'Test Park',
+      []
+    );
+
+    expect(result).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import type { AvailabilityProvider, CacheWindow } from './availability-provider';
+import type { AvailabilityProvider, CacheWindow, OnUnexpectedHtml } from './availability-provider';
 import type { AvailabilityWindowEntry, CampgroundWindow } from '../availability/types';
 import type { CampgroundCatalogEntry } from '../catalog/types';
 import { WINDOW_DAYS } from '../availability/types';
@@ -28,7 +28,8 @@ export class CaliforniaParksProvider implements AvailabilityProvider {
     parkPageId: string,
     window: CacheWindow,
     parkName: string,
-    campgrounds: CampgroundCatalogEntry[]
+    campgrounds: CampgroundCatalogEntry[],
+    options?: { onUnexpectedHtml?: OnUnexpectedHtml }
   ): Promise<AvailabilityWindowEntry | null> {
     const { windowStart, windowEnd } = window;
     const catalogCgByName = new Map(campgrounds.map((c) => [c.name, c]));
@@ -58,7 +59,8 @@ export class CaliforniaParksProvider implements AvailabilityProvider {
       }
 
       if (!isNoAvailabilityPage(html)) {
-        // Unexpected response — stop probing this window
+        // Unexpected response — capture for debugging, then stop probing this window
+        await options?.onUnexpectedHtml?.(html, { parkPageId, arrivalDate, url });
         return null;
       }
       // fully booked day — try next offset

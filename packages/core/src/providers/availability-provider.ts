@@ -6,6 +6,16 @@ export interface CacheWindow {
   windowEnd: string;   // YYYY-MM-DD — last day of the window (inclusive)
 }
 
+/**
+ * Called by the scanner when a provider fetch returns a page that is
+ * neither a parseable availability table nor a known "no availability" card.
+ * The callback is injected by the caller so @campbrain/core stays Workers-pure.
+ */
+export type OnUnexpectedHtml = (
+  html: string,
+  ctx: { parkPageId: string; arrivalDate: string; url: string }
+) => Promise<void>;
+
 export interface AvailabilityProvider {
   name: string;
 
@@ -38,6 +48,7 @@ export interface AvailabilityProvider {
     parkPageId: string,
     window: CacheWindow,
     parkName: string,
-    campgrounds: CampgroundCatalogEntry[]
+    campgrounds: CampgroundCatalogEntry[],
+    options?: { onUnexpectedHtml?: OnUnexpectedHtml }
   ): Promise<AvailabilityWindowEntry | 'unsupported' | null>;
 }
