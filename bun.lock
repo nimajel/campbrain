@@ -113,6 +113,7 @@
       "dependencies": {
         "@campbrain/core": "workspace:*",
         "@neondatabase/serverless": "^0.10.0",
+        "dayjs": "^1.11.13",
         "drizzle-orm": "^0.38.0",
         "postgres": "^3.4.5",
       },
