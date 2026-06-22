@@ -6,6 +6,12 @@ export interface QueryDb {
   execute(query: SQL): Promise<unknown>;
 }
 
+/** A DB handle that can run a transaction; the tx is a QueryDb. Satisfied by both
+ *  the neon-serverless and postgres-js Drizzle handles. */
+export interface TransactionalDb {
+  transaction<T>(fn: (tx: QueryDb) => Promise<T>): Promise<T>;
+}
+
 /** Execute a SQL query and return its rows, normalizing the two adapter return shapes:
  *  neon-serverless → { rows: [...] }; postgres-js → [...] (array). */
 export async function rows<T = Record<string, unknown>>(db: QueryDb, query: SQL): Promise<T[]> {

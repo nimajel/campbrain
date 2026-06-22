@@ -21,7 +21,11 @@ function makeEntry(dates: Record<string, "available" | "unavailable">): Availabi
 describe("upsertEntry (integration)", async () => {
   const hasDb = await dbReachable();
   let env: ReturnType<typeof createTestDb> | null = null;
-  beforeAll(() => { if (hasDb) env = createTestDb(); });
+  beforeAll(async () => {
+    if (!hasDb) return;
+    env = createTestDb();
+    await env.client`INSERT INTO providers (provider_id, display_name) VALUES (${PROVIDER}, 'Test') ON CONFLICT DO NOTHING`;
+  });
   afterAll(async () => {
     if (!env) return;
     const sql = env.client;
@@ -35,8 +39,7 @@ describe("upsertEntry (integration)", async () => {
   });
 
   it.skipIf(!hasDb)("inserts park/campground/sites/availability with classification", async () => {
-    await env!.client`INSERT INTO providers (provider_id, display_name) VALUES (${PROVIDER}, 'Test') ON CONFLICT DO NOTHING`;
-    await upsertEntry(env!.db as unknown as Parameters<typeof upsertEntry>[0], makeEntry({ "2999-03-01": "available", "2999-03-02": "available" }), PROVIDER);
+    await upsertEntry(env!.db, makeEntry({ "2999-03-01": "available", "2999-03-02": "available" }), PROVIDER);
     const avail = await env!.client`
       SELECT s.site_name, s.is_walk_up, a.date::text AS date, a.status
       FROM availability a JOIN sites s ON s.site_id = a.site_id
@@ -48,10 +51,23 @@ describe("upsertEntry (integration)", async () => {
   });
 
   it.skipIf(!hasDb)("replaces in-range availability on re-upsert", async () => {
-    await upsertEntry(env!.db as unknown as Parameters<typeof upsertEntry>[0], makeEntry({ "2999-03-03": "available" }), PROVIDER);
+    await upsertEntry(env!.db, makeEntry({ "2999-03-03": "available" }), PROVIDER);
     const tent = await env!.client`
       SELECT a.date::text AS date FROM availability a JOIN sites s ON s.site_id = a.site_id
       WHERE s.provider_id = ${PROVIDER} AND s.site_name = 'Tent 1' ORDER BY a.date`;
     expect(tent.map((r) => r["date"])).toEqual(["2999-03-03"]);
+  });
+
+  it.skipIf(!hasDb)("upserts park + scan_window but no sites for an empty (fully-booked) window", async () => {
+    const empty: AvailabilityWindowEntry = {
+      parkPageId: "upsert-park-empty", parkName: "Empty Park",
+      windowStart: "2999-04-01", windowEnd: "2999-04-08",
+      scannedAt: new Date(Date.UTC(2026, 0, 1)).toISOString(), sourceUrl: "http://x", campgrounds: [],
+    };
+    await upsertEntry(env!.db, empty, PROVIDER);
+    const swRows = await env!.client`SELECT COUNT(*)::int AS count FROM scan_windows WHERE provider_id = ${PROVIDER} AND park_page_id = 'upsert-park-empty'`;
+    expect(Number(swRows[0]?.["count"])).toBe(1);
+    const siteRows = await env!.client`SELECT COUNT(*)::int AS count FROM sites WHERE provider_id = ${PROVIDER} AND park_page_id = 'upsert-park-empty'`;
+    expect(Number(siteRows[0]?.["count"])).toBe(0);
   });
 });

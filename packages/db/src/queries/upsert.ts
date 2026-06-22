@@ -1,12 +1,11 @@
 import { sql } from "drizzle-orm";
 import { classifySite, type AvailabilityWindowEntry } from "@campbrain/core";
-import { rows } from "./exec";
-import type { Db } from "../client";
+import { rows, type TransactionalDb } from "./exec";
 
 /** Upsert one park-window's full availability grid in a single transaction.
  *  Ported from src/cache/availability-cache.ts:56-185 (postgres.js → drizzle). */
 export async function upsertEntry(
-  db: Db,
+  db: TransactionalDb,
   entry: AvailabilityWindowEntry,
   providerId: string,
 ): Promise<void> {
@@ -74,7 +73,7 @@ export async function upsertEntry(
       INSERT INTO sites (provider_id, park_page_id, campground_name, site_name, access, site_kind, is_group, is_equestrian, is_walk_up, is_day_use)
       VALUES ${siteValues}
       ON CONFLICT (provider_id, park_page_id, campground_name, site_name) DO UPDATE SET
-        site_name = EXCLUDED.site_name, access = EXCLUDED.access, site_kind = EXCLUDED.site_kind,
+        access = EXCLUDED.access, site_kind = EXCLUDED.site_kind,
         is_group = EXCLUDED.is_group, is_equestrian = EXCLUDED.is_equestrian, is_walk_up = EXCLUDED.is_walk_up, is_day_use = EXCLUDED.is_day_use
       RETURNING site_id, campground_name, site_name`);
 
