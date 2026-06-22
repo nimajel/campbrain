@@ -1,13 +1,10 @@
-import { initTRPC } from "@trpc/server";
-import type { TrpcContext } from "./context";
+import { router, publicProcedure } from "./trpc";
+import { mapRouter } from "./routers/map";
 
-const t = initTRPC.context<TrpcContext>().create();
-
-export const router = t.router;
-export const publicProcedure = t.procedure;
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ ok: true as const })),
+  map: mapRouter,
 });
 
 export type AppRouter = typeof appRouter;

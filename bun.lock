@@ -14,7 +14,9 @@
       "version": "0.0.0",
       "dependencies": {
         "@campbrain/config": "workspace:*",
+        "@campbrain/core": "workspace:*",
         "@campbrain/db": "workspace:*",
+        "@campbrain/types": "workspace:*",
         "@hono/trpc-server": "^0.3.4",
         "@sentry/cloudflare": "^8.40.0",
         "@trpc/server": "^11.0.0",

@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@campbrain/config": "workspace:*",
+    "@campbrain/core": "workspace:*",
     "@campbrain/db": "workspace:*",
+    "@campbrain/types": "workspace:*",
     "hono": "^4.6.0",
     "@hono/trpc-server": "^0.3.4",
     "@trpc/server": "^11.0.0",
