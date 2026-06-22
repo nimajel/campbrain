@@ -126,6 +126,21 @@ describe('proactiveScanWindow onUnexpectedHtml', () => {
     });
   });
 
+  it('swallows callback errors and still returns null', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(UNEXPECTED_HTML, { status: 200 })));
+    const provider = new CaliforniaParksProvider();
+    const throwing = vi.fn(async () => { throw new Error('disk full'); });
+    const result = await provider.proactiveScanWindow(
+      '468',
+      { windowStart: '2026-08-14', windowEnd: '2026-08-21' },
+      'Test Park',
+      [],
+      { onUnexpectedHtml: throwing }
+    );
+    expect(result).toBeNull();
+    expect(throwing).toHaveBeenCalledOnce();
+  });
+
   it('returns null without throwing when no onUnexpectedHtml callback is provided', async () => {
     vi.stubGlobal(
       'fetch',

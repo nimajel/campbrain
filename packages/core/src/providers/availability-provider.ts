@@ -6,11 +6,11 @@ export interface CacheWindow {
   windowEnd: string;   // YYYY-MM-DD — last day of the window (inclusive)
 }
 
-/**
- * Called by the scanner when a provider fetch returns a page that is
- * neither a parseable availability table nor a known "no availability" card.
- * The callback is injected by the caller so @campbrain/core stays Workers-pure.
- */
+/** Best-effort debug sink invoked when proactiveScanWindow hits an unexpected page
+ *  (neither a parseable availability table nor a known "no availability" card).
+ *  Errors thrown by this callback are caught and logged by the provider — they do
+ *  not affect the scan outcome (the window still returns null).
+ *  The callback is injected by the caller so @campbrain/core stays Workers-pure. */
 export type OnUnexpectedHtml = (
   html: string,
   ctx: { parkPageId: string; arrivalDate: string; url: string }

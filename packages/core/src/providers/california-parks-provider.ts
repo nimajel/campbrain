@@ -60,7 +60,13 @@ export class CaliforniaParksProvider implements AvailabilityProvider {
 
       if (!isNoAvailabilityPage(html)) {
         // Unexpected response — capture for debugging, then stop probing this window
-        await options?.onUnexpectedHtml?.(html, { parkPageId, arrivalDate, url });
+        if (options?.onUnexpectedHtml) {
+          try {
+            await options.onUnexpectedHtml(html, { parkPageId, arrivalDate, url });
+          } catch (err) {
+            console.warn(`onUnexpectedHtml callback failed: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
         return null;
       }
       // fully booked day — try next offset
