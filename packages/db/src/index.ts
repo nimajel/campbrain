@@ -1,7 +1,7 @@
 export * as schema from "./schema";
 export * from "./schema";
 export { createDb, closeDb, type Db } from "./client";
-export { refreshAvailableStays, refreshMaterializedView } from "./mv";
+export { refreshMaterializedView } from "./mv";
 export * from "./auth-schema";
 export * from "./queries/exec";
 export * from "./queries/filters";
