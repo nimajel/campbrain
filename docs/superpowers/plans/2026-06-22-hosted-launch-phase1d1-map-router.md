@@ -65,6 +65,34 @@ apps/web/
 
 ---
 
+## Task 0: Environment setup (no commit)
+
+Bring up + migrate + seed local Postgres so the integration tests in Tasks 5–6 actually RUN (they're `skipIf(!dbReachable())` — without a DB they silently skip, weakening verification). Run this once, up front, before any implementation task.
+
+- [ ] **Step 1: Confirm Docker is running + bring up the local DB**
+
+Run: `docker compose -f docker-compose.dev.yml up -d`
+Expected: the `campbrain-dev-pg` container is running (postgres:16 on `localhost:5432`). If this errors with "Cannot connect to the Docker daemon", STOP and tell the human to start Docker Desktop — the agent can start the container but not the Docker daemon itself.
+
+- [ ] **Step 2: Apply migrations (idempotent)**
+
+Run: `bun install` then `bun --filter @campbrain/db migrate`
+Expected: `✅ migrations + MV applied` (or equivalent). Safe to re-run if already applied.
+
+- [ ] **Step 3: Seed the catalog (idempotent)**
+
+Run: `bun --filter @campbrain/db seed:catalog`
+Expected: `✅ seeded ~200 parks, … campgrounds, … sites`. This is what makes `map.catalog` return parks in Task 5's test. Safe to re-run (ON CONFLICT upserts).
+
+- [ ] **Step 4: Verify reachability + seed**
+
+Run: `docker exec campbrain-dev-pg psql -U campbrain -d campbrain -tc "SELECT count(*) FROM parks WHERE provider_id='california-parks';"`
+Expected: a count > 150 (catalog seeded). Note: `availability` rows only exist if the Phase-1c scanner has run against this DB — the map-router availability test (Task 5) asserts response SHAPE, not data, so empty availability is fine. Report the park count + whether any `availability` rows exist (`SELECT count(*) FROM availability;`).
+
+No commit — this task only prepares the environment.
+
+---
+
 ## Task 1: Map transform foundations in `@campbrain/core`
 
 Port the response **types** + the low-level **pure helpers** from `web/app/api/map/availability/route.ts`. These are framework-agnostic and operate on `AvailabilityWindowEntry` + `classifySite`.
@@ -747,6 +775,6 @@ git commit -m "feat(web): set app title to CampBrain"
 
 ## Execution Handoff
 
-This plan is intended to be executed in a **fresh session** (per the user's choice). Recommended: **subagent-driven-development** (fresh subagent per task, spec + code-quality review between tasks). The plan is self-contained — the executing session should read the cited legacy route files (`web/app/api/map/availability/route.ts`, `catalog/route.ts`) to verify port fidelity, and have local Postgres up (`docker compose -f docker-compose.dev.yml up -d`, `bun --filter @campbrain/db migrate`, `bun --filter @campbrain/db seed:catalog`) for the integration tests.
+This plan is intended to be executed in a **fresh session** (per the user's choice). Recommended: **subagent-driven-development** (fresh subagent per task, spec + code-quality review between tasks). The plan is self-contained — **start with Task 0** (it brings up + migrates + seeds local Postgres so the integration tests run; the only thing the agent can't do is launch Docker Desktop, so have it open). The executing session should also read the cited legacy route files (`web/app/api/map/availability/route.ts`, `catalog/route.ts`) to verify port fidelity.
 
 After 1d-1 lands, the next step is the **1d-2 plan** (the Vite Leaflet map page that consumes `api.map.*`) — the visible live-map milestone. After 1d-2, Phase 1 is complete and `hosted-launch` can merge to `main` per the spec's P2 plan.
