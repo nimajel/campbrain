@@ -13,6 +13,7 @@ import {
   todayIso,
   weekendFridaysFromAvailableDates,
   buildParkAvailability,
+  toMapPark,
 } from "./map-transforms";
 
 // ---------------------------------------------------------------------------
@@ -482,6 +483,61 @@ describe("buildParkAvailability", () => {
       nextAvailableDates: [],
       nextAvailableWeekends: [],
       earliestAvailableDate: null,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toMapPark
+// ---------------------------------------------------------------------------
+
+describe("toMapPark", () => {
+  it("maps all fields correctly with multiple campgrounds", () => {
+    const result = toMapPark({
+      providerId: "california-parks",
+      parkPageId: "468",
+      parkName: "X",
+      latitude: 38,
+      longitude: -122,
+      campgrounds: [
+        { name: "A", siteCount: 3 },
+        { name: "B", siteCount: 2 },
+      ],
+    });
+    expect(result).toEqual({
+      provider: "california-parks",
+      parkName: "X",
+      parkPageId: "468",
+      latitude: 38,
+      longitude: -122,
+      campgroundCount: 2,
+      siteCount: 5,
+      campgrounds: [
+        { name: "A", siteCount: 3 },
+        { name: "B", siteCount: 2 },
+      ],
+    });
+  });
+
+  it("empty campgrounds yields campgroundCount=0 and siteCount=0", () => {
+    expect(
+      toMapPark({
+        providerId: "california-parks",
+        parkPageId: "1",
+        parkName: "Empty Park",
+        latitude: null,
+        longitude: null,
+        campgrounds: [],
+      }),
+    ).toEqual({
+      provider: "california-parks",
+      parkName: "Empty Park",
+      parkPageId: "1",
+      latitude: null,
+      longitude: null,
+      campgroundCount: 0,
+      siteCount: 0,
+      campgrounds: [],
     });
   });
 });

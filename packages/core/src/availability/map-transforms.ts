@@ -57,6 +57,41 @@ export interface ParkAvailabilityResponse {
   earliestAvailableDate: string | null;
 }
 
+// --- catalog transforms ---
+
+export interface CatalogParkInput {
+  providerId: string;
+  parkPageId: string;
+  parkName: string;
+  latitude: number | null;
+  longitude: number | null;
+  campgrounds: { name: string; siteCount: number }[];
+}
+
+export interface MapPark {
+  provider: string;
+  parkName: string;
+  parkPageId: string;
+  latitude: number | null;
+  longitude: number | null;
+  campgroundCount: number;
+  siteCount: number;
+  campgrounds: { name: string; siteCount: number }[];
+}
+
+export function toMapPark(p: CatalogParkInput): MapPark {
+  return {
+    provider: p.providerId,
+    parkName: p.parkName,
+    parkPageId: p.parkPageId,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    campgroundCount: p.campgrounds.length,
+    siteCount: p.campgrounds.reduce((sum, c) => sum + c.siteCount, 0),
+    campgrounds: [...p.campgrounds],
+  };
+}
+
 // --- date utils ---
 // Local-time Date construction, ported verbatim from the legacy route so the new
 // tRPC path matches it exactly. parse + DOW + label are all local-tz-consistent.
