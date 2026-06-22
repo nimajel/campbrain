@@ -1,0 +1,33 @@
+name: Proactive Scan
+on:
+  schedule:
+    - cron: "0 */2 * * *"   # every 2 hours (GitHub cron is best-effort, UTC).
+                            # Private repos: free Actions minutes are limited (~2000/mo) — a
+                            # ~11-min scan every 2h ≈ 4000 min/mo. Make the repo public
+                            # (unlimited free minutes) OR change to "0 */6 * * *" if private.
+  workflow_dispatch: {}       # manual trigger for validation
+concurrency:
+  group: proactive-scan
+  cancel-in-progress: false   # never run two scans at once
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
+      - name: Run proactive scan
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SCAN_DEBUG_DIR: ${{ github.workspace }}/.scan-debug
+        run: bun --filter @campbrain/scanner start
+      - name: Upload parser debug snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-debug
+          path: .scan-debug/
+          if-no-files-found: ignore
+          retention-days: 7
