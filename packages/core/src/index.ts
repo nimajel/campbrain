@@ -11,3 +11,4 @@ export * from "./availability/stays";
 export * from "./providers/availability-provider";
 export * from "./providers/california-parks-parser";
 export * from "./providers/california-parks-provider";
+export * from "./availability/map-transforms";
