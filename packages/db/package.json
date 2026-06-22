@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./schema": "./src/schema.ts" },
+  "exports": { ".": "./src/index.ts", "./schema": "./src/schema.ts", "./node": "./src/client-node.ts" },
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "bun run src/migrate.ts",

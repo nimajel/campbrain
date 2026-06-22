@@ -1,7 +1,8 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { createDb, closeDb } from "@campbrain/db";
+import { closeDb } from "@campbrain/db";
+import { createNodeDb } from "@campbrain/db/node";
 import type { ParkCatalogEntry } from "@campbrain/core";
 import { runProactiveScan } from "./run-proactive-scan";
 
@@ -25,7 +26,7 @@ async function main() {
   const debugDir =
     process.env["SCAN_DEBUG_DIR"] ?? join(process.cwd(), ".scan-debug");
 
-  const db = createDb(url);
+  const db = createNodeDb(url);
   let summary;
   try {
     summary = await runProactiveScan({
