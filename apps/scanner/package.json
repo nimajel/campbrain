@@ -1,0 +1,17 @@
+{
+  "name": "@campbrain/scanner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@campbrain/core": "workspace:*",
+    "@campbrain/db": "workspace:*",
+    "dayjs": "^1.11.13"
+  },
+  "devDependencies": { "vitest": "^2.1.0", "typescript": "^5.7.0" }
+}

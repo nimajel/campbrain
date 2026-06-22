@@ -29,6 +29,19 @@
         "wrangler": "^3.90.0",
       },
     },
+    "apps/scanner": {
+      "name": "@campbrain/scanner",
+      "version": "0.0.0",
+      "dependencies": {
+        "@campbrain/core": "workspace:*",
+        "@campbrain/db": "workspace:*",
+        "dayjs": "^1.11.13",
+      },
+      "devDependencies": {
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0",
+      },
+    },
     "apps/web": {
       "name": "@campbrain/web",
       "version": "0.0.0",
@@ -225,6 +238,8 @@
     "@campbrain/core": ["@campbrain/core@workspace:packages/core"],
 
     "@campbrain/db": ["@campbrain/db@workspace:packages/db"],
+
+    "@campbrain/scanner": ["@campbrain/scanner@workspace:apps/scanner"],
 
     "@campbrain/types": ["@campbrain/types@workspace:packages/types"],
 

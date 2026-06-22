@@ -17,6 +17,9 @@ web/.campbrain/
 .superpowers/
 web/storybook-static/
 
+# Scanner debug snapshots
+.scan-debug/
+
 # Turborepo / Bun monorepo
 .output
 .turbo
