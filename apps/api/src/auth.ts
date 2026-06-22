@@ -1,6 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { eq } from "drizzle-orm";
 import { user, session, account, verification, type Db } from "@campbrain/db";
+import { isAllowlisted } from "./allowlist";
 
 export function createAuth(db: Db, env: {
   BETTER_AUTH_SECRET: string;
@@ -32,6 +34,24 @@ export function createAuth(db: Db, env: {
         secure: secureCookies,
       },
     },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (newSession) => {
+            const rows = await db.select().from(user).where(eq(user.id, newSession.userId));
+            const email = rows[0]?.email;
+            // Returning false cancels session creation (BetterAuth contract) → no session cookie is
+            // set, and onAPIError.errorURL bounces the user to /request-access. Fail-closed by design:
+            // a thrown DB error here also aborts the session, which is the safe default for an invite-only app.
+            if (!email || !(await isAllowlisted(db, email))) {
+              return false;
+            }
+            return;
+          },
+        },
+      },
+    },
+    onAPIError: { errorURL: "/request-access" },
   });
 }
 
