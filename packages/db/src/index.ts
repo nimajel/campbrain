@@ -9,3 +9,4 @@ export * from "./queries/entries";
 export * from "./queries/summary";
 export * from "./queries/catalog";
 export * from "./queries/search";
+export * from "./queries/upsert";
