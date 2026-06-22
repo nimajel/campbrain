@@ -1,5 +1,5 @@
 import type { AvailabilityWindowEntry } from "./types";
-import { classifySite } from "../catalog/site-classifier";
+import { classifySite, isWalkUpSite } from "../catalog/site-classifier";
 import type { SiteAccess, SiteKind } from "../catalog/site-classifier";
 
 export type HideTarget = "group" | "equestrian" | "walk_up";
@@ -167,4 +167,181 @@ export function splitWalkUp(
   const walkUp: string[] = [];
   for (const name of names) (isWalkUp(name, cgName) ? walkUp : bookable).push(name);
   return { bookable: bookable.sort(), walkUp: walkUp.sort() };
+}
+
+// --- park availability assembly ---
+
+/**
+ * Given a set of available dates, derive the unique Fridays that anchor weekends
+ * where at least one of Fri/Sat/Sun has available sites. Ported verbatim from the
+ * legacy route. Returns up to `maxCount` Fridays sorted ascending.
+ */
+export function weekendFridaysFromAvailableDates(
+  availableDates: string[],
+  today: string,
+  maxCount: number,
+): string[] {
+  const fridaySet = new Set<string>();
+  for (const iso of availableDates) {
+    // Safety net for direct callers; in the buildParkAvailability path the input
+    // is already range-filtered to dates >= today.
+    if (iso < today) continue;
+    const d = parseDateLocal(iso);
+    const dow = d.getDay(); // 0=Sun,5=Fri,6=Sat
+    if (dow !== 5 && dow !== 6 && dow !== 0) continue;
+    if (dow === 6) d.setDate(d.getDate() - 1);
+    else if (dow === 0) d.setDate(d.getDate() - 2);
+    fridaySet.add(d.toISOString().slice(0, 10));
+  }
+  return [...fridaySet].sort().slice(0, maxCount);
+}
+
+/**
+ * Assemble scanner entries + taxonomy/date filters into a ParkAvailabilityResponse.
+ * Pure port of the legacy GET handler body (web/app/api/map/availability/route.ts):
+ * param parsing is hoisted into the `filters`/`responseId`/`now` args.
+ */
+export function buildParkAvailability(
+  entries: AvailabilityWindowEntry[],
+  filters: MapAvailabilityFilters,
+  responseId: string,
+  now: Date = new Date(),
+): ParkAvailabilityResponse {
+  if (entries.length === 0) {
+    return {
+      parkPageId: responseId,
+      parkName: "",
+      asOf: null,
+      nextAvailableDates: [],
+      nextAvailableWeekends: [],
+      earliestAvailableDate: null,
+    };
+  }
+
+  const parkName = entries[0]!.parkName;
+  const asOf = entries.reduce(
+    (latest, e) => (e.scannedAt > latest ? e.scannedAt : latest),
+    entries[0]!.scannedAt,
+  );
+
+  const passesTaxonomy = makeTaxonomyPredicate(filters);
+  const dateMap = buildDateSiteMap(entries, passesTaxonomy);
+  const today = todayIso(now);
+  const allAvailableDates = [...dateMap.keys()].filter((d) => d >= today).sort();
+  const earliestAvailableDate = allAvailableDates[0] ?? null;
+
+  const from = filters.from ?? null;
+  const to = filters.to ?? null;
+  const rangeStart = from && from > today ? from : today;
+  const sortedAvailableDates = allAvailableDates.filter((d) => d >= rangeStart && (!to || d <= to));
+
+  // First-seen booking metadata per campground across all entries.
+  const cgMeta = new Map<string, { bookingUrl?: string; nightlyFee: number | null }>();
+  for (const entry of entries) {
+    for (const cg of entry.campgrounds) {
+      if (!cgMeta.has(cg.name)) {
+        cgMeta.set(cg.name, { bookingUrl: cg.bookingUrl, nightlyFee: cg.nightlyFee ?? null });
+      }
+    }
+  }
+  const allCgNames = [...cgMeta.keys()];
+
+  // 1. Next available dates — booking metadata sourced from the dateMap cg entry.
+  const nextAvailableDates: AvailableDateEntry[] = [];
+  for (const date of sortedAvailableDates) {
+    const cgMap = dateMap.get(date)!;
+    const campgrounds = [...cgMap.entries()]
+      .map(([name, { sites, bookingUrl, nightlyFee }]) => {
+        const { bookable, walkUp } = splitWalkUp(sites, name, isWalkUpSite);
+        return {
+          name,
+          bookingUrl,
+          nightlyFee,
+          availableSiteCount: bookable.length,
+          sites: bookable,
+          walkUpSites: walkUp,
+        };
+      })
+      .filter((cg) => cg.availableSiteCount > 0 || cg.walkUpSites.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (campgrounds.length > 0) {
+      nextAvailableDates.push({
+        date,
+        dayLabel: dowLabel(date),
+        isWeekend: isWeekendArrival(date),
+        campgrounds,
+      });
+    }
+  }
+
+  // 2. Next available weekends — Fridays derived from the range-filtered dates.
+  const nextAvailableWeekends: WeekendEntry[] = [];
+  const fridays = weekendFridaysFromAvailableDates(sortedAvailableDates, today, Infinity);
+
+  for (const fri of fridays) {
+    const sat = addDays(fri, 1);
+    const sun = addDays(fri, 2);
+    const allowFridayArrival = isInRange(fri, rangeStart, to);
+    const allowSaturdayArrival = isInRange(sat, rangeStart, to);
+
+    const weekendCampgrounds: WeekendCampground[] = [];
+
+    for (const cgName of allCgNames) {
+      const sites3Night = allowFridayArrival
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat, sun]), cgName, isWalkUpSite).bookable
+        : [];
+      const sites2NightFri = allowFridayArrival
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [fri, sat]), cgName, isWalkUpSite).bookable
+        : [];
+      const sites2NightSat = allowSaturdayArrival
+        ? splitWalkUp(sitesAvailableForDates(dateMap, cgName, [sat, sun]), cgName, isWalkUpSite).bookable
+        : [];
+
+      const friSplit = allowFridayArrival
+        ? splitWalkUp([...(dateMap.get(fri)?.get(cgName)?.sites ?? [])], cgName, isWalkUpSite)
+        : { bookable: [], walkUp: [] };
+      const satSplit = allowSaturdayArrival
+        ? splitWalkUp([...(dateMap.get(sat)?.get(cgName)?.sites ?? [])], cgName, isWalkUpSite)
+        : { bookable: [], walkUp: [] };
+      const sites1NightFri = friSplit.bookable;
+      const sites1NightSat = satSplit.bookable;
+      const walkUpSites = [...new Set([...friSplit.walkUp, ...satSplit.walkUp])].sort();
+
+      if (sites1NightFri.length === 0 && sites1NightSat.length === 0 && walkUpSites.length === 0) {
+        continue;
+      }
+
+      weekendCampgrounds.push({
+        name: cgName,
+        bookingUrl: cgMeta.get(cgName)?.bookingUrl,
+        nightlyFee: cgMeta.get(cgName)?.nightlyFee ?? null,
+        sites3Night,
+        sites2NightFri,
+        sites2NightSat,
+        sites1NightFri,
+        sites1NightSat,
+        walkUpSites,
+      });
+    }
+
+    if (weekendCampgrounds.length > 0) {
+      nextAvailableWeekends.push({
+        label: `${dowLabel(fri)}–${dowLabel(sun)}`,
+        fridayDate: fri,
+        saturdayDate: sat,
+        sundayDate: sun,
+        campgrounds: weekendCampgrounds.sort((a, b) => a.name.localeCompare(b.name)),
+      });
+    }
+  }
+
+  return {
+    parkPageId: responseId,
+    parkName,
+    asOf,
+    nextAvailableDates,
+    nextAvailableWeekends,
+    earliestAvailableDate,
+  };
 }

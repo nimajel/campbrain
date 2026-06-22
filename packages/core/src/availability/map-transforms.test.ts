@@ -11,6 +11,8 @@ import {
   parseDateLocal,
   dowLabel,
   todayIso,
+  weekendFridaysFromAvailableDates,
+  buildParkAvailability,
 } from "./map-transforms";
 
 // ---------------------------------------------------------------------------
@@ -345,5 +347,141 @@ describe("makeTaxonomyPredicate", () => {
     expect(pred("Group Site 1", "CG")).toBe(false);
     // Environmental is hike_in → excluded by access filter
     expect(pred("Environmental Site 1", "CG")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// weekendFridaysFromAvailableDates
+// ---------------------------------------------------------------------------
+
+describe("weekendFridaysFromAvailableDates", () => {
+  it("collapses Fri/Sat/Sun of one weekend to its anchor Friday", () => {
+    // 2026-08-14 Fri, 2026-08-15 Sat, 2026-08-16 Sun → one Friday anchor
+    expect(
+      weekendFridaysFromAvailableDates(["2026-08-14", "2026-08-15", "2026-08-16"], "2026-08-01", Infinity),
+    ).toEqual(["2026-08-14"]);
+  });
+
+  it("Saturday-only input rolls back one day to Friday anchor", () => {
+    // 2026-08-15 is Saturday (dow=6) → subtract 1 → 2026-08-14
+    expect(
+      weekendFridaysFromAvailableDates(["2026-08-15"], "2026-08-01", Infinity),
+    ).toEqual(["2026-08-14"]);
+  });
+
+  it("Sunday-only input rolls back two days to Friday anchor", () => {
+    // 2026-08-16 is Sunday (dow=0) → subtract 2 → 2026-08-14
+    expect(
+      weekendFridaysFromAvailableDates(["2026-08-16"], "2026-08-01", Infinity),
+    ).toEqual(["2026-08-14"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildParkAvailability
+// ---------------------------------------------------------------------------
+
+describe("buildParkAvailability", () => {
+  // 2026-08-14 is a Friday (getDay()===5), 08-15 Sat, 08-16 Sun.
+  const friAnchorEntries: AvailabilityWindowEntry[] = [
+    entry(
+      "Loop A",
+      [
+        { name: "S1", dates: { "2026-08-14": "available", "2026-08-15": "available", "2026-08-16": "available" } },
+        { name: "S2", dates: { "2026-08-14": "available" } },
+        { name: "Hike/Bike 1", dates: { "2026-08-14": "available" } },
+      ],
+      "2026-08-14",
+    ),
+  ];
+
+  // "now" before all the available dates so today=2026-08-01 keeps everything.
+  const beforeWindow = new Date("2026-08-01T00:00:00Z");
+
+  it("sets asOf to the latest scannedAt and earliestAvailableDate to the first date", () => {
+    const res = buildParkAvailability(friAnchorEntries, {}, "p", beforeWindow);
+    expect(res.asOf).toBe("2026-06-22T00:00:00Z");
+    expect(res.earliestAvailableDate).toBe("2026-08-14");
+    expect(res.parkName).toBe("P");
+    expect(res.parkPageId).toBe("p");
+  });
+
+  it("nextAvailableDates: 08-14 entry splits bookable vs walk-up", () => {
+    const res = buildParkAvailability(friAnchorEntries, {}, "p", beforeWindow);
+    const day = res.nextAvailableDates.find((d) => d.date === "2026-08-14");
+    expect(day).toBeDefined();
+    expect(day!.isWeekend).toBe(true);
+    expect(day!.campgrounds).toHaveLength(1);
+    const cg = day!.campgrounds[0]!;
+    expect(cg.name).toBe("Loop A");
+    expect(cg.sites).toEqual(["S1", "S2"]);
+    expect(cg.walkUpSites).toEqual(["Hike/Bike 1"]);
+    expect(cg.availableSiteCount).toBe(2);
+  });
+
+  it("nextAvailableWeekends: one weekend with full tier breakdown", () => {
+    const res = buildParkAvailability(friAnchorEntries, {}, "p", beforeWindow);
+    expect(res.nextAvailableWeekends).toHaveLength(1);
+    const wk = res.nextAvailableWeekends[0]!;
+    expect(wk.fridayDate).toBe("2026-08-14");
+    expect(wk.saturdayDate).toBe("2026-08-15");
+    expect(wk.sundayDate).toBe("2026-08-16");
+    expect(wk.campgrounds).toHaveLength(1);
+    const cg = wk.campgrounds[0]!;
+    expect(cg.name).toBe("Loop A");
+    expect(cg.sites3Night).toEqual(["S1"]);
+    expect(cg.sites2NightFri).toEqual(["S1"]);
+    expect(cg.sites2NightSat).toEqual(["S1"]);
+    expect(cg.sites1NightFri).toEqual(["S1", "S2"]);
+    expect(cg.sites1NightSat).toEqual(["S1"]);
+    expect(cg.walkUpSites).toEqual(["Hike/Bike 1"]);
+  });
+
+  it("range filter excluding all dates yields empty lists", () => {
+    const res = buildParkAvailability(friAnchorEntries, { to: "2026-08-13" }, "p", beforeWindow);
+    expect(res.nextAvailableDates).toEqual([]);
+    expect(res.nextAvailableWeekends).toEqual([]);
+    // earliestAvailableDate stays global (outside the requested range)
+    expect(res.earliestAvailableDate).toBe("2026-08-14");
+  });
+
+  it("from=2026-08-15 (after the Friday) excludes 08-14 from dates and disables Friday-arrival tiers", () => {
+    // rangeStart becomes "2026-08-15" since from > today.
+    // nextAvailableDates only contains dates >= 08-15.
+    // weekendFridaysFromAvailableDates still derives anchor 08-14 from Sat/Sun inputs,
+    // but allowFridayArrival=false because 08-14 < rangeStart, so all Fri-arrival tiers
+    // (sites3Night, sites2NightFri, sites1NightFri) are empty for that weekend.
+    const res = buildParkAvailability(friAnchorEntries, { from: "2026-08-15" }, "p", beforeWindow);
+
+    // 08-14 must not appear in nextAvailableDates
+    expect(res.nextAvailableDates.map((d) => d.date)).not.toContain("2026-08-14");
+    // 08-15 and 08-16 must appear (S1 is available on both)
+    expect(res.nextAvailableDates.map((d) => d.date)).toContain("2026-08-15");
+    expect(res.nextAvailableDates.map((d) => d.date)).toContain("2026-08-16");
+
+    // One weekend entry anchored at 08-14
+    expect(res.nextAvailableWeekends).toHaveLength(1);
+    const wk = res.nextAvailableWeekends[0]!;
+    expect(wk.fridayDate).toBe("2026-08-14");
+    const cg = wk.campgrounds[0]!;
+    expect(cg.name).toBe("Loop A");
+    // Friday-arrival tiers all empty because 08-14 < rangeStart
+    expect(cg.sites3Night).toEqual([]);
+    expect(cg.sites2NightFri).toEqual([]);
+    expect(cg.sites1NightFri).toEqual([]);
+    // Saturday-arrival tiers still populated from S1 (available Sat+Sun)
+    expect(cg.sites2NightSat).toEqual(["S1"]);
+    expect(cg.sites1NightSat).toEqual(["S1"]);
+  });
+
+  it("empty entries returns the empty-shape response", () => {
+    expect(buildParkAvailability([], {}, "p")).toEqual({
+      parkPageId: "p",
+      parkName: "",
+      asOf: null,
+      nextAvailableDates: [],
+      nextAvailableWeekends: [],
+      earliestAvailableDate: null,
+    });
   });
 });
