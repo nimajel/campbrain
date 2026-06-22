@@ -21,7 +21,10 @@ const BATCH_DELAY_MS = 500;
 
 /** Minimal provider surface the orchestration needs (lets tests inject a fake).
  *  Based on the AvailabilityProvider interface so the return type includes 'unsupported'. */
-export type ScanProvider = Pick<AvailabilityProvider, "generateCacheWindows" | "proactiveScanWindow">;
+export type ScanProvider = Pick<
+  AvailabilityProvider,
+  "generateCacheWindows" | "proactiveScanWindow" | "proactiveConcurrency" | "batchDelayMs"
+>;
 
 export interface ScanDeps {
   db: TransactionalDb & QueryDb;
@@ -50,8 +53,8 @@ export async function runProactiveScan(deps: ScanDeps): Promise<ScanSummary> {
   const startMs = Date.now();
   const log = deps.log ?? (() => {});
   const provider: ScanProvider = deps.provider ?? new CaliforniaParksProvider();
-  const concurrency = deps.concurrency ?? CONCURRENCY;
-  const delayMs = deps.batchDelayMs ?? BATCH_DELAY_MS;
+  const concurrency = deps.concurrency ?? provider.proactiveConcurrency ?? CONCURRENCY;
+  const delayMs = deps.batchDelayMs ?? provider.batchDelayMs ?? BATCH_DELAY_MS;
   const sleep =
     deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const today = deps.todayOverride ? dayjs(deps.todayOverride) : dayjs();
@@ -63,10 +66,9 @@ export async function runProactiveScan(deps: ScanDeps): Promise<ScanSummary> {
     windowStart: string;
     windowEnd: string;
   };
+  const windows = provider.generateCacheWindows(rangeStart, rangeEnd);
   const candidates: Candidate[] = deps.parks.flatMap((park) =>
-    provider
-      .generateCacheWindows(rangeStart, rangeEnd)
-      .map((w) => ({ park, windowStart: w.windowStart, windowEnd: w.windowEnd })),
+    windows.map((w) => ({ park, windowStart: w.windowStart, windowEnd: w.windowEnd })),
   );
   log(`Proactive scan: ${deps.parks.length} parks, ${candidates.length} windows`);
 
@@ -94,7 +96,9 @@ export async function runProactiveScan(deps: ScanDeps): Promise<ScanSummary> {
 
   for (let i = 0; i < tasks.length; i += concurrency) {
     const batch = tasks.slice(i, i + concurrency);
-    await runWithConcurrency(batch, concurrency);
+    const settled = await runWithConcurrency(batch, concurrency);
+    // A thrown task (network/parse/upsert error) surfaces as a rejected result — count it.
+    fetchErrors += settled.filter((r) => r.status === "rejected").length;
     if (i + batch.length < tasks.length) await sleep(delayMs);
   }
 

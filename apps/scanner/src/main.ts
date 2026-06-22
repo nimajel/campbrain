@@ -26,8 +26,9 @@ async function main() {
     process.env["SCAN_DEBUG_DIR"] ?? join(process.cwd(), ".scan-debug");
 
   const db = createDb(url);
+  let summary;
   try {
-    const summary = await runProactiveScan({
+    summary = await runProactiveScan({
       db,
       parks: loadCaParks(),
       log: (m) => console.log(m),
@@ -43,9 +44,15 @@ async function main() {
         );
       },
     });
-    console.log(`✅ scan complete: ${JSON.stringify(summary)}`);
   } finally {
     await closeDb(db);
+  }
+  console.log(`✅ scan complete: ${JSON.stringify(summary)}`);
+  if (summary.windows > 0 && summary.cacheWrites === 0) {
+    console.error(
+      `scan produced 0 cache writes across ${summary.windows} windows — likely an upstream outage`,
+    );
+    process.exit(1);
   }
 }
 

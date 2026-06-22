@@ -92,4 +92,36 @@ describe("runProactiveScan (orchestration)", () => {
     });
     expect(sleep).toHaveBeenCalledTimes(1);
   });
+
+  it("MV refresh failure is non-fatal", async () => {
+    refreshMaterializedView.mockRejectedValueOnce(new Error("pg dead"));
+    const provider: ScanProvider = {
+      generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
+      proactiveScanWindow: vi.fn(async () => entry("1")),
+    };
+    const summary = await runProactiveScan({
+      db: {} as never,
+      parks: [park("1")],
+      provider,
+      todayOverride: "2026-06-22",
+    });
+    expect(summary.cacheWrites).toBe(1);
+    expect(summary.fetchErrors).toBe(0);
+  });
+
+  it("'unsupported' is treated as a skip (fetchErrors++, no upsert)", async () => {
+    const provider: ScanProvider = {
+      generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
+      proactiveScanWindow: vi.fn(async () => "unsupported" as const),
+    };
+    const summary = await runProactiveScan({
+      db: {} as never,
+      parks: [park("1")],
+      provider,
+      todayOverride: "2026-06-22",
+    });
+    expect(summary.cacheWrites).toBe(0);
+    expect(summary.fetchErrors).toBe(1);
+    expect(upsertEntry).not.toHaveBeenCalled();
+  });
 });
