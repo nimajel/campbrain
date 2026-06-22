@@ -37,6 +37,21 @@ describe("searchAvailableStays + findNextAvailableDates (integration)", async ()
       ON CONFLICT (site_id, date) DO UPDATE SET status = EXCLUDED.status`;
     await sql`INSERT INTO availability (site_id, date, status) VALUES (${siteId}, ${d2}::date, 'available')
       ON CONFLICT (site_id, date) DO UPDATE SET status = EXCLUDED.status`;
+
+    // Walk-up site available on the same nights as Site 1
+    const [walkUpSite] = await sql`
+      INSERT INTO sites (provider_id, park_page_id, campground_name, site_name, access, is_walk_up)
+      VALUES (${PROVIDER}, ${PARK}, 'CG', 'Hike 1', 'hike_in', true)
+      ON CONFLICT (provider_id, park_page_id, campground_name, site_name)
+        DO UPDATE SET is_walk_up = EXCLUDED.is_walk_up
+      RETURNING site_id`;
+    const walkUpSiteId = walkUpSite!.site_id;
+    await sql`INSERT INTO availability (site_id, date, status) VALUES (${walkUpSiteId}, ${d0}::date, 'available')
+      ON CONFLICT (site_id, date) DO UPDATE SET status = EXCLUDED.status`;
+    await sql`INSERT INTO availability (site_id, date, status) VALUES (${walkUpSiteId}, ${d1}::date, 'available')
+      ON CONFLICT (site_id, date) DO UPDATE SET status = EXCLUDED.status`;
+    await sql`INSERT INTO availability (site_id, date, status) VALUES (${walkUpSiteId}, ${d2}::date, 'available')
+      ON CONFLICT (site_id, date) DO UPDATE SET status = EXCLUDED.status`;
   });
 
   afterAll(async () => {
@@ -58,7 +73,7 @@ describe("searchAvailableStays + findNextAvailableDates (integration)", async ()
     const cg = park!.campgrounds.find((c) => c.name === "CG");
     expect(cg).toBeDefined();
     expect(cg!.availableSites).toContain("Site 1");
-    expect(cg!.walkUpSites).toHaveLength(0);
+    expect(cg!.walkUpSites).toContain("Hike 1");
   });
 
   it.skipIf(!hasDb)("searchAvailableStays: 5-night stay (more than 3 available nights) returns no match for search-park", async () => {
@@ -80,5 +95,26 @@ describe("searchAvailableStays + findNextAvailableDates (integration)", async ()
     const results = await findNextAvailableDates(env!.db, { parkPageIds: ["nonexistent-xyz"] });
     const park = results.find((r) => r.parkPageId === PARK);
     expect(park).toBeUndefined();
+  });
+
+  it.skipIf(!hasDb)("searchAvailableStays: walk-up site appears in walkUpSites, not availableSites", async () => {
+    const results = await searchAvailableStays(env!.db, { from: d0, to: d2 });
+    const park = results.find((p) => p.parkPageId === PARK);
+    expect(park).toBeDefined();
+    const cg = park!.campgrounds.find((c) => c.name === "CG");
+    expect(cg).toBeDefined();
+    expect(cg!.availableSites).toContain("Site 1");
+    expect(cg!.walkUpSites).toContain("Hike 1");
+    expect(cg!.availableSites).not.toContain("Hike 1");
+  });
+
+  it.skipIf(!hasDb)("searchAvailableStays: hide walk_up excludes walk-up sites entirely from result", async () => {
+    const results = await searchAvailableStays(env!.db, { from: d0, to: d2, hide: ["walk_up"] });
+    const park = results.find((p) => p.parkPageId === PARK);
+    expect(park).toBeDefined();
+    const cg = park!.campgrounds.find((c) => c.name === "CG");
+    expect(cg).toBeDefined();
+    expect(cg!.availableSites).toContain("Site 1");
+    expect(cg!.walkUpSites).toEqual([]);
   });
 });

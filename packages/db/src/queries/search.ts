@@ -33,6 +33,7 @@ export async function searchAvailableStays(
   if (kindArr) filters.push(sql`s.site_kind = ANY(${sqlTextArray(kindArr)})`);
   if (hide.includes("group")) filters.push(sql`NOT s.is_group`);
   if (hide.includes("equestrian")) filters.push(sql`NOT s.is_equestrian`);
+  // hide 'walk_up' removes walk-up sites from the result entirely (they won't appear in walkUpSites)
   if (hide.includes("walk_up")) filters.push(sql`NOT s.is_walk_up`);
   const filterWhere = sql.join(filters, sql` AND `);
 
