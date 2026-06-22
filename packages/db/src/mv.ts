@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { Db } from "./client";
+import { type QueryDb } from "./queries/exec";
 
 export const MV_CREATE_SQL = `
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_available_stays AS
@@ -40,4 +41,18 @@ export const MV_INDEX_SQL = [
 
 export async function refreshAvailableStays(db: Db): Promise<void> {
   await db.execute(sql`REFRESH MATERIALIZED VIEW CONCURRENTLY mv_available_stays`);
+}
+
+/** Refresh mv_available_stays, using CONCURRENTLY only when already populated
+ *  (a never-populated MV cannot be refreshed CONCURRENTLY → would throw).
+ *  Ported from src/cache/availability-cache.ts:589-599. */
+export async function refreshMaterializedView(db: QueryDb): Promise<void> {
+  const res = await db.execute(sql`SELECT ispopulated FROM pg_matviews WHERE matviewname = 'mv_available_stays'`);
+  const arr = Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows ?? [];
+  const populated = (arr[0] as { ispopulated?: boolean } | undefined)?.ispopulated === true;
+  if (populated) {
+    await db.execute(sql`REFRESH MATERIALIZED VIEW CONCURRENTLY mv_available_stays`);
+  } else {
+    await db.execute(sql`REFRESH MATERIALIZED VIEW mv_available_stays`);
+  }
 }
