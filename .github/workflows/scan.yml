@@ -1,7 +1,7 @@
 name: Proactive Scan
 on:
   schedule:
-    - cron: "0 */2 * * *"   # every 2 hours (GitHub cron is best-effort, UTC).
+    - cron: "0 */6 * * *"   # every 2 hours (GitHub cron is best-effort, UTC).
                             # Private repos: free Actions minutes are limited (~2000/mo) — a
                             # ~11-min scan every 2h ≈ 4000 min/mo. Make the repo public
                             # (unlimited free minutes) OR change to "0 */6 * * *" if private.
