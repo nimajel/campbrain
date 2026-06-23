@@ -14,6 +14,7 @@
   "dependencies": {
     "@campbrain/api-client": "workspace:*",
     "@campbrain/config": "workspace:*",
+    "@campbrain/core": "workspace:*",
     "@fontsource-variable/geist": "5.2.9",
     "@radix-ui/react-slot": "1.3.0",
     "@tanstack/react-query": "^5.64.0",
