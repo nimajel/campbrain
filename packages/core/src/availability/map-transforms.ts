@@ -128,12 +128,15 @@ export function isInRange(iso: string, from: string, to: string | null | undefin
 
 // --- taxonomy predicate (closes over the filter arrays) ---
 
-export function makeTaxonomyPredicate(f: MapAvailabilityFilters): (siteName: string, cgName: string) => boolean {
+export function makeTaxonomyPredicate(
+  f: MapAvailabilityFilters,
+  parkPageId?: string,
+): (siteName: string, cgName: string) => boolean {
   const access = f.access ?? [];
   const kinds = f.kinds ?? [];
   const hide = f.hide ?? [];
   return (siteName, cgName) => {
-    const info = classifySite(siteName, cgName);
+    const info = classifySite(siteName, cgName, undefined, parkPageId);
     if (info.isDayUse) return false;
     if (access.length > 0 && !access.includes(info.access)) return false;
     if (kinds.length > 0 && (info.siteKind === null || !kinds.includes(info.siteKind))) return false;
@@ -259,7 +262,7 @@ export function buildParkAvailability(
     entries[0]!.scannedAt,
   );
 
-  const passesTaxonomy = makeTaxonomyPredicate(filters);
+  const passesTaxonomy = makeTaxonomyPredicate(filters, entries[0]!.parkPageId);
   const dateMap = buildDateSiteMap(entries, passesTaxonomy);
   const today = todayIso(now);
   const allAvailableDates = [...dateMap.keys()].filter((d) => d >= today).sort();

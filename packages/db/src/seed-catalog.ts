@@ -59,7 +59,7 @@ export async function seedCatalog(
     const siteByKey = new Map<string, { cgName: string; site: CatalogSite }>();
     for (const cg of cgs) for (const s of cg.sites) siteByKey.set(`${cg.name}::${s.name}`, { cgName: cg.name, site: s });
     const siteRows = [...siteByKey.values()].map(({ cgName, site }) => {
-      const info = classifySite(site.name, cgName);
+      const info = classifySite(site.name, cgName, undefined, park.parkPageId);
       return {
         provider_id: PROVIDER_ID,
         park_page_id: park.parkPageId,

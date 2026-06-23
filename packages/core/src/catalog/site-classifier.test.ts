@@ -26,6 +26,14 @@ describe('classifySite — CA name patterns', () => {
   it('detects boat-in access', () => {
     expect(classifySite('Boat-in Site 5', '').access).toBe('boat_in');
   });
+  it('detects kayak / canoe access', () => {
+    expect(classifySite('Group Tent Campsite #KAYK', 'West Garrison (sites 10 & Kayak)').access).toBe('boat_in');
+    expect(classifySite('Canoe-in Site 2', '').access).toBe('boat_in');
+  });
+  it('classifies boat-in primitive sites as boat_in (boat wins over primitive)', () => {
+    expect(classifySite('Boat In Primitive Campsite #1', 'Boat-In Sites 1-16').access).toBe('boat_in');
+    expect(classifySite('Premium Boat In Primitive Campsite #B022', 'Boat-In Camp Area').access).toBe('boat_in');
+  });
   it('detects site kinds', () => {
     expect(classifySite('Site 12 (E/W Hookup)', '').siteKind).toBe('hookup');
     expect(classifySite('Tent Site 7', '').siteKind).toBe('tent');
@@ -69,6 +77,26 @@ describe('classifySite — Rec.gov campsite_type', () => {
   it('only flags day-use on DAY USE, not other DAY substrings', () => {
     expect(classifySite('047', '', 'STANDARD HOLIDAY').isDayUse).toBe(false);
     expect(classifySite('047', '', 'WEEKDAY STANDARD').isDayUse).toBe(false);
+  });
+});
+
+describe('classifySite — park access overrides', () => {
+  it('reassigns residual drive-in sites to hike_in for Angel Island (468)', () => {
+    expect(classifySite('Campsite #7', 'Sunrise (sites 7-9)').access).toBe('drive_in');
+    expect(classifySite('Campsite #7', 'Sunrise (sites 7-9)', undefined, '468').access).toBe('hike_in');
+    expect(classifySite('Group Tent Campsite #GTC', 'North Garrison Group Camp', undefined, '468').access).toBe('hike_in');
+  });
+  it('does not override boat-in / hike-in sites that already carry an access keyword', () => {
+    expect(classifySite('Group Tent Campsite #KAYK', 'West Garrison (sites 10 & Kayak)', undefined, '468').access).toBe('boat_in');
+    expect(classifySite('Hike in Campsite #1', 'East Bay (sites 1-3)', undefined, '468').access).toBe('hike_in');
+  });
+  it('leaves day-use sites untouched (they are excluded from surfaces anyway)', () => {
+    const r = classifySite('Group Day Use #GG', 'East Group Garrison Picnic Area', undefined, '468');
+    expect(r.isDayUse).toBe(true);
+    expect(r.access).toBe('drive_in');
+  });
+  it('is a no-op for parks without an override', () => {
+    expect(classifySite('Campsite #7', 'Sunrise (sites 7-9)', undefined, '999').access).toBe('drive_in');
   });
 });
 

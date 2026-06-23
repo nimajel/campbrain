@@ -254,7 +254,9 @@ Provider-specific logic stays isolated behind adapters. Do not mix parsing logic
 - `availability` — `(site_id, date, status)` where status ∈ available | unavailable | unknown
 - `saved_searches` — provider-scoped; `id` (uuid PK), `user_id` (nullable), `provider` FK, `name`, `definition` JSONB (`{ scope, datePattern, filters }`), `alert_enabled`, `email_enabled`, `created_at`, `updated_at`; two indexes: by `user_id` and partial on `alert_enabled = true`
 
-**Site classifier** — `src/catalog/site-classifier.ts` is the single source of truth for all classification regexes. `classifySite(siteName, campgroundName, recGovCampsiteType?)` sets all six columns at upsert time and on conflict (so reclassification heals existing rows). CA parks are classified by name patterns; Rec.gov sites prefer the `campsite_type` field from the month-availability payload. Use `npm run db:backfill-types` to classify existing rows by name after a schema change.
+**Site classifier** — `src/catalog/site-classifier.ts` (legacy/main) and `packages/core/src/catalog/site-classifier.ts` (hosted-launch authoritative; kept byte-identical) are the single source of truth for all classification regexes. `classifySite(siteName, campgroundName, recGovCampsiteType?, parkPageId?)` sets all six columns at upsert time and on conflict (so reclassification heals existing rows). CA parks are classified by name patterns — **boat-in wins over hike-in** when a name carries both signals (e.g. "Boat In Primitive Campsite", where `primitive` would otherwise match hike-in), and `kayak`/`canoe` count as boat-in access. Rec.gov sites prefer the `campsite_type` field from the month-availability payload. Use `npm run db:backfill-types` to classify existing rows by name after a schema change.
+
+- **`PARK_ACCESS_OVERRIDES`** (in the classifier, keyed by `park_page_id`) — for parks that have **no drive-in sites** but whose individual site names carry no readable access keyword (e.g. Angel Island `468`: "Campsite #7", "Group Tent Campsite #GTC" — ferry/boat/kayak access only). The override reassigns any residual non-day-use `drive_in` site to a park-specific access (Angel Island → `hike_in`); sites that already classify as boat-in/hike-in by name (e.g. the kayak site) are left alone, and day-use sites are untouched. It is applied **inside `classifySite`** — the single chokepoint every writer funnels through (catalog seed, scanner upsert in `packages/db/src/queries/upsert.ts`, and the map read-time taxonomy predicate in `packages/core/src/availability/map-transforms.ts`) — so it survives scanner re-classification. Callers thread `parkPageId`; the hosted-launch seed/upsert/map paths pass it (legacy `src/` callers don't yet, so the override is a no-op on main). A live data fix needs no manual step — the next scan (GitHub Actions, every 6h against Neon) re-upserts with the corrected access.
 
 **Materialized view** — `mv_available_stays`:
 - Precomputes 1N/2N stays for the `/explore` page
@@ -370,7 +372,7 @@ Day-use sites (`is_day_use = true`) are **always** excluded from every user-faci
   goal docs) is owned by the **doc-steward** agent — defer doc updates to it rather than
   editing CLAUDE.md ad-hoc
 - Save raw HTML snapshots when parser confidence is low
-- Do not hardcode park-specific values (Angel Island, page_id 468, sites #4–#6) outside seed data and tests
+- Do not hardcode park-specific values (Angel Island, page_id 468, sites #4–#6) outside seed data and tests. The one sanctioned exception is `PARK_ACCESS_OVERRIDES` in `site-classifier.ts` — a labeled reference-data table for parks with no name-readable access signal; it must live at the `classifySite` chokepoint (not in the catalog JSON) so it stays durable through scanner re-classification
 
 ---
 

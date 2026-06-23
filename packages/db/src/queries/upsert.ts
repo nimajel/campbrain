@@ -55,7 +55,7 @@ export async function upsertEntry(
     const siteByKey = new Map<string, SiteUpsert>();
     for (const cg of entry.campgrounds) {
       for (const site of cg.sites) {
-        const info = classifySite(site.name, cg.name, site.recGovCampsiteType);
+        const info = classifySite(site.name, cg.name, site.recGovCampsiteType, entry.parkPageId);
         siteByKey.set(`${cg.name}::${site.name}`, {
           cgName: cg.name, siteName: site.name,
           access: info.access, siteKind: info.siteKind,
