@@ -14,8 +14,8 @@ The **Documentation Steward** keeps both this roster and CLAUDE.md in sync with 
 |---|---|---|---|
 | [architect](.claude/agents/architect.md) | opus | `docs/superpowers/specs/` | Designs features before code; produces specs |
 | [planner](.claude/agents/planner.md) | opus | implementation plans | Turns approved specs into ordered, dependency-aware plans |
-| [backend-developer](.claude/agents/backend-developer.md) | sonnet | `src/`, `web/app/api/` | Scanner, cache, DB, CLI, provider adapters, API routes |
-| [frontend-developer](.claude/agents/frontend-developer.md) | sonnet | `web/app/**`, `web/lib/` | Next.js pages, components, Leaflet map, client utils |
+| [backend-developer](.claude/agents/backend-developer.md) | sonnet | `src/`, `web/app/api/` (main); `packages/core`, `packages/db`, `apps/api`, `apps/scanner` (hosted-launch) | Scanner, cache, DB, CLI, provider adapters, API routes |
+| [frontend-developer](.claude/agents/frontend-developer.md) | sonnet | `web/app/**`, `web/lib/` (main); `apps/web/src/` (hosted-launch) | Next.js pages, components, Leaflet map, client utils; Vite SPA on hosted-launch |
 | [reviewer](.claude/agents/reviewer.md) | sonnet¹ | diffs & plans | Spec compliance gate + correctness, conformance, structural quality |
 | [debugger](.claude/agents/debugger.md) | sonnet | bugs | Evidence-based root-cause diagnosis (no fix) |
 | [tester](.claude/agents/tester.md) | sonnet | `test/` | Vitest tests, edge-case coverage |

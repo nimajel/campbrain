@@ -37,7 +37,36 @@ owns conventions, guardrails, and Next Steps. `AGENTS.md` owns the build team.
 
 ---
 
-## Current State
+## Hosted-Launch Rewrite (active direction — `hosted-launch` branch)
+
+CampBrain is being re-platformed to a **Cloudflare-native hosted stack** on the
+`hosted-launch` branch. **Phase 1 (live map slice) is complete and deployed live** at
+`https://campbrain-api.jelvehn.workers.dev`.
+
+Key facts for anyone working on `hosted-launch`:
+- **Single Worker serves both the Vite SPA and the API** — `apps/api` (`campbrain-api`
+  Worker) binds `apps/web/dist` via `[assets]` (`not_found_handling =
+  "single-page-application"`). Same origin = first-party cookies; no Cloudflare Pages.
+- **DB = Neon (managed Postgres)**, Drizzle ORM + migrations. Run migrations/seed against
+  Neon with `?sslmode=require` — not the local Docker instance.
+- **Scanner = GitHub Actions** (`Proactive Scan` workflow, `.github/workflows/scan.yml`),
+  cron `0 */6 * * *`. The free-plan 10 ms Worker CPU cap blocks cheerio parsing; GitHub
+  Actions runners have no such limit. Entry point: `bun --filter @campbrain/scanner start`.
+- **Repo is public** (`github.com/nimajel/campbrain`); **default branch is
+  `hosted-launch`** (scanner cron runs from it).
+- **Deploy:** `VITE_API_URL=<worker-origin> bun --filter @campbrain/web build` then
+  `bunx wrangler deploy` from `apps/api`. Secrets via `wrangler secret put`.
+
+Full deployment detail: [docs/reference/deployment.md](docs/reference/deployment.md).
+Master design spec: `docs/superpowers/specs/2026-06-17-hosted-launch-design.md`.
+Phase plans: `docs/superpowers/plans/2026-06-*-hosted-launch-phase*.md`.
+
+The sections below describe the **legacy local app (`main` branch)**, which remains
+the reference implementation until `hosted-launch` reaches feature parity (Phase 2).
+
+---
+
+## Current State (legacy local app — `main`)
 
 Fully operational two-tier system:
 
@@ -96,7 +125,10 @@ Reservation rules:
 
 ---
 
-## Stack
+## Stack (legacy local app — `main`)
+
+> On `hosted-launch` the stack is Bun/Turborepo, Vite+shadcn (web), Hono Worker (API),
+> tRPC, BetterAuth, Drizzle+Neon. See the hosted-launch section above.
 
 - **Runtime**: Node.js 18+
 - **Language**: TypeScript (strict, no `any`)
@@ -263,7 +295,10 @@ The original <200ms filter-toggle budget was measured against the pre-API client
 
 ---
 
-## Commands
+## Commands (legacy local app — `main`)
+
+> On `hosted-launch`: `bun install`, `bun run typecheck`, `bun run test`, `bun run build`
+> (Turborepo). Deploy: see the Hosted-Launch section above and `docs/reference/deployment.md`.
 
 Setup (run once / when schema changes):
 ```
@@ -379,6 +414,11 @@ Before committing:
 - [x] Recreation.gov provider adapter (proactive scan + ProviderBadge UI; catalog populated via `npm run catalog:refresh -- --provider=recreation-gov` once RIDB_API_KEY is set)
 - [x] UI component library + Storybook catalog (14 primitives in `web/components/ui/`; Storybook 9 on :6006)
 - [x] User-defined saved searches (`saved_searches` table; `/saved` surface; create-from-filters on `/explore`; CRUD REST API; scanner-wired)
+- [x] Hosted Cloudflare deployment — Phase 1 LIVE (`hosted-launch` branch; single Worker
+      serves Vite SPA + tRPC API; Neon DB; GitHub Actions scanner; BetterAuth Google login;
+      deployed at https://campbrain-api.jelvehn.workers.dev)
+- [~] Hosted deployment — Phase 2: port remaining surfaces to `hosted-launch` (`/explore`,
+      `/saved`, `/alerts`, `/dashboard`); full multi-user feature parity; merge to `main`
 - [ ] Lottery window calculator (Yosemite, Death Valley, etc.)
 - [ ] SMS / Slack notifications
 

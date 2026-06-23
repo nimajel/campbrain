@@ -1,7 +1,7 @@
 # CampBrain — Hosted Launch Design (Cloudflare-native rewrite)
 
 **Date:** 2026-06-17
-**Status:** Phase 0 SHIPPED + deployed 2026-06-19 (live: https://campbrain-api.jelvehn.workers.dev); Phases 1–3 pending
+**Status:** Phase 1 COMPLETE + deployed live (https://campbrain-api.jelvehn.workers.dev); Phase 2 in progress; Phase 3 pending
 **Owner:** ritolaya
 
 > **As-built deployment note (Phase 0):** the owner has no custom domain, so the planned
@@ -11,6 +11,15 @@
 > `SameSite=Lax` cookies (no custom domain needed; `SameSite=None` caused an OAuth
 > `state_mismatch` via browser third-party-cookie blocking). Pages is not used. If a custom
 > domain is added later, the Pages+Worker split (or `app.`/`api.` subdomains) can be revisited.
+
+> **As-built scanner note (Phase 1c):** the spec's scanner topology is "Cloudflare Cron
+> Triggers + Queues + R2." The Cloudflare Workers **free plan caps CPU at 10 ms per
+> invocation**; parsing a ~130 KB availability page with `cheerio` exceeds that, making a
+> Worker-based parser unreliable on free tier. Scanner is therefore **GitHub Actions**
+> instead (`Proactive Scan` workflow, `.github/workflows/scan.yml`, cron `0 */6 * * *`,
+> `timeout-minutes: 75`), running `bun --filter @campbrain/scanner start` against Neon.
+> Debug HTML goes to a GitHub Actions artifact instead of R2. The Cron+Queues+R2 design
+> can be revisited if the project moves to Workers Paid ($5/mo, 30 s CPU).
 
 > **Supersedes** the earlier draft of this file (a Vercel + Next.js + Neon + Railway
 > *migration*). After choosing a standard stack, this is a **Cloudflare-native rewrite**
@@ -48,7 +57,7 @@ proactive scanner runs entirely on Cloudflare.
 | Decision | Choice |
 |---|---|
 | Database | **Neon (Postgres)** — preserves the materialized view, `text[]` arrays, JSONB |
-| Scanner | **Cloudflare Cron Triggers + Queues** fan-out (one message per 8-day window) |
+| Scanner | **GitHub Actions** scheduled workflow (free-tier Worker CPU limit blocks cheerio; see as-built note above) |
 | API style | **tRPC** for the app + **minimal REST** (health/cron-internal/future webhooks) |
 | Web tier | **Full Vite + shadcn rewrite**, delivered **map-first** as vertical slices |
 | Auth | **BetterAuth** + Google social, Drizzle adapter, sessions in Neon |
