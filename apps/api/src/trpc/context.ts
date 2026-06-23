@@ -13,6 +13,9 @@ export async function createContext(opts: {
   auth: Auth;
   headers: Headers;
 }): Promise<TrpcContext> {
-  const session = await opts.auth.api.getSession({ headers: opts.headers });
+  const devUser = process.env["ALLOW_DEV_SESSION"] === "true" ? opts.headers.get("x-dev-user") : null;
+  const session = devUser
+    ? ({ user: { id: devUser } } as Awaited<ReturnType<Auth["api"]["getSession"]>>)
+    : await opts.auth.api.getSession({ headers: opts.headers });
   return { db: opts.db, auth: opts.auth, session };
 }

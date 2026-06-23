@@ -7,6 +7,8 @@ import { useSearch } from "./hooks/use-search";
 import RegionChips from "./components/RegionChips";
 import ResultsList from "./components/ResultsList";
 import FallbackDates from "./components/FallbackDates";
+import { AuthGate } from "@/features/auth/AuthGate";
+import { SaveSearchButton } from "./components/SaveSearchButton";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -111,11 +113,9 @@ export function ExplorePage({ seed }: Props) {
         {/* Site filters */}
         <SiteFilterPanel state={taxonomy} onChange={setTaxonomy} />
 
-        {/* Task 8 seam: <AuthGate><SaveSearchButton filters={filters} nights={nights}
-            minNights={seed?.minNights ?? 1} /></AuthGate> slots in here. minNights is a
-            prefill-only scalar from the URL seed (NOT a search filter) — pass seed?.minNights,
-            do not hardcode 1, so a saved search's stay length round-trips through Run → Save.
-            Render nothing until Task 8 wires BetterAuth session + SaveSearchModal. */}
+        <AuthGate>
+          <SaveSearchButton filters={filters} nights={nights} minNights={seed?.minNights ?? 1} />
+        </AuthGate>
       </div>
 
       {/* Empty / loading states */}

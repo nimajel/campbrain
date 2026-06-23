@@ -5,8 +5,8 @@ export type { AppRouter };
 
 export type ApiClient = ReturnType<typeof createTRPCClient<AppRouter>>;
 
-export function createApiClient(apiUrl: string): ApiClient {
+export function createApiClient(apiUrl: string, headers?: Record<string, string>): ApiClient {
   return createTRPCClient<AppRouter>({
-    links: [httpBatchLink({ url: `${apiUrl}/trpc`, fetch: (u, o) => fetch(u, { ...o, credentials: "include" }) })],
+    links: [httpBatchLink({ url: `${apiUrl}/trpc`, headers, fetch: (u, o) => fetch(u, { ...o, credentials: "include" }) })],
   });
 }
