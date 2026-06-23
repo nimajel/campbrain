@@ -15,7 +15,37 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
-const CA_BOUNDS: L.LatLngBoundsExpression = [[32.3, -124.6], [42.1, -114.0]];
+// Fixed California center + zoom. Using center/zoom (size-independent) instead of the
+// legacy `bounds={CA_BOUNDS}` fit avoids the world-zoom glitch when MapView mounts lazily
+// (React.lazy/Suspense) and the container has no measured height yet — fitBounds needs
+// pixel dimensions to compute a zoom, setView does not.
+const CA_CENTER: L.LatLngExpression = [37.2, -119.3];
+const CA_ZOOM = 6;
+
+// MapView mounts lazily (React.lazy/Suspense), so the map can initialize before the
+// container reaches its final height — leaving Leaflet with a stale, too-small size that
+// only paints tiles for part of the viewport. Observe the container and invalidateSize on
+// any resize (initial grow + window resizes) so the tile grid always fills the container.
+function InvalidateOnResize() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const invalidate = () => map.invalidateSize();
+    const observer = new ResizeObserver(invalidate);
+    observer.observe(container);
+    // Lazy/Suspense mount: the container may not have its final size when Leaflet first
+    // measures it, leaving the tile grid only partly painted. Re-measure after the browser
+    // has laid out (next frame + a short fallback delay).
+    const raf = requestAnimationFrame(invalidate);
+    const timer = setTimeout(invalidate, 250);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }, [map]);
+  return null;
+}
 
 function FlyTo({ park }: { park: MapPark | null }) {
   const map = useMap();
@@ -66,8 +96,9 @@ export default function MapView({ parks, selectedPark, onSelectPark, focusLocati
 
   return (
     <div className="cb-map-root relative h-full w-full">
-      <MapContainer bounds={CA_BOUNDS} zoomControl={false} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={CA_CENTER} zoom={CA_ZOOM} zoomControl={false} style={{ height: "100%", width: "100%" }}>
         <ZoomControl position="bottomright" />
+        <InvalidateOnResize />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
