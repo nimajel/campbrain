@@ -1,11 +1,17 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { NavBar } from "@/components/nav-bar";
 
-export const Route = createRootRoute({
-  component: () => (
+function RootLayout() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isMap = pathname === "/";
+  return (
     <div className="min-h-screen">
       <NavBar />
-      <main className="p-4"><Outlet /></main>
+      <main className={isMap ? "" : "p-4"}>
+        <Outlet />
+      </main>
     </div>
-  ),
-});
+  );
+}
+
+export const Route = createRootRoute({ component: RootLayout });
