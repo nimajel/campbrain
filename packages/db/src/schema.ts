@@ -1,6 +1,6 @@
 import {
   pgTable, text, serial, integer, boolean, date, timestamp, numeric, jsonb,
-  doublePrecision, primaryKey, foreignKey, unique, index, check,
+  doublePrecision, primaryKey, foreignKey, unique, index, uniqueIndex, check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -93,4 +93,41 @@ export const savedSearches = pgTable("saved_searches", {
 export const accessAllowlist = pgTable("access_allowlist", {
   email: text("email").primaryKey(),
   addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hits = pgTable("hits", {
+  id: text("id").primaryKey(),
+  savedSearchId: text("saved_search_id").notNull()
+    .references(() => savedSearches.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  provider: text("provider").notNull(),
+  parkPageId: text("park_page_id").notNull(),
+  parkName: text("park_name").notNull(),
+  campgroundName: text("campground_name").notNull(),
+  siteName: text("site_name").notNull(),
+  arrivalDate: date("arrival_date").notNull(),
+  nights: integer("nights").notNull(),
+  bookingUrl: text("booking_url"),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+  disappearedAt: timestamp("disappeared_at", { withTimezone: true }),
+  notifiedAt: timestamp("notified_at", { withTimezone: true }),
+}, (t) => [
+  uniqueIndex("uq_hits_search_site_arrival").on(t.savedSearchId, t.siteName, t.arrivalDate),
+  index("idx_hits_user").on(t.userId),
+  index("idx_hits_unnotified").on(t.savedSearchId).where(sql`notified_at IS NULL`),
+]);
+
+export const scanRuns = pgTable("scan_runs", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  status: text("status").notNull(),
+  searchesScanned: integer("searches_scanned"),
+  hitsNew: integer("hits_new"),
+  hitsCurrent: integer("hits_current"),
+  emailsSent: integer("emails_sent"),
+  parksScanned: integer("parks_scanned"),
+  errors: integer("errors"),
 });
