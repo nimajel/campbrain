@@ -1,0 +1,22 @@
+@import "leaflet/dist/leaflet.css";
+@import "leaflet.markercluster/dist/MarkerCluster.css";
+
+/* Scoped legacy design tokens for the imperatively-built Leaflet pin/cluster HTML.
+   These divIcons reference var(--accent)/var(--walkup)/etc., which the app-wide
+   shadcn token set does not define — declare them on the map root only.
+   Values copied verbatim from web/app/globals.css:5-22. */
+.cb-map-root {
+  --surface: #ffffff;
+  --surface-2: #fbfaf6;
+  --surface-sunken: #f6f3ec;
+  --border: #e7e1d4;
+  --text: #2f3a2e;
+  --muted: #5c6657;
+  --accent: #3a6b4f;
+  --accent-soft: #e3efe6;
+  --green: #3a6b4f;
+  --walkup: #b8860b;
+}
+
+/* Leaflet renders divIcon HTML outside React; suppress its default white box. */
+.cb-map-root .leaflet-div-icon { background: transparent; border: none; }
