@@ -23,7 +23,11 @@ function rowToSavedSearch(row: SavedSearchRow): SavedSearch | null {
     alertEnabled: row.alert_enabled, emailEnabled: row.email_enabled,
     createdAt: row.created_at, updatedAt: row.updated_at, legacy: def.legacy,
   });
-  return result.success ? result.data : null;
+  if (!result.success) {
+    console.warn(`saved_searches row ${row.id} failed schema validation`, result.error.flatten());
+    return null;
+  }
+  return result.data;
 }
 
 function toDefinition(input: SavedSearchInput & { legacy?: unknown }): DefinitionJson {

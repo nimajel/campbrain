@@ -12,11 +12,10 @@ import type { SavedSearch } from "@campbrain/types";
 
 interface SaveSearchButtonProps {
   filters: ExploreFilters;
-  nights: number;
   minNights: 1 | 2 | 3;
 }
 
-export function SaveSearchButton({ filters, nights: _nights, minNights }: SaveSearchButtonProps) {
+export function SaveSearchButton({ filters, minNights }: SaveSearchButtonProps) {
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const qc = useQueryClient();

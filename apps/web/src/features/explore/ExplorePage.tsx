@@ -114,7 +114,7 @@ export function ExplorePage({ seed }: Props) {
         <SiteFilterPanel state={taxonomy} onChange={setTaxonomy} />
 
         <AuthGate>
-          <SaveSearchButton filters={filters} nights={nights} minNights={seed?.minNights ?? 1} />
+          <SaveSearchButton filters={filters} minNights={seed?.minNights ?? 1} />
         </AuthGate>
       </div>
 
