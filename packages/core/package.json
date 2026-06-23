@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@campbrain/types": "workspace:*",
     "cheerio": "^1.0.0",
     "dayjs": "^1.11.13"
   },
