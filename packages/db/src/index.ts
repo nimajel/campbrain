@@ -9,5 +9,6 @@ export * from "./queries/entries";
 export * from "./queries/summary";
 export * from "./queries/catalog";
 export * from "./queries/search";
+export * from "./queries/saved-searches";
 export * from "./queries/upsert";
 export * from "./queries/maintenance";
