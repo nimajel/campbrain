@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { EMPTY_TAXONOMY, isTaxonomyDefault } from "../lib/site-taxonomy";
-import type { TaxonomyState, SiteAccess } from "../lib/site-taxonomy";
+import { EMPTY_TAXONOMY, isTaxonomyDefault } from "@/lib/site-taxonomy";
+import type { TaxonomyState, SiteAccess } from "@/lib/site-taxonomy";
 import { upcomingWeekendRange } from "../lib/upcoming-weekend";
 import { todayIso, addDaysIso, formatDate } from "../lib/map-utils";
 import { computeActiveFilterCount } from "../lib/filter-derivations";

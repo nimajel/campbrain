@@ -3,7 +3,7 @@ import { haversine } from "./map-utils";
 import { getParkType } from "./map-pins";
 import type { ParkListRow } from "./park-list";
 import type { ParkAvailabilitySummary, ResolvedLocation, MinNights } from "./types";
-import type { TaxonomyState } from "./site-taxonomy";
+import type { TaxonomyState } from "@/lib/site-taxonomy";
 
 export interface ParkCount {
   parkPageId: string;

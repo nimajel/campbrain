@@ -1,7 +1,7 @@
 import { EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ACCESS_GROUP, KIND_GROUP, HIDE_GROUP } from "../lib/site-taxonomy";
-import type { TaxonomyState, SiteAccess, SiteKind, HideTarget } from "../lib/site-taxonomy";
+import { ACCESS_GROUP, KIND_GROUP, HIDE_GROUP } from "@/lib/site-taxonomy";
+import type { TaxonomyState, SiteAccess, SiteKind, HideTarget } from "@/lib/site-taxonomy";
 
 interface Props {
   state: TaxonomyState;

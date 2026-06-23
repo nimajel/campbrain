@@ -8,10 +8,10 @@ import type {
 } from "@campbrain/core";
 import { useParkAvailability } from "../hooks/use-park-availability";
 import { selectWeekendTiers, intersectConsecutiveDates } from "../lib/stay-tiers";
-import { injectBookingDates } from "../lib/booking-url";
+import { injectBookingDates } from "@/lib/booking-url";
 import { formatSiteName } from "../lib/site-display";
 import { formatDate, relativeDate, relativeTime, rangeHasWeekendDay } from "../lib/map-utils";
-import { isTaxonomyDefault, type TaxonomyState } from "../lib/site-taxonomy";
+import { isTaxonomyDefault, type TaxonomyState } from "@/lib/site-taxonomy";
 import type { MinNights } from "../lib/types";
 
 // ---------------------------------------------------------------------------

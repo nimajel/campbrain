@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/trpc";
 import { buildAvailByPark } from "../lib/filter-derivations";
-import type { TaxonomyState } from "../lib/site-taxonomy";
+import type { TaxonomyState } from "@/lib/site-taxonomy";
 import type { MinNights, ParkAvailabilitySummary } from "../lib/types";
 
 interface SummaryArgs {

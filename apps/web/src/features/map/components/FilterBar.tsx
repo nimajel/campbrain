@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import type { MapPark } from "@campbrain/core";
 import type { MapFilters } from "../hooks/use-map-filters";
 import DateRangePicker from "./DateRangePicker";
-import SiteFilterPanel from "./SiteFilterPanel";
+import SiteFilterPanel from "@/components/SiteFilterPanel";
 import ParkFinder from "./ParkFinder";
 import type { Preset, MinNights } from "../lib/types";
 

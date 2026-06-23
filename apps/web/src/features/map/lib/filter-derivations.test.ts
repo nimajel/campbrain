@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { MapPark } from "@campbrain/core";
-import { EMPTY_TAXONOMY } from "./site-taxonomy";
+import { EMPTY_TAXONOMY } from "@/lib/site-taxonomy";
 import type { ParkAvailabilitySummary } from "./types";
 import {
   computeActiveFilterCount, buildAvailByPark, computeFilteredParks, buildListRows,

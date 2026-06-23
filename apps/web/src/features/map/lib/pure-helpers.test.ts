@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { injectBookingDates } from "./booking-url";
+import { injectBookingDates } from "@/lib/booking-url";
 import { formatSiteName } from "./site-display";
 import { upcomingWeekendRange } from "./upcoming-weekend";
 import { sortParkRows, type ParkListRow } from "./park-list";

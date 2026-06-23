@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/trpc";
 import type { ParkAvailabilityResponse } from "@campbrain/core";
-import type { TaxonomyState } from "../lib/site-taxonomy";
+import type { TaxonomyState } from "@/lib/site-taxonomy";
 
 interface Args {
   parkPageId: string | null;
