@@ -3,6 +3,7 @@ import { mapRouter } from "./routers/map";
 import { searchRouter } from "./routers/search";
 import { savedSearchesRouter } from "./routers/saved-searches";
 import { dashboardRouter } from "./routers/dashboard";
+import { targetsRouter } from "./routers/targets";
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ ok: true as const })),
@@ -10,6 +11,7 @@ export const appRouter = router({
   search: searchRouter,
   savedSearches: savedSearchesRouter,
   dashboard: dashboardRouter,
+  targets: targetsRouter,
 });
 
 export type AppRouter = typeof appRouter;
