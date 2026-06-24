@@ -36,15 +36,20 @@ async function safeFinish(
 
 export async function runAlertScan(deps: AlertScanDeps): Promise<void> {
   const { db, dashboardUrl } = deps;
-  const runId = await startScanRun(db, "alert");
   const runStart = new Date().toISOString();
   const today = todayUtc();
+  // runId is null until startScanRun succeeds. Keeping startScanRun INSIDE the try (and
+  // guarding the catch on runId) makes runAlertScan unconditionally non-throwing — even if
+  // the hits/scan_runs tables don't exist yet (e.g. pushed before the Neon migration), the
+  // alert phase just logs and the 6h scan job's exit code stays owned by the proactive phase.
+  let runId: string | null = null;
   let searchesScanned = 0;
   let hitsNew = 0;
   let emailsSent = 0;
   let errors = 0;
 
   try {
+    runId = await startScanRun(db, "alert");
     const searches = await listAlertEnabledSavedSearches(db);
     const regionOf = await buildParkRegionOf(db);
 
@@ -102,12 +107,16 @@ export async function runAlertScan(deps: AlertScanDeps): Promise<void> {
     await safeFinish(db, runId, { status: "ok", searchesScanned, hitsNew, hitsCurrent, emailsSent, errors });
   } catch (err: unknown) {
     console.error(`alert scan failed: ${String(err)}`);
-    await safeFinish(db, runId, {
-      status: "error",
-      searchesScanned,
-      hitsNew,
-      emailsSent,
-      errors: errors + 1,
-    });
+    // If startScanRun itself failed, runId is null and there is nothing to finish — the
+    // error is already logged above; never let this propagate and crash the scan job.
+    if (runId) {
+      await safeFinish(db, runId, {
+        status: "error",
+        searchesScanned,
+        hitsNew,
+        emailsSent,
+        errors: errors + 1,
+      });
+    }
   }
 }
