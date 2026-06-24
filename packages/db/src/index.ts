@@ -13,3 +13,4 @@ export * from "./queries/saved-searches";
 export * from "./queries/upsert";
 export * from "./queries/maintenance";
 export * from "./queries/alert-match";
+export * from "./queries/hits";
