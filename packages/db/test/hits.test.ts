@@ -71,4 +71,17 @@ describe("hits reconcile + notify + dashboard (integration)", async () => {
     expect(stats4.currentMatches).toBe(1);
     expect(stats4.totalHits).toBe(1); // still the same single hit row, not a duplicate
   });
+
+  it.skipIf(!hasDb)("dashboard reads are user-scoped (cross-user isolation)", async () => {
+    // ensure USER has at least one hit before we check isolation
+    await reconcileHits(db as never, search, [opening("Iso Site", ARR)], new Date().toISOString());
+
+    const otherStats = await getDashboardStats(db as never, "some-other-user");
+    expect(otherStats).toEqual({ activeAlerts: 0, currentMatches: 0, totalHits: 0 });
+    expect(await getRecentOpenings(db as never, "some-other-user", "2099-01-01")).toHaveLength(0);
+
+    // USER still sees their own data
+    const mineStats = await getDashboardStats(db as never, USER);
+    expect(mineStats.totalHits).toBeGreaterThanOrEqual(1);
+  });
 });

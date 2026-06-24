@@ -22,6 +22,18 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+async function safeFinish(
+  db: Db,
+  runId: string,
+  patch: Parameters<typeof finishScanRun>[2],
+): Promise<void> {
+  try {
+    await finishScanRun(db, runId, patch);
+  } catch (e: unknown) {
+    console.error(`alert scan: failed to record scan run ${runId}: ${String(e)}`);
+  }
+}
+
 export async function runAlertScan(deps: AlertScanDeps): Promise<void> {
   const { db, dashboardUrl } = deps;
   const runId = await startScanRun(db, "alert");
@@ -87,10 +99,10 @@ export async function runAlertScan(deps: AlertScanDeps): Promise<void> {
     }
 
     const hitsCurrent = await countCurrentHits(db, today);
-    await finishScanRun(db, runId, { status: "ok", searchesScanned, hitsNew, hitsCurrent, emailsSent, errors });
+    await safeFinish(db, runId, { status: "ok", searchesScanned, hitsNew, hitsCurrent, emailsSent, errors });
   } catch (err: unknown) {
     console.error(`alert scan failed: ${String(err)}`);
-    await finishScanRun(db, runId, {
+    await safeFinish(db, runId, {
       status: "error",
       searchesScanned,
       hitsNew,

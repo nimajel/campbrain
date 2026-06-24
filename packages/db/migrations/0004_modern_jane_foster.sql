@@ -1,0 +1,2 @@
+DROP INDEX "uq_hits_search_site_arrival";--> statement-breakpoint
+CREATE UNIQUE INDEX "uq_hits_opening" ON "hits" USING btree ("saved_search_id","park_page_id","campground_name","site_name","arrival_date");

@@ -20,7 +20,7 @@ export async function reconcileHits(
       VALUES (${crypto.randomUUID()}, ${o.savedSearchId}, ${search.userId}, ${search.provider},
               ${o.parkPageId}, ${o.parkName}, ${o.campgroundName}, ${o.siteName}, ${o.arrivalDate}::date,
               ${o.nights}, ${o.bookingUrl}, ${runStart}::timestamptz, ${runStart}::timestamptz)
-      ON CONFLICT (saved_search_id, site_name, arrival_date)
+      ON CONFLICT (saved_search_id, park_page_id, campground_name, site_name, arrival_date)
       DO UPDATE SET last_seen_at = ${runStart}::timestamptz, disappeared_at = NULL
       RETURNING (xmax = 0) AS inserted`);
     const val = res[0]?.inserted;

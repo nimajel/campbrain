@@ -113,7 +113,7 @@ export const hits = pgTable("hits", {
   disappearedAt: timestamp("disappeared_at", { withTimezone: true }),
   notifiedAt: timestamp("notified_at", { withTimezone: true }),
 }, (t) => [
-  uniqueIndex("uq_hits_search_site_arrival").on(t.savedSearchId, t.siteName, t.arrivalDate),
+  uniqueIndex("uq_hits_opening").on(t.savedSearchId, t.parkPageId, t.campgroundName, t.siteName, t.arrivalDate),
   index("idx_hits_user").on(t.userId),
   index("idx_hits_unnotified").on(t.savedSearchId).where(sql`notified_at IS NULL`),
 ]);
