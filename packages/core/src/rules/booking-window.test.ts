@@ -28,4 +28,13 @@ describe("computeBookingWindows (6mo / 8AM PT)", () => {
     expect(w!.reminders.nightBefore).toBe("2026-01-15T04:00:00.000Z");
     expect(w!.reminders.tenMinutesBefore).toBe("2026-01-15T15:50:00.000Z");
   });
+
+  it("arrival 2026-11-15 opens 2026-05-15 08:00 PDT (summer / UTC-7)", () => {
+    const [w] = computeBookingWindows({ kind: "exact", date: "2026-11-15" }, CA, "2026-06-23");
+    expect(w!.arrivalDate).toBe("2026-11-15");
+    expect(w!.bookingOpensAt).toBe("2026-05-15T15:00:00.000Z");
+    expect(w!.reminders.sevenDaysBefore).toBe("2026-05-08T16:00:00.000Z");
+    expect(w!.reminders.nightBefore).toBe("2026-05-15T03:00:00.000Z");
+    expect(w!.reminders.tenMinutesBefore).toBe("2026-05-15T14:50:00.000Z");
+  });
 });
