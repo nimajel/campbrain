@@ -4,6 +4,7 @@
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".output/**"] },
     "dev": { "cache": false, "persistent": true },
     "test": { "dependsOn": ["^build"] },
+    "@campbrain/scanner#test": { "dependsOn": ["^build", "@campbrain/db#test", "@campbrain/api#test"] },
     "typecheck": { "dependsOn": ["^build"] },
     "lint": {}
   }
