@@ -1,0 +1,101 @@
+import {
+  listAlertEnabledSavedSearches,
+  buildParkRegionOf,
+  matchSavedSearchAgainstDb,
+  reconcileHits,
+  listHitsToNotify,
+  markNotified,
+  countCurrentHits,
+  startScanRun,
+  finishScanRun,
+  type Db,
+  type NotifyRow,
+} from "@campbrain/db";
+import { sendAlertEmail, type AlertEmailRow } from "./notifications/email";
+
+export interface AlertScanDeps {
+  db: Db;
+  dashboardUrl: string;
+}
+
+function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function runAlertScan(deps: AlertScanDeps): Promise<void> {
+  const { db, dashboardUrl } = deps;
+  const runId = await startScanRun(db, "alert");
+  const runStart = new Date().toISOString();
+  const today = todayUtc();
+  let searchesScanned = 0;
+  let hitsNew = 0;
+  let emailsSent = 0;
+  let errors = 0;
+
+  try {
+    const searches = await listAlertEnabledSavedSearches(db);
+    const regionOf = await buildParkRegionOf(db);
+
+    for (const search of searches) {
+      searchesScanned++;
+      try {
+        const openings = await matchSavedSearchAgainstDb(db, search, today, regionOf);
+        const { newCount } = await reconcileHits(db, search, openings, runStart);
+        hitsNew += newCount;
+      } catch (err: unknown) {
+        errors++;
+        console.error(`alert scan: search ${search.id} failed: ${String(err)}`);
+      }
+    }
+
+    const toNotify = await listHitsToNotify(db, today);
+    const byUser = new Map<string, NotifyRow[]>();
+    for (const r of toNotify) {
+      const arr = byUser.get(r.userId) ?? [];
+      arr.push(r);
+      byUser.set(r.userId, arr);
+    }
+
+    const apiKey = process.env["RESEND_API_KEY"];
+    const from = process.env["ALERT_EMAIL_FROM"];
+
+    for (const [, group] of byUser) {
+      const emailRows: AlertEmailRow[] = group.map((g) => ({
+        searchName: g.searchName,
+        parkName: g.parkName,
+        campgroundName: g.campgroundName,
+        siteName: g.siteName,
+        arrivalDate: g.arrivalDate,
+        departureDate: g.departureDate,
+        nights: g.nights,
+        bookingUrl: g.bookingUrl,
+      }));
+      const res = await sendAlertEmail(
+        { apiKey, from, to: group[0]!.email },
+        emailRows,
+        dashboardUrl,
+      );
+      if (res === "delivered") {
+        await markNotified(
+          db,
+          group.map((g) => g.id),
+          new Date().toISOString(),
+        );
+        emailsSent++;
+      }
+      // 'skipped-unconfigured' / 'failed' → leave notified_at NULL so a future run retries
+    }
+
+    const hitsCurrent = await countCurrentHits(db, today);
+    await finishScanRun(db, runId, { status: "ok", searchesScanned, hitsNew, hitsCurrent, emailsSent, errors });
+  } catch (err: unknown) {
+    console.error(`alert scan failed: ${String(err)}`);
+    await finishScanRun(db, runId, {
+      status: "error",
+      searchesScanned,
+      hitsNew,
+      emailsSent,
+      errors: errors + 1,
+    });
+  }
+}

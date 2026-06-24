@@ -72,6 +72,13 @@ export async function markNotified(db: QueryDb, ids: string[], now: string): Pro
     WHERE id = ANY(${sqlTextArray(ids)})`);
 }
 
+/** Count of currently-available hits across all users (un-disappeared, future arrival). */
+export async function countCurrentHits(db: QueryDb, today: string): Promise<number> {
+  const r = await rows<{ n: string }>(db, sql`SELECT count(*)::text AS n FROM hits
+    WHERE disappeared_at IS NULL AND arrival_date >= ${today}::date`);
+  return Number(r[0]?.n ?? 0);
+}
+
 export async function getDashboardStats(db: QueryDb, userId: string): Promise<DashboardStats> {
   const r = await rows<{ active: string; current: string; total: string }>(db, sql`
     SELECT

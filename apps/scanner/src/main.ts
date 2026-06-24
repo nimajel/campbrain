@@ -1,10 +1,11 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { closeDb } from "@campbrain/db";
+import { closeDb, startScanRun, finishScanRun } from "@campbrain/db";
 import { createNodeDb } from "@campbrain/db/node";
 import type { ParkCatalogEntry } from "@campbrain/core";
 import { runProactiveScan } from "./run-proactive-scan";
+import { runAlertScan } from "./run-alert-scan";
 
 function loadCaParks(): ParkCatalogEntry[] {
   // apps/scanner/src/main.ts → repo root is ../../../
@@ -29,30 +30,51 @@ async function main() {
   const db = createNodeDb(url);
   let summary;
   try {
-    summary = await runProactiveScan({
-      db,
-      parks: loadCaParks(),
-      log: (m) => console.log(m),
-      onUnexpectedHtml: async (html, ctx) => {
-        mkdirSync(debugDir, { recursive: true });
-        const safe = `${ctx.parkPageId}-${ctx.arrivalDate}`.replace(
-          /[^a-z0-9-]/gi,
-          "_",
-        );
-        writeFileSync(join(debugDir, `${safe}.html`), html);
-        console.warn(
-          `⚠ unexpected page: park ${ctx.parkPageId} ${ctx.arrivalDate} → ${ctx.url}`,
-        );
-      },
-    });
+    const proactiveRunId = await startScanRun(db, "proactive");
+    try {
+      summary = await runProactiveScan({
+        db,
+        parks: loadCaParks(),
+        log: (m) => console.log(m),
+        onUnexpectedHtml: async (html, ctx) => {
+          mkdirSync(debugDir, { recursive: true });
+          const safe = `${ctx.parkPageId}-${ctx.arrivalDate}`.replace(
+            /[^a-z0-9-]/gi,
+            "_",
+          );
+          writeFileSync(join(debugDir, `${safe}.html`), html);
+          console.warn(
+            `⚠ unexpected page: park ${ctx.parkPageId} ${ctx.arrivalDate} → ${ctx.url}`,
+          );
+        },
+      });
+      await finishScanRun(db, proactiveRunId, {
+        status: "ok",
+        parksScanned: summary.parks,
+        errors: summary.fetchErrors,
+      });
+    } catch (err: unknown) {
+      await finishScanRun(db, proactiveRunId, { status: "error", errors: 1 });
+      throw err;
+    }
+
+    console.log(`✅ proactive scan complete: ${JSON.stringify(summary)}`);
+    if (summary.windows > 0 && summary.cacheWrites === 0) {
+      console.error(
+        `scan produced 0 cache writes across ${summary.windows} windows — likely an upstream outage`,
+      );
+    }
+
+    const dashboardUrl =
+      (process.env["WEB_ORIGIN"] ?? "https://campbrain-api.jelvehn.workers.dev") +
+      "/dashboard";
+    await runAlertScan({ db, dashboardUrl });
+    console.log("✅ alert scan complete");
   } finally {
     await closeDb(db);
   }
-  console.log(`✅ scan complete: ${JSON.stringify(summary)}`);
-  if (summary.windows > 0 && summary.cacheWrites === 0) {
-    console.error(
-      `scan produced 0 cache writes across ${summary.windows} windows — likely an upstream outage`,
-    );
+
+  if (summary && summary.windows > 0 && summary.cacheWrites === 0) {
     process.exit(1);
   }
 }
