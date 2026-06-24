@@ -131,3 +131,17 @@ export const scanRuns = pgTable("scan_runs", {
   parksScanned: integer("parks_scanned"),
   errors: integer("errors"),
 });
+
+export const targets = pgTable("targets", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  provider: text("provider").notNull(),
+  name: text("name").notNull(),
+  definition: jsonb("definition").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  calendarEnabled: boolean("calendar_enabled").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_targets_user").on(t.userId),
+]);
