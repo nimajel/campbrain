@@ -11,6 +11,7 @@ export function NavBar() {
         <Link to="/explore">Explore</Link>
         <Link to="/saved">Saved</Link>
         <Link to="/alerts">Alerts</Link>
+        <Link to="/dashboard">Dashboard</Link>
       </nav>
       {session ? (
         <Button variant="ghost" onClick={() => signOut()}>Sign out</Button>
