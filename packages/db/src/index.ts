@@ -14,3 +14,4 @@ export * from "./queries/upsert";
 export * from "./queries/maintenance";
 export * from "./queries/alert-match";
 export * from "./queries/hits";
+export * from "./queries/scan-runs";
