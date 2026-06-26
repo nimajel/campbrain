@@ -14,3 +14,4 @@ export * from "./providers/california-parks-provider";
 export * from "./availability/map-transforms";
 export * from "./availability/saved-search-match";
 export * from "./rules/booking-window";
+export * from "./calendar/event-model";
