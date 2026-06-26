@@ -145,3 +145,30 @@ export const targets = pgTable("targets", {
 }, (t) => [
   index("idx_targets_user").on(t.userId),
 ]);
+
+export const calendarConnections = pgTable("calendar_connections", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token").notNull(),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  scope: text("scope"),
+  connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("uq_calendar_conn_user_provider").on(t.userId, t.providerId),
+]);
+
+export const calendarSyncState = pgTable("calendar_sync_state", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  targetId: text("target_id").notNull().references(() => targets.id, { onDelete: "cascade" }),
+  key: text("key").notNull(),
+  googleEventId: text("google_event_id").notNull(),
+  summary: text("summary").notNull(),
+  startTimeIso: text("start_time_iso").notNull(),
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("uq_calendar_sync_user_key").on(t.userId, t.key),
+]);
