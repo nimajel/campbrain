@@ -6,6 +6,7 @@ import { createNodeDb } from "@campbrain/db/node";
 import type { ParkCatalogEntry } from "@campbrain/core";
 import { runProactiveScan } from "./run-proactive-scan";
 import { runAlertScan } from "./run-alert-scan";
+import { runCalendarSync } from "./run-calendar-sync";
 
 function loadCaParks(): ParkCatalogEntry[] {
   // apps/scanner/src/main.ts → repo root is ../../../
@@ -70,6 +71,16 @@ async function main() {
       "/dashboard";
     await runAlertScan({ db, dashboardUrl });
     console.log("✅ alert scan complete");
+
+    // Calendar sync is best-effort: a failure must NOT kill the scan job.
+    try {
+      const clientId = process.env["GOOGLE_CLIENT_ID"] ?? "";
+      const clientSecret = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+      await runCalendarSync({ db, clientId, clientSecret, log: (m) => console.log(m) });
+      console.log("✅ calendar sync complete");
+    } catch (e: unknown) {
+      console.error(`calendar sync threw unexpectedly: ${String(e)}`);
+    }
   } finally {
     await closeDb(db);
   }

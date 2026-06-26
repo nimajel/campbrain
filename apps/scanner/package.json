@@ -12,6 +12,8 @@
     "@campbrain/core": "workspace:*",
     "@campbrain/db": "workspace:*",
     "dayjs": "^1.11.13",
+    "google-auth-library": "^9.0.0",
+    "googleapis": "^144.0.0",
     "resend": "^6.0.0"
   },
   "devDependencies": { "vitest": "^2.1.0", "typescript": "^5.7.0" }
