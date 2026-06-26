@@ -42,9 +42,10 @@ function scopeLabel(scope: Target["scope"]): string {
 interface Props {
   target: Target;
   onEdit(t: Target): void;
+  calendarConnected: boolean;
 }
 
-export function TargetCard({ target, onEdit }: Props) {
+export function TargetCard({ target, onEdit, calendarConnected }: Props) {
   const qc = useQueryClient();
 
   const deleteMutation = useMutation({
@@ -62,6 +63,14 @@ export function TargetCard({ target, onEdit }: Props) {
     },
   });
 
+  const calendarMutation = useMutation({
+    mutationFn: ({ id, calendarEnabled }: { id: string; calendarEnabled: boolean }) =>
+      api.targets.update.mutate({ id, patch: { calendarEnabled } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["targets"] });
+    },
+  });
+
   function handleDelete() {
     if (!window.confirm(`Delete "${target.name}"?`)) return;
     deleteMutation.mutate(target.id);
@@ -71,7 +80,12 @@ export function TargetCard({ target, onEdit }: Props) {
     setEnabledMutation.mutate({ id: target.id, enabled: !target.enabled });
   }
 
-  const actionError = deleteMutation.error ?? setEnabledMutation.error;
+  function handleToggleCalendar() {
+    calendarMutation.mutate({ id: target.id, calendarEnabled: !target.calendarEnabled });
+  }
+
+  const actionError =
+    deleteMutation.error ?? setEnabledMutation.error ?? calendarMutation.error;
 
   return (
     <div className="rounded-xl border bg-card p-4 shadow-sm">
@@ -123,17 +137,33 @@ export function TargetCard({ target, onEdit }: Props) {
         >
           {target.enabled ? "Disable" : "Enable"}
         </Button>
-        {/* Calendar toggle — inert until Phase 2b-3 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          type="button"
-          disabled
-          title="Calendar sync coming soon"
-          className="cursor-not-allowed opacity-50"
-        >
-          {target.calendarEnabled ? "Calendar on" : "Calendar off"}
-        </Button>
+        {/* Calendar toggle — live when Google Calendar is connected */}
+        {calendarConnected ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={handleToggleCalendar}
+            disabled={calendarMutation.isPending}
+          >
+            {calendarMutation.isPending
+              ? "Saving…"
+              : target.calendarEnabled
+                ? "Calendar on"
+                : "Calendar off"}
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            disabled
+            title="Connect Google Calendar first"
+            className="cursor-not-allowed opacity-50"
+          >
+            {target.calendarEnabled ? "Calendar on" : "Calendar off"}
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
