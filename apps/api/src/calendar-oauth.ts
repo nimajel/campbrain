@@ -46,7 +46,7 @@ export async function exchangeCode(
     body: body.toString(),
   });
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
+    const detail = (await res.text().catch(() => "")).slice(0, 200);
     throw new Error(`token exchange failed: ${res.status} ${detail}`);
   }
   const json = (await res.json()) as {
@@ -130,14 +130,9 @@ export async function verifyState(state: string, secret: string): Promise<string
 
   const key = await importHmacKey(secret);
   const data = new TextEncoder().encode(userId);
-  const expectedSig = await crypto.subtle.sign("HMAC", key, data);
 
   // Constant-time comparison via subtle.verify
   const valid = await crypto.subtle.verify("HMAC", key, providedSig, data);
-  // Double-check: re-sign and compare lengths to guard against subtleties
-  const expectedBytes = new Uint8Array(expectedSig);
-  const providedBytes = new Uint8Array(providedSig);
-  if (expectedBytes.length !== providedBytes.length) return null;
 
   return valid ? userId : null;
 }

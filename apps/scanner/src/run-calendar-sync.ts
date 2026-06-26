@@ -27,6 +27,11 @@ export async function runCalendarSync(deps: CalendarSyncDeps): Promise<void> {
   const makeClient = deps.makeClient ?? makeGoogleCalendarClient;
   const log = deps.log ?? ((_m: string) => {});
 
+  if (!clientId || !clientSecret) {
+    log("calendar sync skipped: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET not set");
+    return;
+  }
+
   const runId = await startScanRun(db, "calendar");
   const today = todayUtc();
   const nowMs = Date.now();

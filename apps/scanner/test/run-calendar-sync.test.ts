@@ -173,6 +173,70 @@ describe("runCalendarSync (integration)", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Unit: skip-when-unconfigured (no DB, no Google calls)
+// ---------------------------------------------------------------------------
+
+describe("runCalendarSync — skip when credentials not set", () => {
+  it("makes NO Google calls when clientId is empty", async () => {
+    const mock = makeMockClient();
+    const logs: string[] = [];
+
+    // Pass a stub DB — listCalendarSyncTargets must never be called either.
+    const stubDb = {} as never;
+
+    await runCalendarSync({
+      db: stubDb,
+      clientId: "",
+      clientSecret: "some-secret",
+      makeClient: () => mock,
+      log: (m) => logs.push(m),
+    });
+
+    expect(mock.insertCalls).toHaveLength(0);
+    expect(mock.updateCalls).toHaveLength(0);
+    expect(logs.some((l) => l.includes("calendar sync skipped"))).toBe(true);
+  });
+
+  it("makes NO Google calls when clientSecret is empty", async () => {
+    const mock = makeMockClient();
+    const logs: string[] = [];
+
+    const stubDb = {} as never;
+
+    await runCalendarSync({
+      db: stubDb,
+      clientId: "some-client-id",
+      clientSecret: "",
+      makeClient: () => mock,
+      log: (m) => logs.push(m),
+    });
+
+    expect(mock.insertCalls).toHaveLength(0);
+    expect(mock.updateCalls).toHaveLength(0);
+    expect(logs.some((l) => l.includes("calendar sync skipped"))).toBe(true);
+  });
+
+  it("makes NO Google calls when both credentials are empty", async () => {
+    const mock = makeMockClient();
+    const logs: string[] = [];
+
+    const stubDb = {} as never;
+
+    await runCalendarSync({
+      db: stubDb,
+      clientId: "",
+      clientSecret: "",
+      makeClient: () => mock,
+      log: (m) => logs.push(m),
+    });
+
+    expect(mock.insertCalls).toHaveLength(0);
+    expect(mock.updateCalls).toHaveLength(0);
+    expect(logs.some((l) => l.includes("calendar sync skipped"))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Unit: deterministicEventId
 // ---------------------------------------------------------------------------
 

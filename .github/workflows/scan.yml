@@ -31,6 +31,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SCAN_DEBUG_DIR: ${{ github.workspace }}/.scan-debug
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: bun --filter @campbrain/scanner start
       - name: Upload parser debug snapshots
         if: always()
