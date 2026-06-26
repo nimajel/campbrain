@@ -4,7 +4,7 @@ import * as schema from "./schema";
 import type { Db } from "./client";
 
 /** True when the URL targets a Neon-hosted database (needs TLS). */
-function isNeonHost(url: string): boolean {
+export function isNeonHost(url: string): boolean {
   try {
     return new URL(url).hostname.endsWith(".neon.tech");
   } catch {

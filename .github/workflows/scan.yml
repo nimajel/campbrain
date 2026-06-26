@@ -20,6 +20,13 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1" }
       - run: bun install --frozen-lockfile
+      - name: Apply pending DB migrations
+        # Idempotent (Drizzle skips already-applied migrations). Keeps the Neon schema in
+        # lockstep with the code the cron runs, so a forgotten manual migrate can't crash the
+        # scan the way the missing scan_runs/hits tables did.
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun --filter @campbrain/db migrate
       - name: Run proactive scan
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
