@@ -22,5 +22,5 @@ export const DashboardStatsSchema = z.object({
 });
 export type DashboardStats = z.infer<typeof DashboardStatsSchema>;
 
-export const ScanRunKind = z.enum(["proactive", "alert"]);
+export const ScanRunKind = z.enum(["proactive", "alert", "calendar"]);
 export type ScanRunKind = z.infer<typeof ScanRunKind>;
