@@ -160,6 +160,21 @@ export const calendarConnections = pgTable("calendar_connections", {
   uniqueIndex("uq_calendar_conn_user_provider").on(t.userId, t.providerId),
 ]);
 
+export const parkDigests = pgTable("park_digests", {
+  provider: text("provider").notNull().references(() => providers.providerId),
+  parkPageId: text("park_page_id").notNull(),
+  asOf: timestamp("as_of", { withTimezone: true }),
+  digest: jsonb("digest").notNull(),
+  siteClass: jsonb("site_class").notNull(),
+  builtAt: timestamp("built_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  primaryKey({ columns: [t.provider, t.parkPageId] }),
+  foreignKey({
+    columns: [t.provider, t.parkPageId],
+    foreignColumns: [parks.providerId, parks.parkPageId],
+  }).onDelete("cascade"),
+]);
+
 export const calendarSyncState = pgTable("calendar_sync_state", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),

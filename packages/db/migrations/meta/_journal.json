@@ -50,6 +50,13 @@
       "when": 1782435668742,
       "tag": "0006_third_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783007733001,
+      "tag": "0007_outstanding_ghost_rider",
+      "breakpoints": true
     }
   ]
 }
