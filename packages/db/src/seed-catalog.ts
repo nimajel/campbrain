@@ -10,29 +10,34 @@ type ProviderCatalog = { provider: string; parks: CatalogPark[] };
 
 type Sql = ReturnType<typeof postgres>;
 
-const PROVIDER_ID = "california-parks";
-const PROVIDER_NAME = "California State Parks";
-
 function defaultCatalogPath(): string {
   // packages/db/src/seed-catalog.ts → repo root is ../../../
   return fileURLToPath(new URL("../../../data/catalog/california-parks.json", import.meta.url));
 }
 
-/** Upsert the CA-parks catalog (providers/parks/campgrounds/sites) into Postgres. Returns row counts. */
+/** packages/db/src/seed-catalog.ts → repo root is ../../../ */
+export function recreationGovCatalogPath(): string {
+  return fileURLToPath(new URL("../../../data/catalog/recreation-gov.json", import.meta.url));
+}
+
+
+/** Upsert a provider catalog (providers/parks/campgrounds/sites) into Postgres. Returns row counts. */
 export async function seedCatalog(
   sql: Sql,
-  opts: { catalogPath?: string } = {},
+  opts: { providerId?: string; providerName?: string; catalogPath?: string } = {},
 ): Promise<{ parks: number; campgrounds: number; sites: number }> {
+  const providerId = opts.providerId ?? "california-parks";
+  const providerName = opts.providerName ?? "California State Parks";
   const path = opts.catalogPath ?? defaultCatalogPath();
   const catalog = JSON.parse(readFileSync(path, "utf-8")) as ProviderCatalog;
 
-  await sql`INSERT INTO providers (provider_id, display_name) VALUES (${PROVIDER_ID}, ${PROVIDER_NAME}) ON CONFLICT (provider_id) DO NOTHING`;
+  await sql`INSERT INTO providers (provider_id, display_name) VALUES (${providerId}, ${providerName}) ON CONFLICT (provider_id) DO NOTHING`;
 
   let parkCount = 0, cgCount = 0, siteCount = 0;
   for (const park of catalog.parks) {
     await sql`
       INSERT INTO parks (provider_id, park_page_id, park_name, latitude, longitude)
-      VALUES (${PROVIDER_ID}, ${park.parkPageId}, ${park.parkName}, ${park.lat ?? null}, ${park.lon ?? null})
+      VALUES (${providerId}, ${park.parkPageId}, ${park.parkName}, ${park.lat ?? null}, ${park.lon ?? null})
       ON CONFLICT (provider_id, park_page_id) DO UPDATE SET
         park_name = EXCLUDED.park_name, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude`;
     parkCount++;
@@ -43,7 +48,7 @@ export async function seedCatalog(
     if (cgs.length === 0) continue;
 
     const cgRows = cgs.map((cg) => ({
-      provider_id: PROVIDER_ID,
+      provider_id: providerId,
       park_page_id: park.parkPageId,
       campground_name: cg.name,
       campground_id: cg.id,
@@ -61,7 +66,7 @@ export async function seedCatalog(
     const siteRows = [...siteByKey.values()].map(({ cgName, site }) => {
       const info = classifySite(site.name, cgName, undefined, park.parkPageId);
       return {
-        provider_id: PROVIDER_ID,
+        provider_id: providerId,
         park_page_id: park.parkPageId,
         campground_name: cgName,
         site_name: site.name,
@@ -89,8 +94,14 @@ async function main() {
   if (!url) throw new Error("DATABASE_URL is required");
   const sql = postgres(url, { max: 1, onnotice: () => {} });
   try {
-    const counts = await seedCatalog(sql);
-    console.log(`✅ seeded ${counts.parks} parks, ${counts.campgrounds} campgrounds, ${counts.sites} sites`);
+    const caCounts = await seedCatalog(sql);
+    console.log(`✅ seeded ${caCounts.parks} parks, ${caCounts.campgrounds} campgrounds, ${caCounts.sites} sites (california-parks)`);
+    const rgCounts = await seedCatalog(sql, {
+      providerId: "recreation-gov",
+      providerName: "Recreation.gov",
+      catalogPath: recreationGovCatalogPath(),
+    });
+    console.log(`✅ seeded ${rgCounts.parks} parks, ${rgCounts.campgrounds} campgrounds, ${rgCounts.sites} sites (recreation-gov)`);
   } finally {
     await sql.end();
   }
