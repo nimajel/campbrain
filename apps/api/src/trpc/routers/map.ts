@@ -17,7 +17,13 @@ export const mapRouter = router({
     if (row) {
       // site_class is stored as an untyped JSONB map (SiteClassMap); it is produced
       // by buildSiteClassMap in the scanner digest phase, which matches SiteClassEntry.
-      return filterDigest(row.digest, row.siteClass as Record<string, SiteClassEntry>, filters);
+      // A structurally malformed digest row would make filterDigest throw — fall
+      // through to live compute rather than 500.
+      try {
+        return filterDigest(row.digest, row.siteClass as Record<string, SiteClassEntry>, filters);
+      } catch (err) {
+        console.error(`malformed park digest for ${input.parkPageId}, falling back to live compute`, err);
+      }
     }
 
     const entries = await getEntriesForParks(ctx.db, [input.parkPageId], input.provider);
