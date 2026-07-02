@@ -43,7 +43,9 @@ async function main() {
   const db = createNodeDb(url);
   let summary;
   try {
-    const staleFailed = await failStaleScanRuns(db);
+    // 6h: safely above the workflow's 300-min timeout, so a SIGKILLed run's row is
+    // cleaned by the very next cron tick without ever touching a live run's row.
+    const staleFailed = await failStaleScanRuns(db, 6);
     if (staleFailed > 0) {
       console.warn(`⚠ marked ${staleFailed} stale 'running' scan_runs row(s) as error`);
     }
