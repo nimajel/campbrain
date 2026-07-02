@@ -12,18 +12,20 @@ type SearchPark = {
   totalAvailable: number;
 };
 
+function catalogKey(providerId: string, parkPageId: string): string {
+  return `${providerId}:${parkPageId}`;
+}
+
 export const searchRouter = router({
   // Public, like the map: anyone can search availability.
   query: publicProcedure.input(SearchInputSchema).query(async ({ ctx, input }) => {
     const { from, to, access, kinds, hide, region } = input;
 
     const catalog = await getCatalogParks(ctx.db);
-    const coordsByPageId = new Map<string, { lat: number; lon: number }>();
-    const providerByPageId = new Map<string, string>();
+    const coordsByKey = new Map<string, { lat: number; lon: number }>();
     for (const p of catalog) {
-      providerByPageId.set(p.parkPageId, p.providerId);
       if (p.latitude != null && p.longitude != null) {
-        coordsByPageId.set(p.parkPageId, { lat: p.latitude, lon: p.longitude });
+        coordsByKey.set(catalogKey(p.providerId, p.parkPageId), { lat: p.latitude, lon: p.longitude });
       }
     }
 
@@ -31,13 +33,13 @@ export const searchRouter = router({
 
     const parks: SearchPark[] = results
       .map((park): SearchPark => {
-        const coords = coordsByPageId.get(park.parkPageId);
+        const coords = coordsByKey.get(catalogKey(park.providerId, park.parkPageId));
         const parkRegion: CampRegion = coords ? classifyRegion(coords.lat, coords.lon) : "socal";
         const totalAvailable = park.campgrounds.reduce((n, cg) => n + cg.availableSites.length, 0);
         return {
           parkPageId: park.parkPageId,
           parkName: park.parkName,
-          provider: providerByPageId.get(park.parkPageId) ?? "california-parks",
+          provider: park.providerId,
           region: parkRegion,
           campgrounds: park.campgrounds,
           totalAvailable,
@@ -60,7 +62,7 @@ export const searchRouter = router({
       const altDates = await findNextAvailableDates(ctx.db, { withinDays: 60, parkPageIds });
       fallback = {
         alternateDates: altDates.map((p) => {
-          const coords = coordsByPageId.get(p.parkPageId);
+          const coords = coordsByKey.get(catalogKey(p.providerId, p.parkPageId));
           const r: CampRegion = coords ? classifyRegion(coords.lat, coords.lon) : "socal";
           return { parkPageId: p.parkPageId, parkName: p.parkName, region: r, earliestDate: p.earliestDate };
         }),
