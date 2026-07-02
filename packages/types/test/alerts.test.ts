@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RecentOpeningSchema, DashboardStatsSchema } from "@campbrain/types";
+import { RecentOpeningSchema, DashboardStatsSchema, ScanRunKind } from "@campbrain/types";
 
 describe("alerts DTOs", () => {
   it("RecentOpeningSchema accepts a valid opening", () => {
@@ -18,5 +18,9 @@ describe("alerts DTOs", () => {
   it("DashboardStatsSchema requires three numeric counts", () => {
     const s = DashboardStatsSchema.parse({ activeAlerts: 2, currentMatches: 5, totalHits: 9 });
     expect(s).toEqual({ activeAlerts: 2, currentMatches: 5, totalHits: 9 });
+  });
+  it("ScanRunKind includes 'digest'", () => {
+    expect(ScanRunKind.parse("digest")).toBe("digest");
+    expect(ScanRunKind.options).toContain("digest");
   });
 });
