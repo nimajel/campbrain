@@ -6,6 +6,7 @@ import type { ParkAvailabilitySummary, ResolvedLocation, MinNights } from "./typ
 import type { TaxonomyState } from "@/lib/site-taxonomy";
 
 export interface ParkCount {
+  providerId: string;
   parkPageId: string;
   siteCount: number;
   walkUpCount: number;
@@ -30,7 +31,7 @@ export function computeActiveFilterCount(
 export function buildAvailByPark(parks: ParkCount[] | null): Map<string, ParkAvailabilitySummary> | null {
   if (!parks) return null;
   return new Map(
-    parks.map((p) => [p.parkPageId, { siteCount: p.siteCount, walkUpCount: p.walkUpCount, soonestDate: p.soonestDate ?? null }]),
+    parks.map((p) => [`${p.providerId}:${p.parkPageId}`, { siteCount: p.siteCount, walkUpCount: p.walkUpCount, soonestDate: p.soonestDate ?? null }]),
   );
 }
 
@@ -50,7 +51,7 @@ export function computeFilteredParks(
     result = result.filter((p) => withinDistance(p, resolvedLocation, distanceMiles));
   }
   if (availByPark !== null) {
-    result = result.filter((p) => (availByPark.get(p.parkPageId)?.siteCount ?? 0) > 0);
+    result = result.filter((p) => (availByPark.get(`${p.provider}:${p.parkPageId}`)?.siteCount ?? 0) > 0);
   }
   return result;
 }
@@ -62,7 +63,7 @@ export function buildListRows(
 ): ParkListRow[] {
   if (!availByPark) return [];
   return displayedParks.flatMap((p) => {
-    const a = availByPark.get(p.parkPageId);
+    const a = availByPark.get(`${p.provider}:${p.parkPageId}`);
     if (!a || (a.siteCount === 0 && a.walkUpCount === 0)) return [];
     return [{
       parkPageId: p.parkPageId,

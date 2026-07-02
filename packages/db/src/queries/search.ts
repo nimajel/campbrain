@@ -12,6 +12,7 @@ export type SearchCampground = {
   walkUpSites: string[];
 };
 export type SearchParkResult = {
+  providerId: string;
   parkPageId: string;
   parkName: string;
   campgrounds: SearchCampground[];
@@ -38,12 +39,12 @@ export async function searchAvailableStays(
   const filterWhere = sql.join(filters, sql` AND `);
 
   type Row = {
-    park_page_id: string; park_name: string; campground_name: string;
+    provider_id: string; park_page_id: string; park_name: string; campground_name: string;
     nightly_fee: string | null; booking_url: string | null; site_name: string; is_walk_up: boolean;
   };
   const result = await rows<Row>(
     db,
-    sql`SELECT p.park_page_id, p.park_name, cg.campground_name, cg.nightly_fee::text, cg.booking_url, s.site_name, s.is_walk_up
+    sql`SELECT p.provider_id, p.park_page_id, p.park_name, cg.campground_name, cg.nightly_fee::text, cg.booking_url, s.site_name, s.is_walk_up
         FROM sites s
         JOIN campgrounds cg ON cg.provider_id = s.provider_id AND cg.park_page_id = s.park_page_id AND cg.campground_name = s.campground_name
         JOIN parks p ON p.provider_id = s.provider_id AND p.park_page_id = s.park_page_id
@@ -57,10 +58,11 @@ export async function searchAvailableStays(
 
   const parkMap = new Map<string, SearchParkResult>();
   for (const row of result) {
-    if (!parkMap.has(row.park_page_id)) {
-      parkMap.set(row.park_page_id, { parkPageId: row.park_page_id, parkName: row.park_name, campgrounds: [] });
+    const key = `${row.provider_id}:${row.park_page_id}`;
+    if (!parkMap.has(key)) {
+      parkMap.set(key, { providerId: row.provider_id, parkPageId: row.park_page_id, parkName: row.park_name, campgrounds: [] });
     }
-    const park = parkMap.get(row.park_page_id)!;
+    const park = parkMap.get(key)!;
     let cg = park.campgrounds.find((c) => c.name === row.campground_name);
     if (!cg) {
       cg = { name: row.campground_name, nightlyFee: row.nightly_fee !== null ? Number(row.nightly_fee) : null,
@@ -73,7 +75,7 @@ export async function searchAvailableStays(
   return [...parkMap.values()];
 }
 
-export type NextAvailableResult = { parkPageId: string; parkName: string; earliestDate: string };
+export type NextAvailableResult = { providerId: string; parkPageId: string; parkName: string; earliestDate: string };
 
 /** Up to 5 parks' earliest bookable date within `withinDays`. Ported from availability-cache.ts:930-975. */
 export async function findNextAvailableDates(
@@ -93,16 +95,16 @@ export async function findNextAvailableDates(
   if (parkPageIds && parkPageIds.length > 0) conds.push(sql`s.park_page_id = ANY(${sqlTextArray(parkPageIds)})`);
   const where = sql.join(conds, sql` AND `);
 
-  const result = await rows<{ park_page_id: string; park_name: string; earliest_date: string }>(
+  const result = await rows<{ provider_id: string; park_page_id: string; park_name: string; earliest_date: string }>(
     db,
-    sql`SELECT s.park_page_id, p.park_name, MIN(a.date)::text AS earliest_date
+    sql`SELECT s.provider_id, s.park_page_id, p.park_name, MIN(a.date)::text AS earliest_date
         FROM availability a
         JOIN sites s ON s.site_id = a.site_id
         JOIN parks p ON p.provider_id = s.provider_id AND p.park_page_id = s.park_page_id
         WHERE ${where}
-        GROUP BY s.park_page_id, p.park_name
+        GROUP BY s.provider_id, s.park_page_id, p.park_name
         ORDER BY earliest_date
         LIMIT 5`,
   );
-  return result.map((r) => ({ parkPageId: r.park_page_id, parkName: r.park_name, earliestDate: r.earliest_date }));
+  return result.map((r) => ({ providerId: r.provider_id, parkPageId: r.park_page_id, parkName: r.park_name, earliestDate: r.earliest_date }));
 }
