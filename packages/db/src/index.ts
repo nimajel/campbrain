@@ -17,3 +17,4 @@ export * from "./queries/hits";
 export * from "./queries/scan-runs";
 export * from "./queries/targets";
 export * from "./queries/calendar";
+export * from "./queries/park-digest";

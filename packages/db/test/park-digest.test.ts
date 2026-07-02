@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { sql } from "drizzle-orm";
 import { createTestDb, dbReachable } from "./helpers";
+import { getParkDigest, upsertParkDigest } from "../src/queries/park-digest";
+import type { ParkAvailabilityResponse } from "@campbrain/core";
 
 const PROVIDER = "park-digest-test-provider";
 const PARK = "pd-test-park";
@@ -55,5 +57,52 @@ describe("park_digests table", async () => {
 
     const res = await env!.client`SELECT * FROM park_digests WHERE provider = ${PROVIDER} AND park_page_id = ${cascadePark}`;
     expect(res).toHaveLength(0);
+  });
+
+  it.skipIf(!hasDb)("upsertParkDigest inserts, then getParkDigest reads it back", async () => {
+    const digest = { campgrounds: [{ id: "c1", name: "Campground One", sites: [] }] } as unknown as ParkAvailabilityResponse;
+    const siteClass = { "Site 1": { access: "drive_in", siteKind: "tent", isGroup: false, isEquestrian: false, isWalkUp: false } };
+    const asOf = "2026-07-01T12:00:00.000Z";
+
+    await upsertParkDigest(env!.db, { provider: PROVIDER, parkPageId: PARK, asOf, digest, siteClass });
+
+    const result = await getParkDigest(env!.db, PROVIDER, PARK);
+    expect(result).toBeDefined();
+    expect(result!.digest).toEqual(digest);
+    expect(result!.siteClass).toEqual(siteClass);
+    expect(new Date(result!.asOf!).toISOString()).toBe(asOf);
+  });
+
+  it.skipIf(!hasDb)("a second upsertParkDigest conflict-updates instead of duplicating, and bumps built_at", async () => {
+    const digestA = { campgrounds: [{ id: "c1", name: "A", sites: [] }] } as unknown as ParkAvailabilityResponse;
+    const digestB = { campgrounds: [{ id: "c1", name: "B", sites: [] }] } as unknown as ParkAvailabilityResponse;
+    const siteClass = {};
+
+    await upsertParkDigest(env!.db, { provider: PROVIDER, parkPageId: PARK, asOf: null, digest: digestA, siteClass });
+    const firstRow = await env!.client`SELECT built_at FROM park_digests WHERE provider = ${PROVIDER} AND park_page_id = ${PARK}`;
+    const firstBuiltAt = firstRow[0]!.built_at as Date;
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    await upsertParkDigest(env!.db, { provider: PROVIDER, parkPageId: PARK, asOf: null, digest: digestB, siteClass });
+
+    const rowCount = await env!.client`SELECT * FROM park_digests WHERE provider = ${PROVIDER} AND park_page_id = ${PARK}`;
+    expect(rowCount).toHaveLength(1);
+
+    const result = await getParkDigest(env!.db, PROVIDER, PARK);
+    expect(result!.digest).toEqual(digestB);
+
+    const secondBuiltAt = rowCount[0]!.built_at as Date;
+    expect(new Date(secondBuiltAt).getTime()).toBeGreaterThan(new Date(firstBuiltAt).getTime());
+  });
+
+  it.skipIf(!hasDb)("is provider-scoped: same parkPageId under a different provider returns undefined", async () => {
+    const otherProvider = "park-digest-test-provider-other";
+    await env!.client`INSERT INTO providers (provider_id, display_name) VALUES (${otherProvider}, 'Other Provider') ON CONFLICT DO NOTHING`;
+
+    const result = await getParkDigest(env!.db, otherProvider, PARK);
+    expect(result).toBeUndefined();
+
+    await env!.client`DELETE FROM providers WHERE provider_id = ${otherProvider}`;
   });
 });

@@ -163,9 +163,9 @@ export const calendarConnections = pgTable("calendar_connections", {
 export const parkDigests = pgTable("park_digests", {
   provider: text("provider").notNull().references(() => providers.providerId),
   parkPageId: text("park_page_id").notNull(),
-  asOf: timestamp("as_of", { withTimezone: true }),
-  digest: jsonb("digest").notNull(),
-  siteClass: jsonb("site_class").notNull(),
+  asOf: timestamp("as_of", { withTimezone: true }), // max scannedAt across windows; null when no windows
+  digest: jsonb("digest").notNull(), // the unfiltered ParkAvailabilityResponse
+  siteClass: jsonb("site_class").notNull(), // Record<siteName, SiteClassEntry>; day-use omitted
   builtAt: timestamp("built_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   primaryKey({ columns: [t.provider, t.parkPageId] }),
