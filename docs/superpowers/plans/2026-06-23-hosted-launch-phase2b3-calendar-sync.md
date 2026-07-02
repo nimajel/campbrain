@@ -171,15 +171,15 @@ export interface CalendarClient {
 - `TargetsPage`: a "Google Calendar" panel — when `!status.connected`, a **"Connect Google Calendar"** button (→ `connect()`); when connected, "Connected ✓ · Disconnect". Read `?calendar=connected|error` from the URL to show a brief confirmation/toast.
 - `TargetCard`: the per-target calendar toggle — **when `status.connected`, make it LIVE** (`setEnabled`-style mutation on `targets.update` patching `calendarEnabled`, invalidate `["targets"]`); when NOT connected, keep it disabled with a "Connect Google Calendar first" tooltip. (The toggle flips `target.calendarEnabled`; the scanner consumes it.)
 - Typecheck + build green. Commit `feat(web): connect google calendar + live per-target toggle`.
-- [ ] **Visual verification (controller `preview_*`):** reuse the dev-stub harness. **Not-connected:** `/alerts` shows "Connect Google Calendar"; the per-target toggle is disabled with the tooltip. **Connected (seed a `calendar_connections` row for `local-dev`):** the panel shows "Connected ✓ · Disconnect"; the per-target toggle is now live and persists `calendar_enabled` (verify the DB row flips). (The actual Google consent redirect is the user's manual check with their OAuth client — out of scope for the local visual pass.)
+- [x] **Visual verification (controller `preview_*`):** reuse the dev-stub harness. **Not-connected:** `/alerts` shows "Connect Google Calendar"; the per-target toggle is disabled with the tooltip. **Connected (seed a `calendar_connections` row for `local-dev`):** the panel shows "Connected ✓ · Disconnect"; the per-target toggle is now live and persists `calendar_enabled` (verify the DB row flips). (The actual Google consent redirect is the user's manual check with their OAuth client — out of scope for the local visual pass.) *(Verified 2026-07-02: both states pass; toggle click persisted `calendar_enabled=true`; no console errors. Note: the harness is a throwaway Node server (`createNodeDb` + ALLOW_DEV_SESSION in process.env) — `wrangler dev` does NOT populate `process.env` from `.dev.vars`, so the stub is inert under it.)*
 
 ---
 
 ## Task 8: Full-repo verification + cleanup
-- [ ] `bun run typecheck` (8/8), `bun run test` (all pass; the calendar core/db/api/scanner tests RUN not skipped — eyeball the isolation + mock-sync + connectUrl tests), `bun run build`.
-- [ ] `grep -nE "calendar:" apps/api/src/trpc/router.ts` (router exposed); `grep -n "runCalendarSync" apps/scanner/src/main.ts` (wired).
-- [ ] **Worker dry-run** (`apps/api`, `bunx wrangler deploy --dry-run`) — MUST build clean AND **confirm `googleapis` is NOT in the Worker bundle** (the OAuth uses plain fetch; googleapis is scanner-only). If the bundle pulls googleapis, the callback/oauth accidentally imported it — fix.
-- [ ] Remove any throwaway dev harness; confirm the tree is clean.
+- [x] `bun run typecheck` (8/8), `bun run test` (all pass; the calendar core/db/api/scanner tests RUN not skipped — eyeball the isolation + mock-sync + connectUrl tests), `bun run build`. *(Verified 2026-07-02, forced uncached run: 430 tests, 0 skipped. Note: a Homebrew postgresql@18 on the host shadows Docker's :5432 — stop it or the db/api PG-backed suites silently skip.)*
+- [x] `grep -nE "calendar:" apps/api/src/trpc/router.ts` (router exposed); `grep -n "runCalendarSync" apps/scanner/src/main.ts` (wired).
+- [x] **Worker dry-run** (`apps/api`, `bunx wrangler deploy --dry-run`) — MUST build clean AND **confirm `googleapis` is NOT in the Worker bundle** (the OAuth uses plain fetch; googleapis is scanner-only). If the bundle pulls googleapis, the callback/oauth accidentally imported it — fix. *(Verified 2026-07-02: clean build; the only "googleapis" hits in the bundle are URL string literals — no googleapis/google-auth-library package code.)*
+- [x] Remove any throwaway dev harness; confirm the tree is clean. *(Tree clean; only untracked file is the user's `.claudeignore`.)*
 
 ---
 
