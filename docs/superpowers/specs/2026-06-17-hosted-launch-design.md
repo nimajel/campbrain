@@ -1,7 +1,7 @@
 # CampBrain — Hosted Launch Design (Cloudflare-native rewrite)
 
 **Date:** 2026-06-17
-**Status:** Phase 1 COMPLETE + deployed live (https://campbrain-api.jelvehn.workers.dev); Phase 2 in progress; Phase 3 pending
+**Status:** Phase 1 COMPLETE + deployed live (https://campbrain-api.jelvehn.workers.dev); Phase 2 in progress (2b-3 calendar sync code-complete, pending owner-provisioned Google OAuth client — see as-built note below); Phase 3 pending
 **Owner:** ritolaya
 
 > **As-built deployment note (Phase 0):** the owner has no custom domain, so the planned
@@ -20,6 +20,20 @@
 > `timeout-minutes: 75`), running `bun --filter @campbrain/scanner start` against Neon.
 > Debug HTML goes to a GitHub Actions artifact instead of R2. The Cron+Queues+R2 design
 > can be revisited if the project moves to Workers Paid ($5/mo, 30 s CPU).
+
+> **As-built calendar-sync note (Phase 2b-3, 2026-06-25, commits `45c467e..63d89a6`):**
+> shipped ahead of the Phase 3 slot this doc originally planned for it. Design:
+> [docs/superpowers/specs/2026-06-23-hosted-launch-phase2b3-calendar-sync-design.md](2026-06-23-hosted-launch-phase2b3-calendar-sync-design.md).
+> The token table is `calendar_connections` (not `calendar_credentials` as drafted below),
+> plus a second table `calendar_sync_state` for event dedupe. It's a **pattern-B separate-
+> consent flow** — the BetterAuth sign-in scope was NOT escalated; a standalone "Connect
+> Google Calendar" OAuth flow requests `calendar.events` only. The actual sync (`googleapis`,
+> per-user token refresh, event create/update) runs in the **GitHub Actions scanner**
+> (`apps/scanner`), not a Worker cron — consistent with the Phase 1c scanner note above. The
+> Worker (`apps/api`) hosts only the OAuth connect/callback endpoints, exchanging the code for
+> tokens with a plain `fetch` to `oauth2.googleapis.com/token` — no `googleapis` package in the
+> Worker bundle. Code-complete and unit/mock-tested; live verification is gated on the owner
+> provisioning a Google OAuth client (see the design doc's "Manual setup" section).
 
 > **Supersedes** the earlier draft of this file (a Vercel + Next.js + Neon + Railway
 > *migration*). After choosing a standard stack, this is a **Cloudflare-native rewrite**
@@ -90,7 +104,7 @@ Therefore *all* shared and per-user state lives in Neon; the few filesystem arti
 | Alert hit-state + latest scan results | `.campbrain/state/*.json` | → Neon tables (`alert_hit_state`, `scan_runs`) — **required** (Workers have no FS) |
 | Booking-window targets | `data/targets.json` | → per-user `targets` Neon table |
 | Parser debug HTML snapshots | `.campbrain/debug/*.html` | → **Cloudflare R2** bucket |
-| Google Calendar tokens | `.campbrain/google-token.json` | → per-user `calendar_credentials` table — **Phase 3** |
+| Google Calendar tokens | `.campbrain/google-token.json` | → per-user `calendar_connections` table — **shipped Phase 2b-3**, not Phase 3 as originally planned (see as-built note above) |
 
 **Multi-tenancy stays cheap:** the proactive scanner is **global, not per-user** — one
 shared availability copy for everyone. Adding users does **not** increase scraping load.
@@ -186,7 +200,8 @@ CLI ops (db init, catalog refresh, backfill, target migrate) become Bun scripts 
 - `alert_hit_state` — per-saved-search hit-state (replaces `availability-hits.json`),
   carrying the v3 fields (`parkPageId`, `parkName`, `campgroundName`, `notifiedAt`).
 - `scan_runs` — latest scan summary for the dashboard (replaces `latest-scan-results.json`).
-- `calendar_credentials` — per-user Google tokens (**Phase 3**).
+- `calendar_connections` — per-user Google tokens; `calendar_sync_state` — event dedupe state.
+  **Shipped Phase 2b-3**, not Phase 3 as originally planned here (see as-built note above).
 - `saved_searches` — no schema change; `user_id` now populated by auth.
 
 ---
@@ -318,7 +333,9 @@ Decoupled, CF-native, no completion-tracking needed:
 ### Phase 3 — Public-ready (later)
 - Open signup (relax allowlist / waitlist); Turnstile; rate limiting.
 - ToS + Privacy; parks.ca.gov / Rec.gov acceptable-use review.
-- Per-user Google Calendar tokens (`calendar_credentials`) → calendar sync.
+- ~~Per-user Google Calendar tokens (`calendar_credentials`) → calendar sync.~~ **Shipped
+  early, in Phase 2b-3** (`calendar_connections` + `calendar_sync_state`) — see the as-built
+  note near the top of this doc.
 - DLQ alerting, uptime monitor, backup-restore verification.
 - **Exit:** anyone can sign up safely; abuse-protected; legally reviewed.
 
