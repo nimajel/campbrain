@@ -6,6 +6,7 @@ import { createNodeDb } from "@campbrain/db/node";
 import type { ParkCatalogEntry } from "@campbrain/core";
 import { runProactiveScan } from "./run-proactive-scan";
 import { runAlertScan } from "./run-alert-scan";
+import { runDigestBuild } from "./run-digest-build";
 import { runCalendarSync } from "./run-calendar-sync";
 
 function loadCaParks(): ParkCatalogEntry[] {
@@ -64,6 +65,14 @@ async function main() {
       console.error(
         `scan produced 0 cache writes across ${summary.windows} windows — likely an upstream outage`,
       );
+    }
+
+    // Digest build is best-effort: a failure must NOT kill the scan job.
+    try {
+      await runDigestBuild({ db, log: (m) => console.log(m) });
+      console.log("✅ digest build complete");
+    } catch (e: unknown) {
+      console.error(`digest build threw unexpectedly: ${String(e)}`);
     }
 
     const dashboardUrl =
