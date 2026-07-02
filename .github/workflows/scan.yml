@@ -27,6 +27,12 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: bun --filter @campbrain/db migrate
+      - name: Seed catalog (idempotent)
+        # ON CONFLICT upserts — keeps providers/parks (CA + Rec.gov) present on Neon without
+        # a manual seed step; new catalog JSON committed to the repo lands on the next scan.
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun --filter @campbrain/db seed:catalog
       - name: Run proactive scan
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

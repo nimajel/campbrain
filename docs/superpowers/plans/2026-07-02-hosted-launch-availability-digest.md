@@ -269,3 +269,12 @@ done
 **Reuse:** the digest builder calls the existing `buildParkAvailability` verbatim; `getEntriesForParks`, `getCatalogParks`, `scan_runs` machinery, and the 2b-1/2b-3 scanner-phase pattern (`run-calendar-sync.ts`) are all reused. **No new dependency in any package** → Worker bundle stays neon-only (re-verified in T7's dry-run).
 
 **Resolved sub-decision:** composite `parks` FK with `ON DELETE CASCADE` on `park_digests` (T2) — no `pruneOrphanDigests` build step.
+
+---
+
+## Acceptance evidence (recorded 2026-07-02, post-deploy + scan run 28626680106)
+
+Live `map.availability` on the deployed Worker after migration 0007 auto-applied and `runDigestBuild` populated Neon:
+- Park **651** (Lake Perris, 426 sites — 6/6 failing with error 1102 before the fix): **6/6 HTTP 200**, ~1.1–1.9s, 3.27MB digest served.
+- Park **469** (Samuel P. Taylor, 56 sites — 4/6 failing before): **6/6 HTTP 200**, ~0.7–1.2s.
+Error 1102 eliminated. ✅
