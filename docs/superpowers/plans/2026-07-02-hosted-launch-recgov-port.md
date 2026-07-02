@@ -147,4 +147,34 @@ The federal pin glyph + "Recreation.gov" legend + `provider` threading are **alr
 **Type consistency:** `AvailabilityWindowEntry`/`SiteDailyAvailability.recGovCampsiteType` (T1) → `upsertEntry`'s `classifySite` (already wired) → `mv_available_stays` (provider-agnostic, no change); `providerId` added to `SearchParkResult`/`NextAvailableResult`/`ParkAvailabilityCount` (T2) flows to the summary tRPC output + web `ParkCount`/`buildAvailByPark` (T2 Step 7 / T6).
 **Worker-bundle safety:** the ported adapter uses only `dayjs` + global `fetch` (Workers-pure); it runs in the GitHub-Actions scanner, not the Worker; re-verified in T7's dry-run (no `googleapis`, no new Node deps).
 **Data isolation:** all writes/reads stay provider-scoped by composite `(provider_id, park_page_id)`; O-F (T2) closes the last place two providers could bleed together (three group-by keys + the web summary→pin join). No schema migration, no MV rewrite, no new UI component.
+
+## As-built deviation (2026-07-02)
+
+Spec O-B's single-MV-refresh-per-cron design (Rec.gov pass as the sole `refreshMv: true`,
+run right after the CA pass) was revised during final-slice review. `loadRecGovParks()`
+yields ~629 parks × ~6 monthly windows ≈ 3,774 requests at the polite 1.5s sequential
+cadence — a ~94+ minute floor for the Rec.gov pass alone, exceeding `scan.yml`'s original
+`timeout-minutes: 75`. Two compounding risks: (1) a SIGKILLed run mid-Rec.gov-pass would
+hold the MV refresh hostage, since only that pass carried `refreshMv: true`, delaying fresh
+CA data too; (2) a killed job leaves its `scan_runs` row stuck at `status='running'` forever.
+
+Revised design, implemented in `apps/scanner/src/main.ts`:
+- **Per-provider MV refresh** — both the CA pass and the Rec.gov pass now run with
+  `refreshMv: true` (two refreshes per cron instead of one), each paired with that
+  provider's own digest build immediately after.
+- **Reordered phases** — CA proactive scan → CA digest build → alert scan → calendar sync →
+  Rec.gov proactive scan (last) → Rec.gov digest build. All fast, high-value phases (CA
+  data, alerts, calendar) complete first; a mid-Rec.gov kill only costs federal-park
+  staleness, never CA freshness or the alert/calendar phases.
+- **Stale scan_runs cleanup** — `failStaleScanRuns(db, olderThanHours = 12)` in
+  `packages/db/src/queries/scan-runs.ts`, called at the top of `main()` before any pass,
+  flips any `status='running'` row older than 12h to `'error'` so a SIGKILLed prior run
+  doesn't linger indefinitely.
+- **Workflow timeout raised** — `scan.yml` `timeout-minutes: 75 → 300`, sized for CA
+  (~35-55 min on Neon) + Rec.gov (~95-155 min at the polite cadence) + digest/alert/calendar
+  phases combined; the existing `concurrency` group already prevents overlapping runs.
+
+Rationale: reviewer-found runtime blocker (first real cron run would have been SIGKILLed
+mid-scan). Resilience over the original single-refresh optimization — two MV refreshes per
+cron is an acceptable cost against a job that reliably completes and self-heals stuck rows.
 **Guardrails:** sequential 1.5 s-spaced polling, 429 backoff `[15s,45s,90s]`, 400/404→`'unsupported'`, public endpoint, `User-Agent` header, manual booking only, no new providers — all preserved by the port (T1) and honored by the scanner (T4/T5).

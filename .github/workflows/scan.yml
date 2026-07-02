@@ -2,9 +2,11 @@ name: Proactive Scan
 on:
   schedule:
     - cron: "0 */6 * * *"   # every 6 hours (GitHub cron is best-effort, UTC).
-                            # Repo is public → unlimited Actions minutes. A full scan writes to
-                            # Neon over the network and takes ~55 min (vs ~11 min against local
-                            # Postgres), so timeout-minutes below is sized for that, not 30.
+                            # Repo is public → unlimited Actions minutes. CA pass on Neon ~35-55
+                            # min; Rec.gov pass (hundreds of parks, polite 1.5s sequential cadence)
+                            # ~95-155 min; plus digest/alert/calendar phases. timeout-minutes below
+                            # is sized for the combined worst case (concurrency group above already
+                            # prevents overlapping runs, so a long run just delays the next tick).
   workflow_dispatch: {}       # manual trigger for validation
 concurrency:
   group: proactive-scan
@@ -14,7 +16,7 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { sql } from "drizzle-orm";
 import { createTestDb, dbReachable } from "./helpers";
-import { startScanRun, finishScanRun, latestAlertRun } from "@campbrain/db";
+import { startScanRun, finishScanRun, latestAlertRun, failStaleScanRuns } from "@campbrain/db";
 
 describe("scan_runs table", async () => {
   const hasDb = await dbReachable();
@@ -38,5 +38,28 @@ describe("scan_runs table", async () => {
     const latest = await latestAlertRun(db as never);
     expect(latest?.finishedAt).toBeTruthy();
     await (db as never as { execute: (q: unknown) => Promise<unknown> }).execute(sql`DELETE FROM scan_runs WHERE id = ${id}`);
+  });
+
+  it.skipIf(!hasDb)("failStaleScanRuns flips only the stale 'running' row to 'error'", async () => {
+    const db = env!.db;
+    const staleId = crypto.randomUUID();
+    const freshId = crypto.randomUUID();
+    await env!.client`INSERT INTO scan_runs (id, kind, started_at, status)
+      VALUES (${staleId}, 'test', now() - interval '13 hours', 'running')`;
+    await env!.client`INSERT INTO scan_runs (id, kind, started_at, status)
+      VALUES (${freshId}, 'test', now(), 'running')`;
+
+    const flipped = await failStaleScanRuns(db as never, 12);
+    expect(flipped).toBeGreaterThanOrEqual(1);
+
+    const staleRow = await env!.client`SELECT status, finished_at FROM scan_runs WHERE id = ${staleId}`;
+    expect(staleRow[0]!["status"]).toBe("error");
+    expect(staleRow[0]!["finished_at"]).toBeTruthy();
+
+    const freshRow = await env!.client`SELECT status, finished_at FROM scan_runs WHERE id = ${freshId}`;
+    expect(freshRow[0]!["status"]).toBe("running");
+    expect(freshRow[0]!["finished_at"]).toBeNull();
+
+    await env!.client`DELETE FROM scan_runs WHERE id IN (${staleId}, ${freshId})`;
   });
 });

@@ -1,7 +1,7 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { closeDb, startScanRun, finishScanRun } from "@campbrain/db";
+import { closeDb, startScanRun, finishScanRun, failStaleScanRuns } from "@campbrain/db";
 import { createNodeDb } from "@campbrain/db/node";
 import { RecreationGovProvider, type ParkCatalogEntry } from "@campbrain/core";
 import { runProactiveScan } from "./run-proactive-scan";
@@ -43,13 +43,18 @@ async function main() {
   const db = createNodeDb(url);
   let summary;
   try {
+    const staleFailed = await failStaleScanRuns(db);
+    if (staleFailed > 0) {
+      console.warn(`⚠ marked ${staleFailed} stale 'running' scan_runs row(s) as error`);
+    }
+
     const proactiveRunId = await startScanRun(db, "proactive");
     try {
       summary = await runProactiveScan({
         db,
         providerId: "california-parks",
         parks: loadCaParks(),
-        refreshMv: false,
+        refreshMv: true,
         log: (m) => console.log(m),
         onUnexpectedHtml: async (html, ctx) => {
           mkdirSync(debugDir, { recursive: true });
@@ -80,7 +85,34 @@ async function main() {
       );
     }
 
-    // Recreation.gov pass is a separate scan_runs bracket and must NOT fail the CA scan or the job.
+    // Digest build is best-effort: a failure must NOT kill the scan job.
+    try {
+      await runDigestBuild({ db, log: (m) => console.log(m) });
+      console.log("✅ digest build complete");
+    } catch (e: unknown) {
+      console.error(`digest build threw unexpectedly: ${String(e)}`);
+    }
+
+    const dashboardUrl =
+      (process.env["WEB_ORIGIN"] ?? "https://campbrain-api.jelvehn.workers.dev") +
+      "/dashboard";
+    await runAlertScan({ db, dashboardUrl });
+    console.log("✅ alert scan complete");
+
+    // Calendar sync is best-effort: a failure must NOT kill the scan job.
+    try {
+      const clientId = process.env["GOOGLE_CLIENT_ID"] ?? "";
+      const clientSecret = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+      await runCalendarSync({ db, clientId, clientSecret, log: (m) => console.log(m) });
+      console.log("✅ calendar sync complete");
+    } catch (e: unknown) {
+      console.error(`calendar sync threw unexpectedly: ${String(e)}`);
+    }
+
+    // Recreation.gov pass runs last: it is the slowest phase (hundreds of parks, polite
+    // sequential cadence) and must NOT block the fast, high-value CA phases above. Its own
+    // scan_runs bracket + MV refresh + digest build are isolated so a mid-run kill only
+    // costs federal-park staleness, never the CA scan or the job.
     try {
       const recGovRunId = await startScanRun(db, "proactive");
       try {
@@ -117,34 +149,11 @@ async function main() {
       console.error(`recreation.gov scan threw unexpectedly: ${String(e)}`);
     }
 
-    // Digest build is best-effort: a failure must NOT kill the scan job.
-    try {
-      await runDigestBuild({ db, log: (m) => console.log(m) });
-      console.log("✅ digest build complete");
-    } catch (e: unknown) {
-      console.error(`digest build threw unexpectedly: ${String(e)}`);
-    }
     try {
       await runDigestBuild({ db, provider: "recreation-gov", log: (m) => console.log(m) });
       console.log("✅ recreation.gov digest build complete");
     } catch (e: unknown) {
       console.error(`recreation.gov digest build threw unexpectedly: ${String(e)}`);
-    }
-
-    const dashboardUrl =
-      (process.env["WEB_ORIGIN"] ?? "https://campbrain-api.jelvehn.workers.dev") +
-      "/dashboard";
-    await runAlertScan({ db, dashboardUrl });
-    console.log("✅ alert scan complete");
-
-    // Calendar sync is best-effort: a failure must NOT kill the scan job.
-    try {
-      const clientId = process.env["GOOGLE_CLIENT_ID"] ?? "";
-      const clientSecret = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
-      await runCalendarSync({ db, clientId, clientSecret, log: (m) => console.log(m) });
-      console.log("✅ calendar sync complete");
-    } catch (e: unknown) {
-      console.error(`calendar sync threw unexpectedly: ${String(e)}`);
     }
   } finally {
     await closeDb(db);

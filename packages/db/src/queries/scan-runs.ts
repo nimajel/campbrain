@@ -32,3 +32,12 @@ export async function latestAlertRun(db: QueryDb): Promise<{ finishedAt: string 
     ORDER BY finished_at DESC LIMIT 1`);
   return r[0] ?? null;
 }
+
+/** Flips scan_runs rows stuck at status='running' (e.g. a SIGKILLed job) to 'error' so they
+ *  don't linger forever. Returns the number of rows updated. */
+export async function failStaleScanRuns(db: QueryDb, olderThanHours = 12): Promise<number> {
+  const r = await rows<{ id: string }>(db, sql`UPDATE scan_runs SET status = 'error', finished_at = now()
+    WHERE status = 'running' AND started_at < now() - (${olderThanHours} || ' hours')::interval
+    RETURNING id`);
+  return r.length;
+}
