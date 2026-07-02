@@ -37,10 +37,10 @@ Expected: PG container `Up`; `✅ migrations + MV applied`; seed reports parks. 
 
 **Files:** Modify `packages/types/src/alerts.ts`; Test `packages/types/test/alerts.test.ts` (or add a case to the existing types test file — check what exists).
 
-- [ ] **Step 1: Failing test** — assert `ScanRunKind.parse("digest")` succeeds and `ScanRunKind.options` includes `"digest"` (alongside the existing `proactive | alert | calendar`).
-- [ ] **Step 2: Run → fail.**
-- [ ] **Step 3: Implement** — in `packages/types/src/alerts.ts` change `export const ScanRunKind = z.enum(["proactive", "alert", "calendar"])` → add `"digest"`: `z.enum(["proactive", "alert", "digest", "calendar"])`. No barrel change (already exported).
-- [ ] **Step 4: Run → pass; typecheck; commit** `feat(types): ScanRunKind += 'digest'`.
+- [x] **Step 1: Failing test** — assert `ScanRunKind.parse("digest")` succeeds and `ScanRunKind.options` includes `"digest"` (alongside the existing `proactive | alert | calendar`).
+- [x] **Step 2: Run → fail.**
+- [x] **Step 3: Implement** — in `packages/types/src/alerts.ts` change `export const ScanRunKind = z.enum(["proactive", "alert", "calendar"])` → add `"digest"`: `z.enum(["proactive", "alert", "digest", "calendar"])`. No barrel change (already exported).
+- [x] **Step 4: Run → pass; typecheck; commit** `feat(types): ScanRunKind += 'digest'`.
 
 ---
 
@@ -48,7 +48,7 @@ Expected: PG container `Up`; `✅ migrations + MV applied`; seed reports parks. 
 
 **Files:** Modify `packages/db/src/schema.ts`; Generated `packages/db/migrations/0007_*.sql`; Test `packages/db/test/park-digest.test.ts` (smoke — structural, extended in Task 4).
 
-- [ ] **Step 1: Add the table def** to `packages/db/src/schema.ts` (mirror `savedSearches`/`calendarSyncState` styles; `foreignKey`/`primaryKey`/`index`/`jsonb`/`timestamp` are already imported):
+- [x] **Step 1: Add the table def** to `packages/db/src/schema.ts` (mirror `savedSearches`/`calendarSyncState` styles; `foreignKey`/`primaryKey`/`index`/`jsonb`/`timestamp` are already imported):
 ```ts
 export const parkDigests = pgTable("park_digests", {
   provider: text("provider").notNull().references(() => providers.providerId),
@@ -67,11 +67,11 @@ export const parkDigests = pgTable("park_digests", {
 ```
 Rationale: PK leads with `provider` (provider-scoped-tables guardrail, matches the single-row `WHERE provider = $1 AND park_page_id = $2` read); the composite FK to `parks` with `ON DELETE CASCADE` (resolved sub-decision) drops a removed park's digest automatically.
 
-- [ ] **Step 2: Generate + apply** — from `packages/db`: `DATABASE_URL='postgres://campbrain:campbrain_dev_password@localhost:5432/campbrain' bun run generate` then `… bun --filter @campbrain/db migrate`. Expected: `0007_*.sql` creates ONLY `park_digests` (+ the composite FK to `parks` + the PK) — **no ALTERs to existing tables**. Confirm with `\d park_digests`.
+- [x] **Step 2: Generate + apply** — from `packages/db`: `DATABASE_URL='postgres://campbrain:campbrain_dev_password@localhost:5432/campbrain' bun run generate` then `… bun --filter @campbrain/db migrate`. Expected: `0007_*.sql` creates ONLY `park_digests` (+ the composite FK to `parks` + the PK) — **no ALTERs to existing tables**. Confirm with `\d park_digests`.
 
-- [ ] **Step 3: Smoke test** `packages/db/test/park-digest.test.ts` (mirror `packages/db/test/calendar.test.ts` harness — `dbReachable()` guard + `it.skipIf(!hasDb)`): insert a `park_digests` row (seed a `providers` + `parks` row first to satisfy the FK) with a minimal `{digest, siteClass}` JSONB, read it back, assert the JSONB round-trips. PASS not skipped.
+- [x] **Step 3: Smoke test** `packages/db/test/park-digest.test.ts` (mirror `packages/db/test/calendar.test.ts` harness — `dbReachable()` guard + `it.skipIf(!hasDb)`): insert a `park_digests` row (seed a `providers` + `parks` row first to satisfy the FK) with a minimal `{digest, siteClass}` JSONB, read it back, assert the JSONB round-trips. PASS not skipped.
 
-- [ ] **Step 4: Typecheck + commit** `feat(db): park_digests table + 0007 migration`.
+- [x] **Step 4: Typecheck + commit** `feat(db): park_digests table + 0007 migration`.
 
 ---
 
@@ -84,10 +84,10 @@ The `SiteClassEntry` / `ParkAvailabilityResponse` types come from `@campbrain/co
 - `getParkDigest(db, provider, parkPageId)` → `{ digest: ParkAvailabilityResponse; siteClass: Record<string, SiteClassEntry>; asOf: string | null } | undefined` — single PK read: `SELECT digest, site_class, as_of::text FROM park_digests WHERE provider = $1 AND park_page_id = $2`. JSONB columns come back already-parsed from `postgres` — cast through the typed row shape (no `any`), like `calendar.ts` does.
 - `upsertParkDigest(db, { provider, parkPageId, asOf, digest, siteClass })` → `ON CONFLICT (provider, park_page_id) DO UPDATE SET as_of = EXCLUDED.as_of, digest = EXCLUDED.digest, site_class = EXCLUDED.site_class, built_at = now()`. Serialize the JSONB with `${JSON.stringify(digest)}::jsonb` (confirm how `saved-searches.ts`/`calendar.ts` write JSONB and match it).
 
-- [ ] **Step 1: Failing test** (extend `park-digest.test.ts`): `upsertParkDigest` insert then `getParkDigest` returns the stored `digest`/`siteClass`/`asOf`; a second `upsertParkDigest` with a changed digest **conflict-updates** (not duplicates) and bumps `built_at`; provider-scoping (a different provider returns `undefined`); (FK cascade) deleting the `parks` row removes the digest row.
-- [ ] **Step 2: Run → fail** (functions don't exist).
-- [ ] **Step 3: Implement** `packages/db/src/queries/park-digest.ts`; barrel-export `export * from "./queries/park-digest";` in `packages/db/src/index.ts`.
-- [ ] **Step 4: Run → pass (not skipped); typecheck; commit** `feat(db): getParkDigest + upsertParkDigest queries`.
+- [x] **Step 1: Failing test** (extend `park-digest.test.ts`): `upsertParkDigest` insert then `getParkDigest` returns the stored `digest`/`siteClass`/`asOf`; a second `upsertParkDigest` with a changed digest **conflict-updates** (not duplicates) and bumps `built_at`; provider-scoping (a different provider returns `undefined`); (FK cascade) deleting the `parks` row removes the digest row.
+- [x] **Step 2: Run → fail** (functions don't exist).
+- [x] **Step 3: Implement** `packages/db/src/queries/park-digest.ts`; barrel-export `export * from "./queries/park-digest";` in `packages/db/src/index.ts`.
+- [x] **Step 4: Run → pass (not skipped); typecheck; commit** `feat(db): getParkDigest + upsertParkDigest queries`.
 
 ---
 
@@ -128,17 +128,17 @@ export interface SiteClassEntry {
 - **Recompute `earliestAvailableDate`** from the filtered `nextAvailableDates` (unfiltered stored value is stale under filters — keeps "Fully booked through / Next opening" copy in `ParkDetail.tsx` correct).
 - Return a new `ParkAvailabilityResponse` (same `parkPageId`/`parkName`/`asOf`).
 
-- [ ] **Step 1: Failing test — the equivalence keystone.** Build a representative fixture `AvailabilityWindowEntry[]` for a multi-campground park with tent / hookup / cabin / NULL-kind / group / equestrian / walk-up / hike-in / boat-in sites across overlapping windows and at least one weekend + one weekday available date. Assert, across a **filter matrix** `F`:
+- [x] **Step 1: Failing test — the equivalence keystone.** Build a representative fixture `AvailabilityWindowEntry[]` for a multi-campground park with tent / hookup / cabin / NULL-kind / group / equestrian / walk-up / hike-in / boat-in sites across overlapping windows and at least one weekend + one weekday available date. Assert, across a **filter matrix** `F`:
 ```
 buildParkAvailability(entries, F, PARK_ID)
   deepEquals
 filterDigest(buildParkAvailability(entries, {}, PARK_ID), buildSiteClassMap(entries, PARK_ID), F)
 ```
 Matrix `F`: `{}` (empty); each single `access` (drive_in / hike_in / boat_in); each single `kind` (tent / hookup / cabin — **assert NULL-kind exclusion**); each single `hide` (group / equestrian / walk_up); a `hide:['walk_up']` case (assert `walkUpSites` dropped); a combined `{access, kinds, hide}` case; a `{from, to}` date-range case (sub-window inside the horizon); and a case that exercises the weekend-tier path (a Friday-anchored weekend with 3N/2N/1N sites). **Pin `now`** (pass the same fixed `now` to both sides) so the `today`/`rangeStart` math is deterministic. This equivalence is the correctness proof that moving the filter out of the compute path changes nothing observable.
-- [ ] **Step 2: `buildSiteClassMap` unit test** — every distinct non-day-use site name present; day-use omitted; `PARK_ACCESS_OVERRIDES` respected (thread `parkPageId='468'` Angel Island, assert residual drive_in → hike_in on a name with no access keyword).
-- [ ] **Step 3: Run → fail** (functions don't exist).
-- [ ] **Step 4: Implement** `packages/core/src/availability/digest.ts`; barrel-export in `packages/core/src/index.ts` (`export * from "./availability/digest";`). Import `classifySite`, `SiteAccess`, `SiteKind` from `../catalog/site-classifier`; `MapAvailabilityFilters`, `ParkAvailabilityResponse`, `todayIso` etc. from `./map-transforms`; `AvailabilityWindowEntry` from `./types`.
-- [ ] **Step 5: Run → all pass; typecheck; commit** `feat(core): buildSiteClassMap + filterDigest (equivalence-tested vs buildParkAvailability)`.
+- [x] **Step 2: `buildSiteClassMap` unit test** — every distinct non-day-use site name present; day-use omitted; `PARK_ACCESS_OVERRIDES` respected (thread `parkPageId='468'` Angel Island, assert residual drive_in → hike_in on a name with no access keyword).
+- [x] **Step 3: Run → fail** (functions don't exist).
+- [x] **Step 4: Implement** `packages/core/src/availability/digest.ts`; barrel-export in `packages/core/src/index.ts` (`export * from "./availability/digest";`). Import `classifySite`, `SiteAccess`, `SiteKind` from `../catalog/site-classifier`; `MapAvailabilityFilters`, `ParkAvailabilityResponse`, `todayIso` etc. from `./map-transforms`; `AvailabilityWindowEntry` from `./types`.
+- [x] **Step 5: Run → all pass; typecheck; commit** `feat(core): buildSiteClassMap + filterDigest (equivalence-tested vs buildParkAvailability)`.
 
 ---
 
@@ -180,10 +180,10 @@ try {
 ```
 Placement rationale (spec D-D): the digest depends on the just-refreshed MV / just-upserted rows; running it right after keeps inputs maximally consistent, and putting it before the failure-prone alert/calendar I/O phases means a later failure never leaves the digest unbuilt.
 
-- [ ] **Step 1: Failing test** `run-digest-build.test.ts` (local PG + a **fake `getEntries`** injected via `deps.getEntries`, mirror `run-calendar-sync.test.ts` `dbReachable()` guard): seed 2 parks; a fake `getEntries` returns fixture entries for park A and **throws** for park B. Assert: `upsertParkDigest` ran for park A (row present via `getParkDigest`), park B's throw was isolated (`errors` counted, park A still built), and a `scan_runs` row `kind='digest'` was written with `parksScanned`/`errors`. Assert the stored digest for park A equals `buildParkAvailability(fixtureEntries, {}, 'A')`.
-- [ ] **Step 2: Run → fail.**
-- [ ] **Step 3: Implement** `run-digest-build.ts` + wire `main.ts`.
-- [ ] **Step 4: Run → pass (not skipped); typecheck; commit** `feat(scanner): runDigestBuild phase (precompute park availability digests)`.
+- [x] **Step 1: Failing test** `run-digest-build.test.ts` (local PG + a **fake `getEntries`** injected via `deps.getEntries`, mirror `run-calendar-sync.test.ts` `dbReachable()` guard): seed 2 parks; a fake `getEntries` returns fixture entries for park A and **throws** for park B. Assert: `upsertParkDigest` ran for park A (row present via `getParkDigest`), park B's throw was isolated (`errors` counted, park A still built), and a `scan_runs` row `kind='digest'` was written with `parksScanned`/`errors`. Assert the stored digest for park A equals `buildParkAvailability(fixtureEntries, {}, 'A')`.
+- [x] **Step 2: Run → fail.**
+- [x] **Step 3: Implement** `run-digest-build.ts` + wire `main.ts`.
+- [x] **Step 4: Run → pass (not skipped); typecheck; commit** `feat(scanner): runDigestBuild phase (precompute park availability digests)`.
 
 ---
 
@@ -208,10 +208,10 @@ availability: publicProcedure.input(MapAvailabilityInputSchema).query(async ({ c
 - Default the provider consistently with the builder (`"california-parks"`) so the read matches the stored row.
 - Do **not** harden the fallback for big parks — the digest is the fix; the fallback only avoids a hard failure in the ≤6 h pre-build window (spec D-E guardrail).
 
-- [ ] **Step 1: Failing test** (extend `map-router.test.ts`, `it.skipIf(!hasDb)`): (a) **digest present** — seed a `park_digests` row via `upsertParkDigest` for a test park, call `caller.map.availability({parkPageId, access:[], kinds:[], hide:[]})`, assert the returned object equals `filterDigest(row.digest, row.siteClass, filters)` (i.e. it took the fast path — assert `parkPageId` matches and the shape is a `ParkAvailabilityResponse`); (b) **digest absent** — a parkPageId with no `park_digests` row falls back to `buildParkAvailability` and still returns a valid response **without throwing** (`nextAvailableDates`/`nextAvailableWeekends` present).
-- [ ] **Step 2: Run → fail** (endpoint still ignores the digest).
-- [ ] **Step 3: Implement** the router change.
-- [ ] **Step 4: Run → pass (not skipped); typecheck; commit** `fix(api): serve map.availability from precomputed digest (fixes error 1102)`.
+- [x] **Step 1: Failing test** (extend `map-router.test.ts`, `it.skipIf(!hasDb)`): (a) **digest present** — seed a `park_digests` row via `upsertParkDigest` for a test park, call `caller.map.availability({parkPageId, access:[], kinds:[], hide:[]})`, assert the returned object equals `filterDigest(row.digest, row.siteClass, filters)` (i.e. it took the fast path — assert `parkPageId` matches and the shape is a `ParkAvailabilityResponse`); (b) **digest absent** — a parkPageId with no `park_digests` row falls back to `buildParkAvailability` and still returns a valid response **without throwing** (`nextAvailableDates`/`nextAvailableWeekends` present).
+- [x] **Step 2: Run → fail** (endpoint still ignores the digest).
+- [x] **Step 3: Implement** the router change.
+- [x] **Step 4: Run → pass (not skipped); typecheck; commit** `fix(api): serve map.availability from precomputed digest (fixes error 1102)`.
 
 > **No web changes:** `ParkAvailabilityResponse` shape is preserved (`asOf` stays the max `scannedAt`, computed by `buildParkAvailability` at build time and stored inside the JSONB), so `apps/web/src/features/map/components/ParkDetail.tsx:467` (`Cache as of {relativeTime(data.asOf)}`) and `use-park-availability.ts` are untouched.
 
@@ -219,7 +219,7 @@ availability: publicProcedure.input(MapAvailabilityInputSchema).query(async ({ c
 
 ## Task 7: Full-repo verification + deploy notes
 
-- [ ] **Run the full suite green:**
+- [x] **Run the full suite green:**
 ```bash
 cd /Users/nimajelveh/campbrain && docker compose -f docker-compose.dev.yml up -d && \
   DATABASE_URL='postgres://campbrain:campbrain_dev_password@localhost:5432/campbrain' bun --filter @campbrain/db migrate && \
@@ -228,16 +228,16 @@ cd /Users/nimajelveh/campbrain && docker compose -f docker-compose.dev.yml up -d
   bun run build
 ```
 Expected: typecheck 0 errors; all tests pass with **0 skipped** in the new suites.
-- [ ] **CRITICAL — confirm the PG-backed suites RUN, not skip.** The `packages/db/test/park-digest.test.ts`, `apps/scanner/test/run-digest-build.test.ts`, and `apps/api/test/map-router.test.ts` suites use a `dbReachable()` / `it.skipIf(!hasDb)` guard — **a silent skip looks like a pass.** Eyeball the reporter: the new digest tests must show as RUN. **If they skip** (or schema tests fail with `role "campbrain" does not exist`), a Homebrew `postgresql@18` service on the host is shadowing Docker's `:5432` — it binds `127.0.0.1`/`::1` specifically, so Docker's bind never wins. Check and resolve:
+- [x] **CRITICAL — confirm the PG-backed suites RUN, not skip.** The `packages/db/test/park-digest.test.ts`, `apps/scanner/test/run-digest-build.test.ts`, and `apps/api/test/map-router.test.ts` suites use a `dbReachable()` / `it.skipIf(!hasDb)` guard — **a silent skip looks like a pass.** Eyeball the reporter: the new digest tests must show as RUN. **If they skip** (or schema tests fail with `role "campbrain" does not exist`), a Homebrew `postgresql@18` service on the host is shadowing Docker's `:5432` — it binds `127.0.0.1`/`::1` specifically, so Docker's bind never wins. Check and resolve:
 ```bash
 lsof -nP -iTCP:5432 -sTCP:LISTEN     # look for a non-docker (postgres/postgresql@18) listener
 brew services stop postgresql@18     # then re-run the suite; confirm the digest tests RUN
 ```
 Do not accept "all green" until the digest db/scanner/api suites are confirmed RUNNING.
-- [ ] **Wiring greps:** `grep -n "runDigestBuild" apps/scanner/src/main.ts` (phase wired before runAlertScan); `grep -n "getParkDigest\|filterDigest" apps/api/src/trpc/routers/map.ts` (read path + filter wired).
-- [ ] **Worker dry-run** — from `apps/api`: `bunx wrangler deploy --dry-run`. MUST build clean AND confirm **no new dependency** entered the bundle (`filterDigest`/`buildSiteClassMap` are in `@campbrain/core`, `getParkDigest` in `@campbrain/db` — both already imported; the Worker stays neon-only).
-- [ ] Confirm the tree is clean (no throwaway harness files).
-- [ ] Commit any residual verification-only changes: `chore: verify availability-digest slice (typecheck+test+build+wrangler dry-run)`.
+- [x] **Wiring greps:** `grep -n "runDigestBuild" apps/scanner/src/main.ts` (phase wired before runAlertScan); `grep -n "getParkDigest\|filterDigest" apps/api/src/trpc/routers/map.ts` (read path + filter wired).
+- [x] **Worker dry-run** — from `apps/api`: `bunx wrangler deploy --dry-run`. MUST build clean AND confirm **no new dependency** entered the bundle (`filterDigest`/`buildSiteClassMap` are in `@campbrain/core`, `getParkDigest` in `@campbrain/db` — both already imported; the Worker stays neon-only).
+- [x] Confirm the tree is clean (no throwaway harness files).
+- [x] Commit any residual verification-only changes: `chore: verify availability-digest slice (typecheck+test+build+wrangler dry-run)`.
 
 **Deploy notes (manual, gate LIVE fix — NOT a code task):**
 1. **Migration auto-applies to Neon:** the `0007` migration ships with the merge; the next scheduled scan runs `bun --filter @campbrain/db migrate` before scanning (per `.github/workflows/scan.yml`), so `park_digests` is created on Neon automatically — no manual migrate step needed.
