@@ -30,6 +30,7 @@ export interface ScanDeps {
   db: TransactionalDb & QueryDb;
   parks: ParkCatalogEntry[];
   provider?: ScanProvider;
+  providerId?: string;
   daysAhead?: number;
   todayOverride?: string;
   concurrency?: number;
@@ -37,6 +38,7 @@ export interface ScanDeps {
   log?: (msg: string) => void;
   onUnexpectedHtml?: OnUnexpectedHtml;
   sleep?: (ms: number) => Promise<void>;
+  refreshMv?: boolean;
 }
 
 export interface ScanSummary {
@@ -53,6 +55,8 @@ export async function runProactiveScan(deps: ScanDeps): Promise<ScanSummary> {
   const startMs = Date.now();
   const log = deps.log ?? (() => {});
   const provider: ScanProvider = deps.provider ?? new CaliforniaParksProvider();
+  const providerId = deps.providerId ?? PROVIDER_ID;
+  const refreshMv = deps.refreshMv ?? true;
   const concurrency = deps.concurrency ?? provider.proactiveConcurrency ?? CONCURRENCY;
   const delayMs = deps.batchDelayMs ?? provider.batchDelayMs ?? BATCH_DELAY_MS;
   const sleep =
@@ -70,7 +74,7 @@ export async function runProactiveScan(deps: ScanDeps): Promise<ScanSummary> {
   const candidates: Candidate[] = deps.parks.flatMap((park) =>
     windows.map((w) => ({ park, windowStart: w.windowStart, windowEnd: w.windowEnd })),
   );
-  log(`Proactive scan: ${deps.parks.length} parks, ${candidates.length} windows`);
+  log(`Proactive scan [${providerId}]: ${deps.parks.length} parks, ${candidates.length} windows`);
 
   let fetched = 0,
     fetchErrors = 0,
@@ -90,7 +94,7 @@ export async function runProactiveScan(deps: ScanDeps): Promise<ScanSummary> {
       fetchErrors++;
       return;
     }
-    await upsertEntry(deps.db, result, PROVIDER_ID);
+    await upsertEntry(deps.db, result, providerId);
     cacheWrites++;
   });
 
@@ -104,13 +108,15 @@ export async function runProactiveScan(deps: ScanDeps): Promise<ScanSummary> {
 
   const evicted = await evictExpired(deps.db);
   if (evicted > 0) log(`Evicted ${evicted} expired scan windows`);
-  try {
-    await refreshMaterializedView(deps.db);
-    log("MV refreshed");
-  } catch (e) {
-    log(
-      `MV refresh failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`,
-    );
+  if (refreshMv) {
+    try {
+      await refreshMaterializedView(deps.db);
+      log("MV refreshed");
+    } catch (e) {
+      log(
+        `MV refresh failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 
   return {

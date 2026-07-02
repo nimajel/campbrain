@@ -75,6 +75,66 @@ describe("runProactiveScan (orchestration)", () => {
     expect(refreshMaterializedView).toHaveBeenCalledTimes(1);
   });
 
+  it("defaults providerId to california-parks when omitted", async () => {
+    const provider: ScanProvider = {
+      generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
+      proactiveScanWindow: vi.fn(async () => entry("1")),
+    };
+    await runProactiveScan({
+      db: {} as never,
+      parks: [park("1")],
+      provider,
+      todayOverride: "2026-06-22",
+    });
+    expect(upsertEntry).toHaveBeenCalledWith(expect.anything(), entry("1"), "california-parks");
+  });
+
+  it("threads a custom providerId into upsertEntry", async () => {
+    const provider: ScanProvider = {
+      generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
+      proactiveScanWindow: vi.fn(async () => entry("1")),
+    };
+    await runProactiveScan({
+      db: {} as never,
+      parks: [park("1")],
+      provider,
+      providerId: "recreation-gov",
+      todayOverride: "2026-06-22",
+    });
+    expect(upsertEntry).toHaveBeenCalledWith(expect.anything(), entry("1"), "recreation-gov");
+  });
+
+  it("refreshMv: false skips the MV refresh (evict still runs)", async () => {
+    const provider: ScanProvider = {
+      generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
+      proactiveScanWindow: vi.fn(async () => entry("1")),
+    };
+    await runProactiveScan({
+      db: {} as never,
+      parks: [park("1")],
+      provider,
+      refreshMv: false,
+      todayOverride: "2026-06-22",
+    });
+    expect(refreshMaterializedView).not.toHaveBeenCalled();
+    expect(evictExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshMv: true (default) runs the MV refresh", async () => {
+    const provider: ScanProvider = {
+      generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
+      proactiveScanWindow: vi.fn(async () => entry("1")),
+    };
+    await runProactiveScan({
+      db: {} as never,
+      parks: [park("1")],
+      provider,
+      refreshMv: true,
+      todayOverride: "2026-06-22",
+    });
+    expect(refreshMaterializedView).toHaveBeenCalledTimes(1);
+  });
+
   it("sleeps between batches but not after the last", async () => {
     const provider: ScanProvider = {
       generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
@@ -123,5 +183,25 @@ describe("runProactiveScan (orchestration)", () => {
     expect(summary.cacheWrites).toBe(0);
     expect(summary.fetchErrors).toBe(1);
     expect(upsertEntry).not.toHaveBeenCalled();
+  });
+
+  it("honors the fake provider's proactiveConcurrency/batchDelayMs when deps don't override them", async () => {
+    const provider: ScanProvider = {
+      generateCacheWindows: () => [{ windowStart: "2026-08-14", windowEnd: "2026-08-21" }],
+      proactiveScanWindow: vi.fn(async () => entry("x")),
+      proactiveConcurrency: 1,
+      batchDelayMs: 1_500,
+    };
+    const sleep = vi.fn(async () => {});
+    // 3 parks, provider concurrency 1 (no override) → batches of [1,1,1] → 2 inter-batch sleeps of 1500ms.
+    await runProactiveScan({
+      db: {} as never,
+      parks: [park("1"), park("2"), park("3")],
+      provider,
+      sleep,
+      todayOverride: "2026-06-22",
+    });
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(1_500);
   });
 });
