@@ -50,8 +50,16 @@ Key facts for anyone working on `hosted-launch`:
 - **DB = Neon (managed Postgres)**, Drizzle ORM + migrations. Run migrations/seed against
   Neon with `?sslmode=require` — not the local Docker instance.
 - **Scanner = GitHub Actions** (`Proactive Scan` workflow, `.github/workflows/scan.yml`),
-  cron `0 */6 * * *`. The free-plan 10 ms Worker CPU cap blocks cheerio parsing; GitHub
-  Actions runners have no such limit. Entry point: `bun --filter @campbrain/scanner start`.
+  cron `0 */6 * * *`, `timeout-minutes: 300`. The free-plan 10 ms Worker CPU cap blocks
+  cheerio parsing; GitHub Actions runners have no such limit. Each run also idempotently
+  seeds the catalog (`bun --filter @campbrain/db seed:catalog`) before scanning. Entry
+  point unchanged: `bun --filter @campbrain/scanner start`, now running **two provider
+  passes** — CA State Parks first (own MV refresh + digest build + alerts + calendar sync),
+  Recreation.gov last (own MV refresh + digest build) — with a stale-`scan_runs` cleanup
+  guarding against a killed prior run.
+- **Map reads serve precomputed digests** — `map.availability` reads a per-park
+  `park_digests` row (built by the scanner) instead of computing live, avoiding the same
+  10 ms Worker CPU cap; falls back to live compute if a digest is missing/stale.
 - **Repo is public** (`github.com/nimajel/campbrain`); **default branch is
   `hosted-launch`** (scanner cron runs from it).
 - **Deploy:** `VITE_API_URL=<worker-origin> bun --filter @campbrain/web build` then

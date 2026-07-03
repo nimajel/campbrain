@@ -23,7 +23,7 @@ Vite SPA and the tRPC + BetterAuth API from one origin:
 
 **Database:** Neon (managed Postgres). Drizzle ORM + migrations. Schema includes the full
 availability cache (`parks`, `campgrounds`, `sites`, `scan_windows`, `availability`,
-`mv_available_stays`) plus auth tables (BetterAuth), `access_allowlist`, and
+`mv_available_stays`, `park_digests`) plus auth tables (BetterAuth), `access_allowlist`, and
 `saved_searches`.
 
 **Auth:** BetterAuth with Google OAuth. An `access_allowlist` table gates sign-in;
@@ -32,8 +32,12 @@ non-allowlisted users see a request-access screen.
 **Scanner:** GitHub Actions (`Proactive Scan` workflow, `.github/workflows/scan.yml`),
 cron `0 */6 * * *` (every 6 h, UTC, best-effort). The Cloudflare Worker free plan's 10 ms
 CPU cap makes the cheerio-based parser unviable in a Worker; GitHub Actions runners have no
-such limit. Timeout: 75 minutes (a full scan over the network to Neon takes ~55 min). The
-`DATABASE_URL` secret is set in GitHub repo settings.
+such limit. Steps: apply pending DB migrations → idempotently seed the catalog (CA + Rec.gov
+parks) → run the scan. The scan runs **two provider passes** — CA State Parks first (own MV
+refresh, digest build, alerts, calendar sync), Recreation.gov last (own MV refresh + digest
+build, ~95–155 min at its polite 1.5 s-per-request cadence) — plus a stale-`scan_runs`
+cleanup guarding against a previously killed run. Timeout: 300 minutes, sized for the
+combined worst case. The `DATABASE_URL` secret is set in GitHub repo settings.
 
 The repo is **public** at `github.com/nimajel/campbrain`; the **default branch is
 `hosted-launch`** (so the scanner cron and workflow_dispatch trigger from it automatically).

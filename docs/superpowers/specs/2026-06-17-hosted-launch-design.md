@@ -16,10 +16,11 @@
 > Triggers + Queues + R2." The Cloudflare Workers **free plan caps CPU at 10 ms per
 > invocation**; parsing a ~130 KB availability page with `cheerio` exceeds that, making a
 > Worker-based parser unreliable on free tier. Scanner is therefore **GitHub Actions**
-> instead (`Proactive Scan` workflow, `.github/workflows/scan.yml`, cron `0 */6 * * *`,
-> `timeout-minutes: 75`), running `bun --filter @campbrain/scanner start` against Neon.
-> Debug HTML goes to a GitHub Actions artifact instead of R2. The Cron+Queues+R2 design
-> can be revisited if the project moves to Workers Paid ($5/mo, 30 s CPU).
+> instead (`Proactive Scan` workflow, `.github/workflows/scan.yml`, cron `0 */6 * * *`),
+> running `bun --filter @campbrain/scanner start` against Neon. Debug HTML goes to a GitHub
+> Actions artifact instead of R2. The Cron+Queues+R2 design can be revisited if the project
+> moves to Workers Paid ($5/mo, 30 s CPU). (Workflow timeout was later raised to
+> `300` minutes for the two-provider pass — see the second-provider as-built note below.)
 
 > **As-built calendar-sync note (Phase 2b-3, 2026-06-25, commits `45c467e..63d89a6`):**
 > shipped ahead of the Phase 3 slot this doc originally planned for it. Design:
@@ -34,6 +35,27 @@
 > tokens with a plain `fetch` to `oauth2.googleapis.com/token` — no `googleapis` package in the
 > Worker bundle. Code-complete and unit/mock-tested; live verification is gated on the owner
 > provisioning a Google OAuth client (see the design doc's "Manual setup" section).
+
+> **As-built map-read note (2026-07-02, commits `6d7765a..7b6e317` + `490f801`):** live
+> `map.availability` was hitting Cloudflare **error 1102** on site-heavy parks (Lake Perris
+> `651`, 426 sites — 100% failing) — the free-plan 10 ms Worker CPU cap (same constraint as
+> the Phase 1c scanner note above) couldn't absorb per-request `buildParkAvailability`
+> compute. Fix: the GitHub-Actions scanner now precomputes an unfiltered per-park digest
+> into a new `park_digests` table; the Worker reads the row by PK and applies a pure
+> `filterDigest` reducer, falling back to live compute if a digest is missing/stale. Design:
+> [docs/superpowers/specs/2026-07-02-hosted-launch-availability-digest-design.md](2026-07-02-hosted-launch-availability-digest-design.md).
+> Live-verified: Lake Perris 6/6 HTTP 200 (was 6/6 failing).
+
+> **As-built second-provider note (2026-07-02, commits `3d680c0..a4e72cd` + `c33a750`):**
+> Recreation.gov shipped as the **second live provider** on the hosted stack — core adapter
+> ported to `@campbrain/core`, cross-provider `park_page_id` collisions closed in the DB
+> queries, search router, and web pin join, and the catalog (650 federal parks) is now
+> auto-seeded by the scan workflow. The scanner runs two sequential provider passes (CA
+> first — its own MV refresh, digest build, alerts, calendar sync; Rec.gov last — its own MV
+> refresh + digest build), with `timeout-minutes: 300` and a stale-`scan_runs` cleanup on a
+> SIGKILLed run. This deviates from the spec's single-MV-refresh design (O-B) — see the plan's
+> "As-built deviation" section for why. Design:
+> [docs/superpowers/specs/2026-07-02-hosted-launch-recgov-port-design.md](2026-07-02-hosted-launch-recgov-port-design.md).
 
 > **Supersedes** the earlier draft of this file (a Vercel + Next.js + Neon + Railway
 > *migration*). After choosing a standard stack, this is a **Cloudflare-native rewrite**
