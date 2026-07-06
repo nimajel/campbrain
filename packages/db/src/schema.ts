@@ -72,7 +72,7 @@ export const availability = pgTable("availability", {
   primaryKey({ columns: [t.siteId, t.date] }),
   index("idx_availability_date").on(t.date),
   index("idx_availability_available").on(t.date).where(sql`status = 'available'`),
-  check("availability_status_check", sql`status IN ('available', 'unavailable', 'unknown')`),
+  check("availability_status_check", sql`status IN ('available', 'unknown')`),
 ]);
 
 export const savedSearches = pgTable("saved_searches", {

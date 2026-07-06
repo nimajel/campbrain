@@ -94,4 +94,13 @@ describe("upsertEntry (integration)", async () => {
       WHERE s.provider_id = ${PROVIDER} AND s.site_name = 'Tent 1'`;
     expect(tent.map((r) => r["date"])).toEqual([]);
   });
+
+  it.skipIf(!hasDb)("rejects raw 'unavailable' inserts via CHECK constraint", async () => {
+    const site = await env!.client`
+      SELECT site_id FROM sites WHERE provider_id = ${PROVIDER} AND site_name = 'Tent 1' LIMIT 1`;
+    const siteId = site[0]!["site_id"] as number;
+    await expect(
+      env!.client`INSERT INTO availability (site_id, date, status) VALUES (${siteId}, '2999-03-05', 'unavailable')`,
+    ).rejects.toThrow(/availability_status_check/);
+  });
 });
