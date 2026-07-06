@@ -6,7 +6,7 @@ import { createTestDb, dbReachable } from "./helpers";
 const PROVIDER = "test-1c";
 const PARK = "upsert-park";
 
-function makeEntry(dates: Record<string, "available" | "unavailable">): AvailabilityWindowEntry {
+function makeEntry(dates: Record<string, "available" | "unavailable" | "unknown">): AvailabilityWindowEntry {
   return {
     parkPageId: PARK, parkName: "Upsert Park",
     windowStart: "2999-03-01", windowEnd: "2999-03-08",
@@ -69,5 +69,29 @@ describe("upsertEntry (integration)", async () => {
     expect(Number(swRows[0]?.["count"])).toBe(1);
     const siteRows = await env!.client`SELECT COUNT(*)::int AS count FROM sites WHERE provider_id = ${PROVIDER} AND park_page_id = 'upsert-park-empty'`;
     expect(Number(siteRows[0]?.["count"])).toBe(0);
+  });
+
+  it.skipIf(!hasDb)("stores only available and unknown rows — never unavailable", async () => {
+    await upsertEntry(env!.db, makeEntry({
+      "2999-03-01": "available",
+      "2999-03-02": "unavailable",
+      "2999-03-03": "unknown",
+    }), PROVIDER);
+    const tent = await env!.client`
+      SELECT a.date::text AS date, a.status FROM availability a JOIN sites s ON s.site_id = a.site_id
+      WHERE s.provider_id = ${PROVIDER} AND s.site_name = 'Tent 1' ORDER BY a.date`;
+    expect(tent.map((r) => [r["date"], r["status"]])).toEqual([
+      ["2999-03-01", "available"],
+      ["2999-03-03", "unknown"],
+    ]);
+  });
+
+  it.skipIf(!hasDb)("removes a previously-available date that flips to unavailable on re-upsert", async () => {
+    await upsertEntry(env!.db, makeEntry({ "2999-03-04": "available" }), PROVIDER);
+    await upsertEntry(env!.db, makeEntry({ "2999-03-04": "unavailable" }), PROVIDER);
+    const tent = await env!.client`
+      SELECT a.date::text AS date FROM availability a JOIN sites s ON s.site_id = a.site_id
+      WHERE s.provider_id = ${PROVIDER} AND s.site_name = 'Tent 1'`;
+    expect(tent.map((r) => r["date"])).toEqual([]);
   });
 });

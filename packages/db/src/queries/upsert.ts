@@ -81,13 +81,14 @@ export async function upsertEntry(
     const siteIdMap = new Map<string, number>();
     for (const r of returned) siteIdMap.set(`${r.campground_name}::${r.site_name}`, r.site_id);
 
-    // 8. Bulk insert availability (dedupe by site_id::date)
+    // 8. Bulk insert availability (dedupe by site_id::date; available/unknown only)
     const availByKey = new Map<string, { siteId: number; date: string; status: string }>();
     for (const cg of entry.campgrounds) {
       for (const site of cg.sites) {
         const siteId = siteIdMap.get(`${cg.name}::${site.name}`);
         if (siteId === undefined) continue;
         for (const [date, status] of Object.entries(site.dates)) {
+          if (status === "unavailable") continue; // implied by absence within a covered scan_window — never stored
           availByKey.set(`${siteId}::${date}`, { siteId, date, status });
         }
       }
