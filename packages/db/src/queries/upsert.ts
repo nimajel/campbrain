@@ -24,11 +24,21 @@ export async function upsertEntry(
       ON CONFLICT (provider_id, park_page_id, window_start) DO UPDATE SET
         window_end = EXCLUDED.window_end, scanned_at = EXCLUDED.scanned_at, source_url = EXCLUDED.source_url`);
 
-    // 3. Delete old availability for this park's sites in this window's date range
+    // 3. Delete old availability for this park's sites in this entry's replace range.
+    // The CA provider probes forward past fully-booked days, so an entry can carry dates
+    // beyond windowEnd — bound the delete by the max date present so those rows are replaced too.
+    let deleteEnd = entry.windowEnd;
+    for (const cg of entry.campgrounds) {
+      for (const site of cg.sites) {
+        for (const date of Object.keys(site.dates)) {
+          if (date > deleteEnd) deleteEnd = date;
+        }
+      }
+    }
     await tx.execute(sql`
       DELETE FROM availability
       WHERE site_id IN (SELECT site_id FROM sites WHERE provider_id = ${providerId} AND park_page_id = ${entry.parkPageId})
-        AND date BETWEEN ${entry.windowStart}::date AND ${entry.windowEnd}::date`);
+        AND date BETWEEN ${entry.windowStart}::date AND ${deleteEnd}::date`);
 
     // 4. No campgrounds → fully booked window; done.
     if (entry.campgrounds.length === 0) return;

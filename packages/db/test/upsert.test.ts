@@ -95,6 +95,15 @@ describe("upsertEntry (integration)", async () => {
     expect(tent.map((r) => r["date"])).toEqual([]);
   });
 
+  it.skipIf(!hasDb)("removes an out-of-window date that flips to unavailable (probe-forward entry)", async () => {
+    await upsertEntry(env!.db, makeEntry({ "2999-03-02": "available", "2999-03-09": "available" }), PROVIDER);
+    await upsertEntry(env!.db, makeEntry({ "2999-03-02": "available", "2999-03-09": "unavailable" }), PROVIDER);
+    const tent = await env!.client`
+      SELECT a.date::text AS date FROM availability a JOIN sites s ON s.site_id = a.site_id
+      WHERE s.provider_id = ${PROVIDER} AND s.site_name = 'Tent 1' ORDER BY a.date`;
+    expect(tent.map((r) => r["date"])).toEqual(["2999-03-02"]);
+  });
+
   it.skipIf(!hasDb)("rejects raw 'unavailable' inserts via CHECK constraint", async () => {
     const site = await env!.client`
       SELECT site_id FROM sites WHERE provider_id = ${PROVIDER} AND site_name = 'Tent 1' LIMIT 1`;
