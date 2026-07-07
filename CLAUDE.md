@@ -318,6 +318,9 @@ The original <200ms filter-toggle budget was measured against the pre-API client
 
 > On `hosted-launch`: `bun install`, `bun run typecheck`, `bun run test`, `bun run build`
 > (Turborepo). Deploy: see the Hosted-Launch section above and `docs/reference/deployment.md`.
+> Note: the legacy `npm run worker` (`src/cache/availability-cache.ts`) still writes
+> tri-state availability rows; against a DB migrated with `0008_available_only.sql` it
+> fails loudly on the tightened `status` CHECK — that's the guard working, not a scanner bug.
 
 Setup (run once / when schema changes):
 ```

@@ -118,6 +118,8 @@ The core grid: one row per (site, date). Status values:
 - `unavailable` — site booked or blocked
 - `unknown` — provider returned no data for this date
 
+**Hosted-launch note:** on the `hosted-launch` branch (`packages/db`, migration `0008_available_only.sql`) the CHECK constraint is tightened to `status IN ('available', 'unknown')` — `unavailable` rows are no longer persisted; unavailability is implied by row-absence within a covered `scan_windows` date range.
+
 ---
 
 ## Materialized view — `mv_available_stays`
