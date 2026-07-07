@@ -60,6 +60,15 @@ Key facts for anyone working on `hosted-launch`:
 - **Map reads serve precomputed digests** — `map.availability` reads a per-park
   `park_digests` row (built by the scanner) instead of computing live, avoiding the same
   10 ms Worker CPU cap; falls back to live compute if a digest is missing/stale.
+- **`availability` table is available/unknown-only** — `unavailable` is no longer
+  persisted; it's implied by row-absence within a covered `scan_windows` date range.
+  Enforced by `upsertEntry` (`packages/db/src/queries/upsert.ts`, skips `unavailable` at
+  insert) and a CHECK constraint (`status IN ('available', 'unknown')`, migration
+  `0008_available_only.sql`). This resolved a Neon free-tier 512 MB cap overflow hit on
+  2026-07-03 (post first full Rec.gov scan, ~85–90% of rows were `unavailable`). Parsers
+  still emit tri-state `AvailabilityStatus` in memory (`packages/core`, unchanged) — the
+  filter is DB-write-boundary only. No read paths changed; all already filtered
+  `status = 'available'`.
 - **Repo is public** (`github.com/nimajel/campbrain`); **default branch is
   `hosted-launch`** (scanner cron runs from it).
 - **Deploy:** `VITE_API_URL=<worker-origin> bun --filter @campbrain/web build` then

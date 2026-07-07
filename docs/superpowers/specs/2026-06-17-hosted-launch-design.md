@@ -46,6 +46,20 @@
 > [docs/superpowers/specs/2026-07-02-hosted-launch-availability-digest-design.md](2026-07-02-hosted-launch-availability-digest-design.md).
 > Live-verified: Lake Perris 6/6 HTTP 200 (was 6/6 failing).
 
+> **As-built availability-storage note (2026-07-06, commits `59bafe7`, `9233197`):** the
+> Neon free-tier 512 MB cap was exceeded on 2026-07-03 after the first full Rec.gov scan
+> (~85–90% of `availability` rows were `unavailable` — pure waste, since every read path
+> already filters `status = 'available'`). Fix: `upsertEntry` no longer persists
+> `unavailable` rows (`packages/db/src/queries/upsert.ts`); migration
+> `0008_available_only.sql` TRUNCATEs the table (instant Neon space reclaim — the scanner
+> repopulates on its next run) and tightens the CHECK constraint to
+> `status IN ('available', 'unknown')`. `unavailable` is now implied by row-absence within
+> a covered `scan_windows` date range; the per-window delete-then-insert in `upsertEntry`
+> already removed stale `available` rows, so absence semantics are exact. No read-path
+> changes were needed. Parsers still emit tri-state `AvailabilityStatus` in memory
+> (`packages/core`) — the filter lives only at the DB write boundary. Plan:
+> [docs/superpowers/plans/2026-07-06-available-only-availability.md](../plans/2026-07-06-available-only-availability.md).
+
 > **As-built second-provider note (2026-07-02, commits `3d680c0..a4e72cd` + `c33a750`):**
 > Recreation.gov shipped as the **second live provider** on the hosted stack — core adapter
 > ported to `@campbrain/core`, cross-provider `park_page_id` collisions closed in the DB
