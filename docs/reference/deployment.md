@@ -30,7 +30,8 @@ availability cache (`parks`, `campgrounds`, `sites`, `scan_windows`, `availabili
 non-allowlisted users see a request-access screen.
 
 **Scanner:** GitHub Actions (`Proactive Scan` workflow, `.github/workflows/scan.yml`),
-cron `0 */6 * * *` (every 6 h, UTC, best-effort). The Cloudflare Worker free plan's 10 ms
+cron `0 */12 * * *` (every 12 h, UTC, best-effort; halved from 6h on 2026-07-09 for Neon
+free-tier egress headroom — see below). The Cloudflare Worker free plan's 10 ms
 CPU cap makes the cheerio-based parser unviable in a Worker; GitHub Actions runners have no
 such limit. Steps: apply pending DB migrations → idempotently seed the catalog (CA + Rec.gov
 parks) → run the scan. The scan runs **two provider passes** — CA State Parks first (own MV
@@ -38,6 +39,16 @@ refresh, digest build, alerts, calendar sync), Recreation.gov last (own MV refre
 build, ~95–155 min at its polite 1.5 s-per-request cadence) — plus a stale-`scan_runs`
 cleanup guarding against a previously killed run. Timeout: 300 minutes, sized for the
 combined worst case. The `DATABASE_URL` secret is set in GitHub repo settings.
+
+Digest builds read via `getEntriesForParks` (`packages/db/src/queries/entries.ts`). As of
+2026-07-09 this reads `availability` ⋈ `sites` ⋈ `campgrounds` directly (per-site
+`array_agg(date)`, one synthetic window per park, each available date shipped once) rather
+than joining through the accumulated `scan_windows` lattice (the daily-shifted 8-day step
+leaves ~180 overlapping windows/park). The old window-joined read fanned out windows ×
+sites and shipped each date up to 8x — multi-GB egress per digest build, which blew Neon's
+5 GB/mo free-tier data-transfer quota and suspended compute on 2026-07-08. This is a
+separate incident from the 512 MB storage cap resolved by `0008_available_only.sql`
+(see `CLAUDE.md`'s Hosted-Launch Rewrite section and [data-model.md](data-model.md)).
 
 The repo is **public** at `github.com/nimajel/campbrain`; the **default branch is
 `hosted-launch`** (so the scanner cron and workflow_dispatch trigger from it automatically).
@@ -90,7 +101,10 @@ DATABASE_URL='<neon-connection-string>?sslmode=require' \
 ```
 
 The availability data regenerates automatically once the scanner runs — no data migration
-from the local Postgres instance is needed.
+from the local Postgres instance is needed. The scan workflow only runs migrations and
+`seed:catalog` on each run; it does **not** seed the access allowlist. After provisioning
+a fresh Neon project, `seed:allowlist` must be run manually (as above) or no one can sign
+in.
 
 ---
 

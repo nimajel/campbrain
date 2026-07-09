@@ -50,7 +50,8 @@ Key facts for anyone working on `hosted-launch`:
 - **DB = Neon (managed Postgres)**, Drizzle ORM + migrations. Run migrations/seed against
   Neon with `?sslmode=require` — not the local Docker instance.
 - **Scanner = GitHub Actions** (`Proactive Scan` workflow, `.github/workflows/scan.yml`),
-  cron `0 */6 * * *`, `timeout-minutes: 300`. The free-plan 10 ms Worker CPU cap blocks
+  cron `0 */12 * * *` (halved from 6h 2026-07-09 for Neon free-tier egress headroom),
+  `timeout-minutes: 300`. The free-plan 10 ms Worker CPU cap blocks
   cheerio parsing; GitHub Actions runners have no such limit. Each run also idempotently
   seeds the catalog (`bun --filter @campbrain/db seed:catalog`) before scanning. Entry
   point unchanged: `bun --filter @campbrain/scanner start`, now running **two provider
@@ -59,7 +60,13 @@ Key facts for anyone working on `hosted-launch`:
   guarding against a killed prior run.
 - **Map reads serve precomputed digests** — `map.availability` reads a per-park
   `park_digests` row (built by the scanner) instead of computing live, avoiding the same
-  10 ms Worker CPU cap; falls back to live compute if a digest is missing/stale.
+  10 ms Worker CPU cap; falls back to live compute if a digest is missing/stale. Digest
+  builds read via `getEntriesForParks` (`packages/db/src/queries/entries.ts`), which as
+  of 2026-07-09 queries `availability`/`sites`/`campgrounds` directly (per-site
+  `array_agg(date)`, each available date shipped once) instead of joining through the
+  accumulated `scan_windows` lattice — the old join fanned out windows × sites and blew
+  Neon's 5 GB/mo egress quota (compute suspended 2026-07-08), a separate incident from
+  the 512 MB storage cap below.
 - **`availability` table is available/unknown-only** — `unavailable` is no longer
   persisted; it's implied by row-absence within a covered `scan_windows` date range.
   Enforced by `upsertEntry` (`packages/db/src/queries/upsert.ts`, skips `unavailable` at
@@ -273,7 +280,7 @@ Provider-specific logic stays isolated behind adapters. Do not mix parsing logic
 
 **Site classifier** — `src/catalog/site-classifier.ts` (legacy/main) and `packages/core/src/catalog/site-classifier.ts` (hosted-launch authoritative; kept byte-identical) are the single source of truth for all classification regexes. `classifySite(siteName, campgroundName, recGovCampsiteType?, parkPageId?)` sets all six columns at upsert time and on conflict (so reclassification heals existing rows). CA parks are classified by name patterns — **boat-in wins over hike-in** when a name carries both signals (e.g. "Boat In Primitive Campsite", where `primitive` would otherwise match hike-in), and `kayak`/`canoe` count as boat-in access. Rec.gov sites prefer the `campsite_type` field from the month-availability payload. Use `npm run db:backfill-types` to classify existing rows by name after a schema change.
 
-- **`PARK_ACCESS_OVERRIDES`** (in the classifier, keyed by `park_page_id`) — for parks that have **no drive-in sites** but whose individual site names carry no readable access keyword (e.g. Angel Island `468`: "Campsite #7", "Group Tent Campsite #GTC" — ferry/boat/kayak access only). The override reassigns any residual non-day-use `drive_in` site to a park-specific access (Angel Island → `hike_in`); sites that already classify as boat-in/hike-in by name (e.g. the kayak site) are left alone, and day-use sites are untouched. It is applied **inside `classifySite`** — the single chokepoint every writer funnels through (catalog seed, scanner upsert in `packages/db/src/queries/upsert.ts`, and the map read-time taxonomy predicate in `packages/core/src/availability/map-transforms.ts`) — so it survives scanner re-classification. Callers thread `parkPageId`; the hosted-launch seed/upsert/map paths pass it (legacy `src/` callers don't yet, so the override is a no-op on main). A live data fix needs no manual step — the next scan (GitHub Actions, every 6h against Neon) re-upserts with the corrected access.
+- **`PARK_ACCESS_OVERRIDES`** (in the classifier, keyed by `park_page_id`) — for parks that have **no drive-in sites** but whose individual site names carry no readable access keyword (e.g. Angel Island `468`: "Campsite #7", "Group Tent Campsite #GTC" — ferry/boat/kayak access only). The override reassigns any residual non-day-use `drive_in` site to a park-specific access (Angel Island → `hike_in`); sites that already classify as boat-in/hike-in by name (e.g. the kayak site) are left alone, and day-use sites are untouched. It is applied **inside `classifySite`** — the single chokepoint every writer funnels through (catalog seed, scanner upsert in `packages/db/src/queries/upsert.ts`, and the map read-time taxonomy predicate in `packages/core/src/availability/map-transforms.ts`) — so it survives scanner re-classification. Callers thread `parkPageId`; the hosted-launch seed/upsert/map paths pass it (legacy `src/` callers don't yet, so the override is a no-op on main). A live data fix needs no manual step — the next scan (GitHub Actions, every 12h against Neon) re-upserts with the corrected access.
 
 **Materialized view** — `mv_available_stays`:
 - Precomputes 1N/2N stays for the `/explore` page
