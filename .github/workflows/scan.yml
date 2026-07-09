@@ -1,7 +1,9 @@
 name: Proactive Scan
 on:
   schedule:
-    - cron: "0 */6 * * *"   # every 6 hours (GitHub cron is best-effort, UTC).
+    - cron: "0 */12 * * *"  # every 12 hours (GitHub cron is best-effort, UTC). Halved from 6h
+                            # for Neon free-tier egress headroom (5 GB/mo): each run reads the
+                            # full availability set back out for digest builds.
                             # Repo is public → unlimited Actions minutes. CA pass on Neon ~35-55
                             # min; Rec.gov pass (hundreds of parks, polite 1.5s sequential cadence)
                             # ~95-155 min; plus digest/alert/calendar phases. timeout-minutes below
