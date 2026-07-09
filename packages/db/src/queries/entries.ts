@@ -3,99 +3,111 @@ import type { AvailabilityWindowEntry, CampgroundWindow } from "@campbrain/core"
 import { rows, type QueryDb } from "./exec";
 import { sqlTextArray } from "./filters";
 
-export type EntryRow = {
+type ParkMetaRow = {
+  provider_id: string;
   park_page_id: string;
   park_name: string;
-  window_start: string;
-  window_end: string;
   scanned_at: string;
   source_url: string;
-  cg_name: string | null;
+};
+
+type SiteDatesRow = {
+  provider_id: string;
+  park_page_id: string;
+  cg_name: string;
   cg_id: string | null;
   nightly_fee: string | null;
   booking_url: string | null;
-  site_id: number | null;
-  site_name: string | null;
-  avail_date: string | null;
-  status: string | null;
+  site_name: string;
+  dates: string[];
 };
 
-/** Pure: assemble nested AvailabilityWindowEntry[] from flat join rows.
- *  Ported verbatim from src/cache/availability-cache.ts:271-321. */
-export function buildEntriesFromRows(rowsIn: EntryRow[]): AvailabilityWindowEntry[] {
-  const windowMap = new Map<string, AvailabilityWindowEntry>();
-  const cgMap = new Map<string, CampgroundWindow>();
-  const siteMap = new Map<string, { name: string; dates: Record<string, "available" | "unavailable" | "unknown"> }>();
-
-  for (const row of rowsIn) {
-    const windowKey = `${row.park_page_id}::${row.window_start}`;
-    if (!windowMap.has(windowKey)) {
-      windowMap.set(windowKey, {
-        parkPageId: row.park_page_id,
-        parkName: row.park_name,
-        windowStart: row.window_start,
-        windowEnd: row.window_end,
-        scannedAt: row.scanned_at,
-        sourceUrl: row.source_url,
-        campgrounds: [],
-      });
-    }
-    if (row.cg_name === null) continue;
-
-    const cgKey = `${windowKey}::${row.cg_name}`;
-    if (!cgMap.has(cgKey)) {
-      const cg: CampgroundWindow = { id: row.cg_id ?? row.cg_name, name: row.cg_name, sites: [] };
-      if (row.nightly_fee !== null) cg.nightlyFee = Number(row.nightly_fee);
-      if (row.booking_url !== null) cg.bookingUrl = row.booking_url;
-      cgMap.set(cgKey, cg);
-      windowMap.get(windowKey)!.campgrounds.push(cg);
-    }
-    if (row.site_name === null) continue;
-
-    const siteKey = `${cgKey}::${row.site_name}`;
-    if (!siteMap.has(siteKey)) {
-      const site = { name: row.site_name, dates: {} as Record<string, "available" | "unavailable" | "unknown"> };
-      siteMap.set(siteKey, site);
-      cgMap.get(cgKey)!.sites.push(site);
-    }
-    if (row.avail_date !== null && row.status !== null) {
-      siteMap.get(siteKey)!.dates[row.avail_date] = row.status as "available" | "unavailable" | "unknown";
-    }
-  }
-  return Array.from(windowMap.values());
-}
-
-const ENTRY_QUERY_SELECT = sql`
-  sw.park_page_id, p.park_name,
-  sw.window_start::text AS window_start, sw.window_end::text AS window_end,
-  sw.scanned_at::text AS scanned_at, sw.source_url,
-  cg.campground_name AS cg_name, cg.campground_id AS cg_id,
-  cg.nightly_fee, cg.booking_url,
-  s.site_id, s.site_name,
-  a.date::text AS avail_date, a.status`;
-
-const ENTRY_QUERY_JOINS = sql`
-  JOIN parks p ON p.provider_id = sw.provider_id AND p.park_page_id = sw.park_page_id
-  LEFT JOIN campgrounds cg ON cg.provider_id = sw.provider_id AND cg.park_page_id = sw.park_page_id
-  LEFT JOIN sites s ON s.provider_id = cg.provider_id AND s.park_page_id = cg.park_page_id AND s.campground_name = cg.campground_name
-  LEFT JOIN availability a ON a.site_id = s.site_id AND a.date >= sw.window_start AND a.date <= sw.window_end AND a.status = 'available'`;
-
-/** All non-expired windows for the given parks, with per-site per-date availability.
- *  Ported from src/cache/availability-cache.ts:352-367. */
+/** One deduped entry per (provider, park): all available dates from today forward,
+ *  each shipped exactly once as a per-site date array.
+ *
+ *  This intentionally does NOT join through scan_windows. The scanner's daily-shifted
+ *  8-day lattice accumulates ~180 overlapping windows per park, and the old
+ *  window-joined read fanned out to windows × sites rows per park (multi-GB egress
+ *  per digest build on Neon). Consumers (buildParkAvailability, buildSiteClassMap)
+ *  deduped across windows in memory anyway, so a single synthetic window per park is
+ *  behavior-preserving; scan_windows is consulted only for park-level freshness meta. */
 export async function getEntriesForParks(
   db: QueryDb,
   parkPageIds: string[],
   providerName?: string,
 ): Promise<AvailabilityWindowEntry[]> {
   if (parkPageIds.length === 0) return [];
-  const providerCond = providerName ? sql` AND sw.provider_id = ${providerName}` : sql``;
-  const result = await rows<EntryRow>(
+  const swProviderCond = providerName ? sql` AND sw.provider_id = ${providerName}` : sql``;
+  const sProviderCond = providerName ? sql` AND s.provider_id = ${providerName}` : sql``;
+
+  const meta = await rows<ParkMetaRow>(
     db,
-    sql`SELECT ${ENTRY_QUERY_SELECT} FROM scan_windows sw ${ENTRY_QUERY_JOINS}
-        WHERE sw.park_page_id = ANY(${sqlTextArray(parkPageIds)})${providerCond} AND sw.window_end >= CURRENT_DATE
-        ORDER BY sw.window_start, cg.campground_name, s.site_name, a.date`,
+    sql`SELECT sw.provider_id, sw.park_page_id, p.park_name,
+               max(sw.scanned_at)::text AS scanned_at,
+               (array_agg(sw.source_url ORDER BY sw.scanned_at DESC))[1] AS source_url
+        FROM scan_windows sw
+        JOIN parks p ON p.provider_id = sw.provider_id AND p.park_page_id = sw.park_page_id
+        WHERE sw.park_page_id = ANY(${sqlTextArray(parkPageIds)})${swProviderCond}
+          AND sw.window_end >= CURRENT_DATE
+        GROUP BY sw.provider_id, sw.park_page_id, p.park_name`,
   );
-  return buildEntriesFromRows(result);
+  if (meta.length === 0) return [];
+
+  const siteRows = await rows<SiteDatesRow>(
+    db,
+    sql`SELECT s.provider_id, s.park_page_id,
+               cg.campground_name AS cg_name, cg.campground_id AS cg_id,
+               cg.nightly_fee, cg.booking_url,
+               s.site_name,
+               array_agg(a.date::text ORDER BY a.date) AS dates
+        FROM availability a
+        JOIN sites s ON s.site_id = a.site_id
+        JOIN campgrounds cg ON cg.provider_id = s.provider_id AND cg.park_page_id = s.park_page_id AND cg.campground_name = s.campground_name
+        WHERE s.park_page_id = ANY(${sqlTextArray(parkPageIds)})${sProviderCond}
+          AND a.status = 'available' AND a.date >= CURRENT_DATE
+        GROUP BY s.provider_id, s.park_page_id, cg.campground_name, cg.campground_id, cg.nightly_fee, cg.booking_url, s.site_name
+        ORDER BY s.provider_id, s.park_page_id, cg.campground_name, s.site_name`,
+  );
+
+  const entryByKey = new Map<string, AvailabilityWindowEntry>();
+  for (const m of meta) {
+    entryByKey.set(`${m.provider_id}::${m.park_page_id}`, {
+      parkPageId: m.park_page_id,
+      parkName: m.park_name,
+      windowStart: "",
+      windowEnd: "",
+      scannedAt: m.scanned_at,
+      sourceUrl: m.source_url,
+      campgrounds: [],
+    });
+  }
+
+  const cgByKey = new Map<string, CampgroundWindow>();
+  for (const row of siteRows) {
+    const entry = entryByKey.get(`${row.provider_id}::${row.park_page_id}`);
+    if (!entry) continue; // availability with no unexpired scan window: park is unscanned
+
+    const cgKey = `${row.provider_id}::${row.park_page_id}::${row.cg_name}`;
+    let cg = cgByKey.get(cgKey);
+    if (!cg) {
+      cg = { id: row.cg_id ?? row.cg_name, name: row.cg_name, sites: [] };
+      if (row.nightly_fee !== null) cg.nightlyFee = Number(row.nightly_fee);
+      if (row.booking_url !== null) cg.bookingUrl = row.booking_url;
+      cgByKey.set(cgKey, cg);
+      entry.campgrounds.push(cg);
+    }
+
+    const dates: Record<string, "available" | "unavailable" | "unknown"> = {};
+    for (const d of row.dates) dates[d] = "available";
+    cg.sites.push({ name: row.site_name, dates });
+
+    const first = row.dates[0];
+    const last = row.dates[row.dates.length - 1];
+    if (first && (entry.windowStart === "" || first < entry.windowStart)) entry.windowStart = first;
+    if (last && (entry.windowEnd === "" || last > entry.windowEnd)) entry.windowEnd = last;
+  }
+
+  return Array.from(entryByKey.values());
 }
 
 export async function getEntriesForPark(
