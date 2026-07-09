@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Tooltip, CircleMarker, Popup, ZoomControl, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { MapPark } from "@campbrain/core";
-import { getParkType, type PinAvailability } from "../lib/map-pins";
+import { getParkType } from "../lib/map-pins";
+import { derivePinState } from "../lib/filter-derivations";
 import { makePinIcon } from "./pin-icons";
 import MapLegend from "./MapLegend";
 import MarkerClusterGroup from "./MarkerClusterGroup";
@@ -115,21 +116,7 @@ export default function MapView({ parks, selectedPark, onSelectPark, focusLocati
         <MarkerClusterGroup key={clusterKey}>
           {withCoords.map((park) => {
             const isSelected = selectedPark?.parkPageId === park.parkPageId;
-            const summary = availability?.get(park.parkPageId);
-            const state: PinAvailability = !availability
-              ? "match"
-              : (summary?.siteCount ?? 0) > 0
-                ? "match"
-                : (summary?.walkUpCount ?? 0) > 0
-                  ? "walk-up"
-                  : "none";
-            const count = !availability
-              ? undefined
-              : state === "match"
-                ? summary?.siteCount
-                : state === "walk-up"
-                  ? summary?.walkUpCount
-                  : undefined;
+            const { state, count } = derivePinState(park, availability);
             const parkType = getParkType(park.provider);
             return (
               <Marker

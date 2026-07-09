@@ -3,7 +3,7 @@ import type { MapPark } from "@campbrain/core";
 import { EMPTY_TAXONOMY } from "@/lib/site-taxonomy";
 import type { ParkAvailabilitySummary } from "./types";
 import {
-  computeActiveFilterCount, buildAvailByPark, computeFilteredParks, buildListRows,
+  computeActiveFilterCount, buildAvailByPark, computeFilteredParks, buildListRows, availKey, derivePinState,
 } from "./filter-derivations";
 
 function park(over: Partial<MapPark>): MapPark {
@@ -102,5 +102,45 @@ describe("buildListRows", () => {
     const federalPark = park({ provider: "recreation-gov", parkPageId: "1", latitude: 37, longitude: -122 });
     const avail = new Map<string, ParkAvailabilitySummary>([["california-parks:1", { siteCount: 3, walkUpCount: 0, soonestDate: null }]]);
     expect(buildListRows([federalPark], avail, null)).toEqual([]);
+  });
+});
+
+describe("availKey", () => {
+  it("joins provider and parkPageId with a colon", () => {
+    expect(availKey("california-parks", "413")).toBe("california-parks:413");
+  });
+});
+
+describe("derivePinState", () => {
+  const p = park({ parkPageId: "413" });
+
+  it("shows every pin as match before the summary loads", () => {
+    expect(derivePinState(p, null)).toEqual({ state: "match", count: undefined });
+  });
+
+  it("lights a pin whose park has bookable sites (regression: summary map is keyed by provider:parkPageId)", () => {
+    const avail = buildAvailByPark([
+      { providerId: "california-parks", parkPageId: "413", siteCount: 62, walkUpCount: 0, soonestDate: "2026-07-13" },
+    ])!;
+    expect(derivePinState(p, avail)).toEqual({ state: "match", count: 62 });
+  });
+
+  it("marks walk-up-only parks", () => {
+    const avail = buildAvailByPark([
+      { providerId: "california-parks", parkPageId: "413", siteCount: 0, walkUpCount: 2, soonestDate: null },
+    ])!;
+    expect(derivePinState(p, avail)).toEqual({ state: "walk-up", count: 2 });
+  });
+
+  it("greys parks absent from the summary", () => {
+    expect(derivePinState(p, new Map())).toEqual({ state: "none", count: undefined });
+  });
+
+  it("does not light a federal pin from a CA park sharing the parkPageId", () => {
+    const federal = park({ provider: "recreation-gov", parkPageId: "413" });
+    const avail = buildAvailByPark([
+      { providerId: "california-parks", parkPageId: "413", siteCount: 62, walkUpCount: 0, soonestDate: null },
+    ])!;
+    expect(derivePinState(federal, avail)).toEqual({ state: "none", count: undefined });
   });
 });
